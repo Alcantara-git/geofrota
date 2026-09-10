@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GEOFROTA | Operacional</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>body { background-color: #0f172a; color: #f8fafc; }</style>
+</head>
+<body class="p-4 flex items-center justify-center min-h-screen">
+    <div class="w-full max-w-md bg-slate-800 p-8 rounded-[2.5rem] shadow-2xl border border-slate-700">
+        <h1 class="text-3xl font-black text-blue-500 text-center mb-2 uppercase">Geo<span class="text-white">Frota</span></h1>
+        <p class="text-[10px] text-slate-500 text-center font-bold uppercase tracking-widest mb-8">Lançamento de Quilometragem</p>
+        <form id="formKM" class="space-y-6">
+            <select id="uS" required class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-white outline-none focus:ring-2 ring-blue-600 text-center font-bold font-sm"><option value="">-- QUEM É VOCÊ? --</option></select>
+            <select id="vS" required class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-white outline-none focus:ring-2 ring-blue-600 text-center font-bold font-sm"><option value="">-- ESCOLHA A VTR --</option></select>
+            <div id="info" class="hidden bg-slate-950 p-4 rounded-2xl text-center border border-slate-800"><p class="text-[10px] text-slate-500 uppercase font-black">KM ATUAL REGISTRADO</p><p id="kmD" class="text-3xl font-mono font-bold text-blue-500">0</p></div>
+            <input type="number" id="nKM" required placeholder="Digite o KM Atual" class="w-full bg-slate-900 p-5 rounded-2xl text-4xl text-center border border-slate-700 outline-none focus:ring-2 ring-blue-600 font-mono text-white">
+            <button type="submit" class="w-full bg-blue-600 p-5 rounded-2xl font-black text-xl hover:bg-blue-500 transition uppercase shadow-lg shadow-blue-900/20">ATUALIZAR AGORA</button>
+        </form>
+        <a href="index.html" class="block text-center mt-8 text-slate-500 uppercase text-[10px] font-black hover:text-white transition tracking-widest">Painel Administrativo</a>
+    </div>
+    <script>
+        let viaturas = [];
+        async function sincronizar() {
+            const [rv, ru] = await Promise.all([fetch('/api/viaturas?t='+Date.now()), fetch('/api/usuarios?t='+Date.now())]);
+            viaturas = await rv.json(); const usuarios = await ru.json();
+            const vs = document.getElementById('vS'); const us = document.getElementById('uS');
+            const sV = vs.value; const sU = us.value;
+            vs.innerHTML = '<option value="">-- ESCOLHA A VTR --</option>' + viaturas.map(v => `<option value="${v.id}" ${v.id == sV ? 'selected' : ''}>${v.prefixo} (${v.placa})</option>`).join('');
+            us.innerHTML = '<option value="">-- QUEM É VOCÊ? --</option>' + usuarios.map(u => `<option value="${u.nome}" ${u.nome == sU ? 'selected' : ''}>${u.nome}</option>`).join('');
+            if (sV) { const v = viaturas.find(x => x.id == sV); if (v) document.getElementById('kmD').innerText = Number(v.km).toLocaleString(); }
+        }
+        document.getElementById('vS').onchange = (e) => {
+            const v = viaturas.find(x => x.id == e.target.value);
+            if(v) { document.getElementById('info').classList.remove('hidden'); document.getElementById('kmD').innerText = Number(v.km).toLocaleString(); document.getElementById('nKM').value = v.km; document.getElementById('nKM').focus(); }
+        };
+        document.getElementById('formKM').onsubmit = async (e) => {
+            e.preventDefault();
+            const vId = document.getElementById('vS').value, user = document.getElementById('uS').value, nKM = parseInt(document.getElementById('nKM').value);
+            const v = viaturas.find(x => x.id == vId);
+            if(nKM < v.km) return alert("ERRO: KM menor que o atual!");
+            await fetch(`/api/viaturas/${vId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({...v, km: nKM, ultimo_usuario: user}) });
+            alert("✅ Sucesso! Hodômetro atualizado."); location.reload();
+        };
+        setInterval(sincronizar, 5000); sincronizar();
+    </script>
+</body>
+</html>

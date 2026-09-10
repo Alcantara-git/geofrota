@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GEOFROTA | Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>body { background-color: #0f172a; color: #f8fafc; }</style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <div class="w-full max-w-sm bg-slate-800 p-8 rounded-[2rem] shadow-2xl border border-slate-700 text-center">
+        <h1 class="text-3xl font-black text-blue-500 mb-2 uppercase tracking-tighter">Geo<span class="text-white">Frota</span></h1>
+        <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-8">Acesso Administrativo</p>
+        <form id="formLogin" class="space-y-6">
+            <input type="password" id="senha" placeholder="Senha do Sistema" required class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-white outline-none focus:ring-2 ring-blue-600 text-center font-bold">
+            <button type="submit" class="w-full bg-blue-600 p-4 rounded-2xl font-black hover:bg-blue-500 transition shadow-lg tracking-widest uppercase text-xs">ENTRAR NO PAINEL</button>
+        </form>
+        <a href="operacional.html" class="block mt-6 text-slate-500 text-[10px] font-bold uppercase hover:text-white transition tracking-widest">Voltar ao Operacional</a>
+    </div>
+    <script>
+        document.getElementById('formLogin').onsubmit = async (e) => {
+            e.preventDefault();
+            const res = await fetch('/api/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ senha: document.getElementById('senha').value }) });
+            if (res.ok) window.location.href = 'index.html';
+            else alert("Senha incorreta!");
+        };
+    </script>
+</body>
+</html>

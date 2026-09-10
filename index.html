@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>GEOFROTA | Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>body { background-color: #0f172a; color: #f8fafc; } .card { background-color: #1e293b; border: 1px solid #334155; }</style>
+</head>
+<body class="flex h-screen overflow-hidden">
+    <aside class="w-64 bg-slate-950 border-r border-slate-800 flex flex-col p-6">
+        <div class="text-2xl font-bold text-blue-500 mb-8 uppercase tracking-tighter">Geo<span class="text-white">Frota</span></div>
+        <nav class="space-y-4 flex-1">
+            <a href="index.html" class="block p-3 bg-blue-600 rounded-xl text-white font-bold tracking-widest"><i class="fas fa-chart-line mr-2"></i> DASHBOARD</a>
+            <a href="operacional.html" class="block p-3 text-slate-400 hover:text-white font-medium"><i class="fas fa-mobile-alt mr-2"></i> OPERACIONAL</a>
+            <a href="usuarios.html" class="block p-3 text-slate-400 hover:text-white font-medium"><i class="fas fa-users mr-2"></i> USUÁRIOS</a>
+            <button onclick="logout()" class="block p-3 text-red-500 mt-10 hover:bg-red-500/10 w-full text-left rounded-xl"><i class="fas fa-sign-out-alt mr-2"></i> SAIR</button>
+        </nav>
+    </aside>
+    <main class="flex-1 flex flex-col overflow-y-auto">
+        <header class="h-20 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-900/50 backdrop-blur-md">
+            <h2 class="text-xl font-bold uppercase tracking-widest">Painel Gestor</h2>
+            <button onclick="abrirModal()" class="bg-blue-600 px-6 py-2 rounded-lg font-bold hover:bg-blue-500">+ NOVA VIATURA</button>
+        </header>
+        <div class="p-8">
+            <div class="grid grid-cols-4 gap-6 mb-8 text-center text-[10px] font-black uppercase tracking-widest">
+                <div class="card p-4 rounded-xl shadow-lg"><p class="text-slate-400">Total</p><h3 id="stat-total" class="text-3xl mt-1">0</h3></div>
+                <div class="card p-4 rounded-xl border-b-4 border-green-500 shadow-lg"><p class="text-slate-400">Operantes</p><h3 id="stat-op" class="text-3xl text-green-500 mt-1">0</h3></div>
+                <div class="card p-4 rounded-xl border-b-4 border-amber-500 shadow-lg"><p class="text-slate-400">Troca Óleo</p><h3 id="stat-ol" class="text-3xl text-amber-500 mt-1">0</h3></div>
+                <div class="card p-4 rounded-xl border-b-4 border-red-600 shadow-lg"><p class="text-slate-400">Baixadas</p><h3 id="stat-bx" class="text-3xl text-red-600 mt-1">0</h3></div>
+            </div>
+            <div class="card rounded-2xl overflow-hidden"><table class="w-full text-left"><thead class="bg-slate-800 text-slate-400 text-[10px] uppercase font-black tracking-widest"><tr><th class="p-4">Prefixo / Placa</th><th class="p-4">KM / Revisão</th><th class="p-4">Último Condutor</th><th class="p-4">Status</th><th class="p-4 text-center">Ações</th></tr></thead><tbody id="corpo" class="divide-y divide-slate-800"></tbody></table></div>
+        </div>
+    </main>
+
+    <div id="modalV" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-50">
+        <div class="card w-full max-w-md p-8 rounded-3xl shadow-2xl">
+            <h3 id="modalTitulo" class="text-xl font-black mb-6 text-blue-400 text-center uppercase tracking-widest">Viatura</h3>
+            <form id="formV" class="space-y-4">
+                <input type="hidden" id="editId">
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="text" id="pref" placeholder="Prefixo" required class="bg-slate-800 p-3 rounded-xl border border-slate-700 outline-none focus:border-blue-500">
+                    <input type="text" id="plac" placeholder="Placa" required class="bg-slate-800 p-3 rounded-xl border border-slate-700 outline-none focus:border-blue-500">
+                </div>
+                <input type="text" id="mod" placeholder="Modelo" required class="bg-slate-800 p-3 rounded-xl w-full border border-slate-700 outline-none">
+                <div class="grid grid-cols-2 gap-4"><input type="number" id="km" placeholder="KM Atual" required class="bg-slate-800 p-3 rounded-xl border border-slate-700 outline-none"><input type="number" id="kmr" placeholder="KM Revisão" required class="bg-slate-800 p-3 rounded-xl border border-slate-700 outline-none"></div>
+                <select id="st" class="bg-slate-800 p-3 rounded-xl w-full border border-slate-700 outline-none font-bold"><option value="Operante">Operante</option><option value="Troca de Óleo">Troca de Óleo</option><option value="Baixada">Baixada</option></select>
+                <div class="flex gap-2 pt-4"><button type="button" onclick="fecharModal()" class="flex-1 bg-slate-700 p-3 rounded-xl font-bold uppercase text-xs">Cancelar</button><button type="submit" class="flex-1 bg-blue-600 p-3 rounded-xl font-bold uppercase text-xs">Salvar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let viaturas = [];
+        async function carregar() {
+            const res = await fetch('/api/viaturas?t=' + Date.now());
+            if(res.status === 401) window.location.href = 'login.html';
+            viaturas = await res.json();
+            const corpo = document.getElementById('corpo');
+            corpo.innerHTML = '';
+            let op=0, ol=0, bx=0;
+            viaturas.forEach(v => {
+                if(v.status==='Operante') op++; else if(v.status==='Baixada') bx++; else ol++;
+                let color = v.status==='Operante'?'text-green-500 border-green-500/20 bg-green-500/10':v.status==='Troca de Óleo'?'text-amber-500 border-amber-500/20 bg-amber-500/10':'text-red-500 border-red-500/20 bg-red-500/10';
+                corpo.innerHTML += `<tr class="border-b border-slate-800 hover:bg-slate-800/40 transition"><td class="p-4 font-bold text-blue-400 uppercase text-sm">${v.prefixo}<br><span class="text-[10px] text-slate-500 font-mono">${v.placa}</span></td><td class="p-4 text-xs font-mono font-bold"><span class="${v.status==='Troca de Óleo'?'text-amber-500':''}">${Number(v.km).toLocaleString()}</span> / ${Number(v.km_revisao).toLocaleString()}</td><td class="p-4 text-[10px] text-slate-400 uppercase font-bold">${v.ultimo_usuario}</td><td class="p-4"><span class="px-3 py-1 rounded-full text-[9px] font-black uppercase border ${color}">${v.status}</span></td><td class="p-4 text-center"><button onclick="editar(${v.id})" class="text-slate-500 hover:text-white mx-2"><i class="fas fa-edit"></i></button><button onclick="deletar(${v.id})" class="text-slate-500 hover:text-red-500 mx-2"><i class="fas fa-trash"></i></button></td></tr>`;
+            });
+            document.getElementById('stat-total').innerText = viaturas.length;
+            document.getElementById('stat-op').innerText = op; document.getElementById('stat-ol').innerText = ol; document.getElementById('stat-bx').innerText = bx;
+        }
+        function abrirModal() { document.getElementById('modalTitulo').innerText = "Nova Viatura"; document.getElementById('formV').reset(); document.getElementById('editId').value = ""; document.getElementById('modalV').classList.remove('hidden'); }
+        function fecharModal() { document.getElementById('modalV').classList.add('hidden'); }
+        function editar(id) {
+            const v = viaturas.find(x => x.id === id);
+            document.getElementById('editId').value = v.id; document.getElementById('pref').value = v.prefixo; document.getElementById('plac').value = v.placa; document.getElementById('mod').value = v.modelo; document.getElementById('km').value = v.km; document.getElementById('kmr').value = v.km_revisao; document.getElementById('st').value = v.status;
+            document.getElementById('modalV').classList.remove('hidden');
+        }
+        document.getElementById('formV').onsubmit = async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editId').value;
+            const dados = { prefixo: document.getElementById('pref').value, placa: document.getElementById('plac').value, modelo: document.getElementById('mod').value, km: document.getElementById('km').value, km_revisao: document.getElementById('kmr').value, status: document.getElementById('st').value };
+            await fetch(id ? `/api/viaturas/${id}` : '/api/viaturas', { method: id ? 'PUT' : 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(dados) });
+            fecharModal(); carregar();
+        };
+        async function deletar(id) { if(confirm("Remover viatura?")) { await fetch(`/api/viaturas/${id}`, {method:'DELETE'}); carregar(); } }
+        async function logout() { await fetch('/api/logout', {method:'POST'}); window.location.href = 'login.html'; }
+        setInterval(carregar, 5000); carregar();
+    </script>
+</body>
+</html>
