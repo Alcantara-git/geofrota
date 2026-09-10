@@ -1,7 +1,6 @@
 {
   "name": "geofrota",
   "version": "1.0.0",
-  "description": "Sistema de Gestão de Frota",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
