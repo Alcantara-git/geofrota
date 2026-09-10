@@ -1,26 +1,32 @@
-const { Pool } = require('pg');
+const sqlite3 = require('sqlite3').verbose();
 
-// Pega o link do Render (Environment) ou usa o que você colar abaixo
-let connectionString = process.env.DATABASE_URL || 'postgresql://postgres:W/NbpV_c45B*izk@db.cggyjbdpztsnhtrroiru.supabase.co:5432/postgres';
-
-// Limpeza de segurança: remove espaços ou quebras de linha acidentais
-connectionString = connectionString.trim();
-
-const pool = new Pool({
-    connectionString: connectionString,
-    ssl: {
-        rejectUnauthorized: false // Obrigatório para Supabase
-    }
+const db = new sqlite3.Database('./geofrota.db', (err) => {
+    if (err) console.error("Erro no banco:", err.message);
 });
 
-// Testa a conexão de forma silenciosa para não travar o servidor no início
-pool.connect((err, client, release) => {
-    if (err) {
-        console.error('❌ ERRO CRÍTICO NO BANCO:', err.message);
-    } else {
-        console.log('✅ BANCO DE DADOS CONECTADO COM SUCESSO!');
-        release();
-    }
+db.serialize(() => {
+    db.run(`CREATE TABLE IF NOT EXISTS viaturas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        prefixo TEXT,
+        placa TEXT,
+        modelo TEXT,
+        km INTEGER DEFAULT 0,
+        km_revisao INTEGER DEFAULT 10000, 
+        status TEXT DEFAULT 'Operante',
+        ultimo_usuario TEXT DEFAULT 'Sistema'
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS usuarios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome TEXT NOT NULL,
+        cargo TEXT
+    )`, () => {
+        db.get("SELECT count(*) as count FROM usuarios", (err, row) => {
+            if (row && row.count === 0) {
+                db.run("INSERT INTO usuarios (nome, cargo) VALUES (?, ?)", ['Administrador', 'Gestor']);
+            }
+        });
+    });
 });
 
-module.exports = pool;
+module.exports = db;
