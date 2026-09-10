@@ -1,90 +1,78 @@
 const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');
-const db = require('./database');
+const pool = require('./database');
 const app = express();
 
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname)));
 
-const ADMIN_PASSWORD = "admin123"; // ALTERE SUA SENHA AQUI
+const ADMIN_PASSWORD = "admin123";
 
-// Middleware para proteger páginas e APIs administrativas
 const proteger = (req, res, next) => {
-    if (req.cookies.auth === 'true') {
-        next();
-    } else {
-        if (req.path.startsWith('/api/')) {
-            res.status(401).json({ error: "Não autorizado" });
-        } else {
-            res.redirect('/login.html');
-        }
-    }
+    if (req.cookies.auth === 'true') next();
+    else req.path.startsWith('/api/') ? res.status(401).json({ error: "Não autorizado" }) : res.redirect('/login.html');
 };
 
-// ROTA DE LOGIN
 app.post('/api/login', (req, res) => {
-    const { senha } = req.body;
-    if (senha === ADMIN_PASSWORD) {
-        res.cookie('auth', 'true', { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 }); // 24 horas
+    if (req.body.senha === ADMIN_PASSWORD) {
+        res.cookie('auth', 'true', { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 });
         res.json({ success: true });
-    } else {
-        res.status(401).json({ error: "Senha incorreta" });
-    }
+    } else res.status(401).json({ error: "Senha incorreta" });
 });
 
-app.post('/api/logout', (req, res) => {
-    res.clearCookie('auth');
+app.post('/api/logout', (req, res) => { res.clearCookie('auth'); res.json({ success: true }); });
+
+function definirStatus(km, revisao, statusEnviado) {
+    if (statusEnviado === 'Baixada') return 'Baixada';
+    return (parseInt(km) >= parseInt(revisao)) ? 'Troca de Óleo' : 'Operante';
+}
+
+// ROTAS DE VIATURAS
+app.get('/api/viaturas', async (req, res) => {
+    const result = await pool.query("SELECT * FROM viaturas ORDER BY id DESC");
+    res.json(result.rows);
+});
+
+app.post('/api/viaturas', proteger, async (req, res) => {
+    let { prefixo, placa, modelo, km, km_revisao, status } = req.body;
+    const st = definirStatus(km, km_revisao, status);
+    const sql = 'INSERT INTO viaturas (prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id';
+    const result = await pool.query(sql, [prefixo, placa, modelo, km, km_revisao, st, 'Sistema']);
+    res.json({ id: result.rows[0].id });
+});
+
+app.put('/api/viaturas/:id', async (req, res) => {
+    let { prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario } = req.body;
+    const st = definirStatus(km, km_revisao, status);
+    const sql = 'UPDATE viaturas SET prefixo=$1, placa=$2, modelo=$3, km=$4, km_revisao=$5, status=$6, ultimo_usuario=$7 WHERE id=$8';
+    await pool.query(sql, [prefixo, placa, modelo, km, km_revisao, st, ultimo_usuario || 'Gestor', req.params.id]);
+    res.json({ success: true, status: st });
+});
+
+app.delete('/api/viaturas/:id', proteger, async (req, res) => {
+    await pool.query('DELETE FROM viaturas WHERE id = $1', [req.params.id]);
+    res.json({ deleted: 1 });
+});
+
+// ROTAS DE USUÁRIOS
+app.get('/api/usuarios', async (req, res) => {
+    const result = await pool.query("SELECT * FROM usuarios ORDER BY nome ASC");
+    res.json(result.rows);
+});
+
+app.post('/api/usuarios', proteger, async (req, res) => {
+    const { nome, cargo } = req.body;
+    await pool.query("INSERT INTO usuarios (nome, cargo) VALUES ($1, $2)", [nome, cargo]);
     res.json({ success: true });
 });
 
-// Inteligência de Status
-function definirStatus(km, revisao, statusEnviado) {
-    const k = parseInt(km) || 0;
-    const r = parseInt(revisao) || 0;
-    if (statusEnviado === 'Baixada') return 'Baixada';
-    return (k >= r) ? 'Troca de Óleo' : 'Operante';
-}
-
-// --- ROTAS PÚBLICAS (Operacional usa estas) ---
-app.get('/api/viaturas', (req, res) => {
-    db.all("SELECT * FROM viaturas ORDER BY id DESC", [], (err, rows) => res.json(rows));
+app.delete('/api/usuarios/:id', proteger, async (req, res) => {
+    await pool.query("DELETE FROM usuarios WHERE id = $1", [req.params.id]);
+    res.json({ deleted: 1 });
 });
 
-app.get('/api/usuarios', (req, res) => {
-    db.all("SELECT * FROM usuarios ORDER BY nome ASC", [], (err, rows) => res.json(rows));
-});
-
-app.put('/api/viaturas/:id', (req, res) => {
-    let { prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario } = req.body;
-    const st = definirStatus(km, km_revisao, status);
-    db.run('UPDATE viaturas SET prefixo=?, placa=?, modelo=?, km=?, km_revisao=?, status=?, ultimo_usuario=? WHERE id=?', 
-    [prefixo, placa, modelo, km, km_revisao, st, ultimo_usuario || 'Gestor', req.params.id], () => res.json({ success: true }));
-});
-
-// --- ROTAS PROTEGIDAS (Dashboard e Gestão de Usuários) ---
-app.post('/api/viaturas', proteger, (req, res) => {
-    let { prefixo, placa, modelo, km, km_revisao, status } = req.body;
-    const st = definirStatus(km, km_revisao, status);
-    db.run('INSERT INTO viaturas (prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario) VALUES (?,?,?,?,?,?,?)', 
-    [prefixo, placa, modelo, km, km_revisao, st, 'Sistema'], function() { res.json({ id: this.lastID }); });
-});
-
-app.delete('/api/viaturas/:id', proteger, (req, res) => {
-    db.run('DELETE FROM viaturas WHERE id = ?', req.params.id, () => res.json({ deleted: 1 }));
-});
-
-app.post('/api/usuarios', proteger, (req, res) => {
-    const { nome, cargo } = req.body;
-    db.run("INSERT INTO usuarios (nome, cargo) VALUES (?, ?)", [nome, cargo], function() { res.json({ id: this.lastID }); });
-});
-
-app.delete('/api/usuarios/:id', proteger, (req, res) => {
-    db.run("DELETE FROM usuarios WHERE id = ?", req.params.id, () => res.json({ deleted: 1 }));
-});
-
-// Proteção das páginas estáticas
 app.get('/index.html', proteger, (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/usuarios.html', proteger, (req, res) => res.sendFile(path.join(__dirname, 'usuarios.html')));
 app.get('/', (req, res) => res.redirect('/operacional.html'));
