@@ -11,57 +11,68 @@
         .card { background-color: #1e293b; border: 1px solid #334155; }
         .sidebar { background-color: #0f172a; border-right: 1px solid #1e293b; }
         @media print { .no-print { display: none; } body { background: white; color: black; } }
-        /* Estilo para botões de escolha de relatório */
         .btn-relatorio { background-color: #1e293b; border: 1px solid #334155; transition: 0.3s; }
         .btn-relatorio:hover { background-color: #3b82f6; border-color: #60a5fa; }
     </style>
 </head>
 <body class="flex flex-col md:flex-row">
-    <!-- Sidebar -->
+    <!-- Sidebar Unificada e Minimalista -->
     <aside class="w-full md:w-64 sidebar p-6 flex flex-col md:min-h-screen no-print">
         <div class="text-2xl font-bold text-blue-500 mb-8 tracking-tighter uppercase text-center">Geo<span class="text-white">Frota</span></div>
         <nav class="space-y-2 flex-1">
-            <a href="index.html" class="flex items-center p-3 bg-blue-600 text-white rounded-xl font-bold"><i class="fas fa-chart-line mr-2"></i> Dashboard</a>
+            <!-- Lista Única de Navegação -->
+            <a href="index.html" class="flex items-center p-3 bg-blue-600 text-white rounded-xl font-bold">
+                <i class="fas fa-chart-line mr-3"></i> Dashboard
+            </a>
             
-            <!-- Botão Único de Relatório -->
             <button onclick="document.getElementById('modalEscolhaRelatorio').classList.remove('hidden')" class="w-full flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition font-medium">
-                <i class="fas fa-file-alt mr-2"></i> Relatório
+                <i class="fas fa-file-alt mr-3"></i> Relatório
             </button>
 
-            <div class="pt-4 pb-1 text-[10px] uppercase font-bold text-slate-500 ml-3 tracking-widest">Geral</div>
-            <a href="operacional.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 rounded-xl transition text-sm"><i class="fas fa-mobile-alt mr-2"></i> Operacional</a>
-            <a href="usuarios.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 rounded-xl transition text-sm"><i class="fas fa-users mr-2"></i> Usuários</a>
+            <a href="operacional.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition font-medium">
+                <i class="fas fa-mobile-alt mr-3"></i> Operacional
+            </a>
+
+            <a href="usuarios.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition font-medium">
+                <i class="fas fa-users mr-3"></i> Usuários
+            </a>
             
-            <button onclick="logout()" class="flex items-center p-3 text-red-500 mt-10 hover:bg-red-500/10 w-full text-left rounded-xl transition font-bold uppercase text-[10px]"><i class="fas fa-sign-out-alt mr-2"></i> Sair</button>
+            <!-- Botão Sair isolado na parte inferior -->
+            <button onclick="logout()" class="flex items-center p-3 text-red-500 mt-10 hover:bg-red-500/10 w-full text-left rounded-xl transition font-bold uppercase text-[10px]">
+                <i class="fas fa-sign-out-alt mr-2"></i> Sair
+            </button>
         </nav>
     </aside>
 
     <main class="flex-1 p-4 md:p-8">
         <header class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 no-print">
-            <h2 class="text-xl font-bold uppercase tracking-widest text-blue-400">Painel Gestor</h2>
-            <button onclick="abrirModal()" class="bg-blue-600 px-6 py-3 rounded-xl font-black hover:bg-blue-500 transition shadow-lg text-xs uppercase">+ Nova Viatura</button>
+            <div class="flex items-center gap-3">
+                <h2 class="text-xl font-bold uppercase tracking-widest text-blue-400">Painel Gestor</h2>
+                <div class="h-2 w-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)]"></div>
+            </div>
+            <button onclick="abrirModal()" class="bg-blue-600 px-6 py-3 rounded-xl font-black hover:bg-blue-500 transition shadow-lg text-xs uppercase tracking-widest">+ Nova Viatura</button>
         </header>
 
-        <!-- Painel de Números -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-center text-[10px] font-black uppercase no-print">
-            <div class="card p-4 rounded-xl"><p class="text-slate-400">Total</p><h3 id="stat-total" class="text-2xl mt-1">0</h3></div>
-            <div class="card p-4 rounded-xl border-b-4 border-green-500"><p class="text-slate-400">Operantes</p><h3 id="stat-op" class="text-2xl text-green-500 mt-1">0</h3></div>
-            <div class="card p-4 rounded-xl border-b-4 border-amber-500"><p class="text-slate-400">Troca Óleo</p><h3 id="stat-ol" class="text-2xl text-amber-500 mt-1">0</h3></div>
-            <div class="card p-4 rounded-xl border-b-4 border-red-600"><p class="text-slate-400">Baixadas</p><h3 id="stat-bx" class="text-2xl text-red-600 mt-1">0</h3></div>
+        <!-- Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-center text-[10px] font-black uppercase tracking-widest no-print">
+            <div class="card p-4 rounded-xl shadow-lg"><p class="text-slate-400">Total</p><h3 id="stat-total" class="text-2xl mt-1">0</h3></div>
+            <div class="card p-4 rounded-xl border-b-4 border-green-500 shadow-lg"><p class="text-slate-400">Operantes</p><h3 id="stat-op" class="text-2xl text-green-500 mt-1">0</h3></div>
+            <div class="card p-4 rounded-xl border-b-4 border-amber-500 shadow-lg"><p class="text-slate-400">Troca Óleo</p><h3 id="stat-ol" class="text-2xl text-amber-500 mt-1">0</h3></div>
+            <div class="card p-4 rounded-xl border-b-4 border-red-600 shadow-lg"><p class="text-slate-400">Baixadas</p><h3 id="stat-bx" class="text-2xl text-red-600 mt-1">0</h3></div>
         </div>
 
         <!-- Tabela Principal -->
-        <div class="card rounded-2xl overflow-x-auto no-print">
+        <div class="card rounded-2xl overflow-x-auto shadow-2xl no-print">
             <table class="w-full text-left min-w-[700px]">
                 <thead class="bg-slate-800 text-slate-400 text-[10px] uppercase font-black tracking-widest">
-                    <tr><th class="p-4">VTR / Placa</th><th class="p-4">KM / Revisão</th><th class="p-4">Último Condutor</th><th class="p-4">Status</th><th class="p-4 text-center">Ações</th></tr>
+                    <tr><th class="p-4">VTR / Placa</th><th class="p-4">KM / Revisão</th><th class="p-4">Último Condutor</th><th class="p-4">Status / Motivo</th><th class="p-4 text-center">Ações</th></tr>
                 </thead>
                 <tbody id="corpo" class="divide-y divide-slate-800"></tbody>
             </table>
         </div>
     </main>
 
-    <!-- MODAL: ESCOLHA DO TIPO DE RELATÓRIO (Botões A e B) -->
+    <!-- MODAL: ESCOLHA DO TIPO DE RELATÓRIO -->
     <div id="modalEscolhaRelatorio" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[130] no-print">
         <div class="card w-full max-w-sm p-8 rounded-3xl text-center">
             <h3 class="text-xl font-black text-blue-400 mb-8 uppercase tracking-widest">Tipo de Relatório</h3>
@@ -72,7 +83,7 @@
                 <button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden'); document.getElementById('modalFiltro').classList.remove('hidden')" class="btn-relatorio p-5 rounded-2xl font-bold flex items-center justify-center gap-3 uppercase text-sm">
                     <i class="fas fa-calendar-alt text-amber-500"></i> Filtrar por Período
                 </button>
-                <button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden')" class="mt-4 text-slate-500 text-xs font-bold uppercase tracking-widest">Cancelar</button>
+                <button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden')" class="mt-4 text-slate-500 text-xs font-bold uppercase tracking-widest hover:text-white transition">Cancelar</button>
             </div>
         </div>
     </div>
@@ -92,7 +103,7 @@
         </div>
     </div>
 
-    <!-- Modal Relatório (Visualização Final) -->
+    <!-- Modal Relatório (Visualização) -->
     <div id="modalRelatorio" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[150] overflow-y-auto">
         <div class="card w-full max-w-4xl p-8 rounded-3xl my-auto">
             <div class="flex justify-between items-center mb-6 no-print">
@@ -106,7 +117,7 @@
         </div>
     </div>
 
-    <!-- Modal Cadastro VTR -->
+    <!-- Modal Cadastro/Edição VTR -->
     <div id="modalV" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-50 overflow-y-auto">
         <div class="card w-full max-w-md p-8 rounded-3xl my-auto">
             <h3 id="modalTitulo" class="text-xl font-black mb-6 text-blue-400 text-center uppercase tracking-widest">Viatura</h3>
@@ -169,12 +180,12 @@
             const hoje = new Date().toLocaleDateString('pt-BR');
             
             if(data.length === 0) {
-                div.innerHTML = `<p class="text-center p-10 text-slate-500 font-bold uppercase tracking-widest">Nenhuma alteração registrada no período.</p>`;
+                div.innerHTML = `<p class="text-center p-10 text-slate-500 font-bold uppercase tracking-widest">Nenhuma alteração registrada.</p>`;
             } else {
                 let html = `
                 <div class="text-center mb-8">
                     <h2 class="text-2xl font-black uppercase tracking-tighter">Relatório GEOFROTA</h2>
-                    <p class="text-xs text-slate-500 uppercase font-bold">Controle Histórico de Movimentação</p>
+                    <p class="text-xs text-slate-500 uppercase font-bold">Rastro Histórico de Alterações</p>
                 </div>
                 <table class="w-full border-collapse border border-slate-700 text-left">
                     <thead><tr class="bg-slate-800 text-[10px] uppercase"><th class="border border-slate-700 p-2">Data/Hora</th><th class="border border-slate-700 p-2">VTR</th><th class="border border-slate-700 p-2 text-center">KM Ant.</th><th class="border border-slate-700 p-2 text-center">KM Novo</th><th class="border border-slate-700 p-2">Status / Motivo</th><th class="border border-slate-700 p-2">Responsável</th></tr></thead>
@@ -212,7 +223,7 @@
             fecharModal(); carregar();
         };
 
-        async function deletar(id) { if(confirm("Deseja realmente excluir esta viatura?")) { await fetch(`/api/viaturas/${id}`, {method:'DELETE'}); carregar(); } }
+        async function deletar(id) { if(confirm("Deseja excluir?")) { await fetch(`/api/viaturas/${id}`, {method:'DELETE'}); carregar(); } }
         async function logout() { await fetch('/api/logout', {method:'POST'}); window.location.href = 'login.html'; }
         
         setInterval(carregar, 5000); 
