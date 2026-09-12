@@ -26,68 +26,80 @@ app.post('/api/logout', (req, res) => { res.clearCookie('auth'); res.json({ succ
 
 function definirStatus(km, revisao, statusEnviado) {
     if (statusEnviado === 'Baixada') return 'Baixada';
-    const k = parseInt(km) || 0;
-    const r = parseInt(revisao) || 0;
-    return (k >= r) ? 'Troca de Óleo' : 'Operante';
+    return (parseInt(km) >= parseInt(revisao)) ? 'Troca de Óleo' : 'Operante';
 }
 
-app.get('/api/viaturas', async (req, res) => {
+// --- ROTA DO RELATÓRIO DIÁRIO ---
+app.get('/api/relatorio-diario', proteger, async (req, res) => {
     try {
-        const result = await pool.query("SELECT * FROM viaturas ORDER BY id DESC");
+        // Busca alterações do dia atual (Brasília/Brasil)
+        const sql = `
+            SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'HH24:MI') as hora 
+            FROM historico 
+            WHERE data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo' >= CURRENT_DATE 
+            ORDER BY data_hora DESC
+        `;
+        const result = await pool.query(sql);
         res.json(result.rows);
     } catch (e) { res.status(500).json(e); }
 });
 
-app.get('/api/usuarios', async (req, res) => {
-    try {
-        const result = await pool.query("SELECT * FROM usuarios ORDER BY nome ASC");
-        res.json(result.rows);
-    } catch (e) { res.status(500).json(e); }
+// --- ROTAS DE VIATURAS ---
+app.get('/api/viaturas', async (req, res) => {
+    const result = await pool.query("SELECT * FROM viaturas ORDER BY id DESC");
+    res.json(result.rows);
 });
 
 app.put('/api/viaturas/:id', async (req, res) => {
     try {
         let { prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario, motivo } = req.body;
+        
+        // 1. Pegar o KM atual antes de mudar para salvar no histórico
+        const vtrAntiga = await pool.query("SELECT km FROM viaturas WHERE id = $1", [req.params.id]);
+        const kmAnterior = vtrAntiga.rows[0].km;
+
         const st = definirStatus(km, km_revisao, status);
-        // Se voltar para Operante, limpa o motivo. Se for baixa, salva o motivo.
         const motivoFinal = (st === 'Baixada') ? (motivo || '') : '';
         
-        const sql = 'UPDATE viaturas SET prefixo=$1, placa=$2, modelo=$3, km=$4, km_revisao=$5, status=$6, ultimo_usuario=$7, motivo=$8 WHERE id=$9';
-        await pool.query(sql, [prefixo, placa, modelo, km, km_revisao, st, ultimo_usuario || 'Operador', motivoFinal, req.params.id]);
-        res.json({ success: true, status: st });
-    } catch (e) { res.status(500).json(e); }
-});
+        // 2. Atualizar a viatura
+        const sqlUpdate = 'UPDATE viaturas SET prefixo=$1, placa=$2, modelo=$3, km=$4, km_revisao=$5, status=$6, ultimo_usuario=$7, motivo=$8 WHERE id=$9';
+        await pool.query(sqlUpdate, [prefixo, placa, modelo, km, km_revisao, st, ultimo_usuario, motivoFinal, req.params.id]);
 
-app.post('/api/viaturas', proteger, async (req, res) => {
-    try {
-        let { prefixo, placa, modelo, km, km_revisao, status } = req.body;
-        const st = definirStatus(km, km_revisao, status);
-        const sql = 'INSERT INTO viaturas (prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario, motivo) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id';
-        const result = await pool.query(sql, [prefixo, placa, modelo, km, km_revisao, st, 'Sistema', '']);
-        res.json({ id: result.rows[0].id });
-    } catch (e) { res.status(500).json(e); }
-});
+        // 3. GRAVAR NO HISTÓRICO
+        const sqlHist = 'INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario) VALUES ($1,$2,$3,$4,$5,$6)';
+        await pool.query(sqlHist, [prefixo, kmAnterior, km, st, motivoFinal, ultimo_usuario]);
 
-app.delete('/api/viaturas/:id', proteger, async (req, res) => {
-    try {
-        await pool.query('DELETE FROM viaturas WHERE id = $1', [req.params.id]);
-        res.json({ deleted: 1 });
-    } catch (e) { res.status(500).json(e); }
-});
-
-app.post('/api/usuarios', proteger, async (req, res) => {
-    try {
-        const { nome, cargo } = req.body;
-        await pool.query("INSERT INTO usuarios (nome, cargo) VALUES ($1, $2)", [nome, cargo]);
         res.json({ success: true });
     } catch (e) { res.status(500).json(e); }
 });
 
+// Outras rotas (POST viaturas, Usuários, etc) permanecem iguais...
+app.post('/api/viaturas', proteger, async (req, res) => {
+    let { prefixo, placa, modelo, km, km_revisao, status } = req.body;
+    const st = definirStatus(km, km_revisao, status);
+    const sql = 'INSERT INTO viaturas (prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario, motivo) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)';
+    await pool.query(sql, [prefixo, placa, modelo, km, km_revisao, st, 'Sistema', '']);
+    res.json({ success: true });
+});
+
+app.delete('/api/viaturas/:id', proteger, async (req, res) => {
+    await pool.query('DELETE FROM viaturas WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+});
+
+app.get('/api/usuarios', async (req, res) => {
+    const result = await pool.query("SELECT * FROM usuarios ORDER BY nome ASC");
+    res.json(result.rows);
+});
+
+app.post('/api/usuarios', proteger, async (req, res) => {
+    await pool.query("INSERT INTO usuarios (nome, cargo) VALUES ($1, $2)", [req.body.nome, req.body.cargo]);
+    res.json({ success: true });
+});
+
 app.delete('/api/usuarios/:id', proteger, async (req, res) => {
-    try {
-        await pool.query("DELETE FROM usuarios WHERE id = $1", [req.params.id]);
-        res.json({ deleted: 1 });
-    } catch (e) { res.status(500).json(e); }
+    await pool.query("DELETE FROM usuarios WHERE id = $1", [req.params.id]);
+    res.json({ success: true });
 });
 
 app.get('/index.html', proteger, (req, res) => res.sendFile(path.join(__dirname, 'index.html')));

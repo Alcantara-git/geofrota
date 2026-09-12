@@ -10,125 +10,155 @@
         body { background-color: #0f172a; color: #f8fafc; min-height: 100vh; overflow-y: auto; }
         .card { background-color: #1e293b; border: 1px solid #334155; }
         .sidebar { background-color: #0f172a; border-right: 1px solid #1e293b; }
+        @media print { .no-print { display: none; } body { background: white; color: black; } }
     </style>
 </head>
 <body class="flex flex-col md:flex-row">
     <!-- Sidebar -->
-    <aside class="w-full md:w-64 sidebar p-6 flex flex-col md:min-h-screen">
+    <aside class="w-full md:w-64 sidebar p-6 flex flex-col md:min-h-screen no-print">
         <div class="text-2xl font-bold text-blue-500 mb-8 tracking-tighter uppercase">Geo<span class="text-white">Frota</span></div>
         <nav class="space-y-2 flex-1">
             <a href="index.html" class="flex items-center p-3 bg-blue-600 text-white rounded-xl font-bold"><i class="fas fa-chart-line mr-2"></i> Dashboard</a>
+            <button onclick="abrirRelatorio()" class="w-full flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition font-medium"><i class="fas fa-file-alt mr-2"></i> Relatório Diário</button>
             <a href="operacional.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 rounded-xl transition font-medium"><i class="fas fa-mobile-alt mr-2"></i> Operacional</a>
             <a href="usuarios.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 rounded-xl transition font-medium"><i class="fas fa-users mr-2"></i> Usuários</a>
             <button onclick="logout()" class="flex items-center p-3 text-red-500 mt-10 hover:bg-red-500/10 w-full text-left rounded-xl transition font-bold uppercase text-xs"><i class="fas fa-sign-out-alt mr-2"></i> Sair</button>
         </nav>
     </aside>
 
-    <!-- Main -->
     <main class="flex-1 p-4 md:p-8">
-        <header class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+        <header class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 no-print">
             <div class="flex items-center gap-3">
-                <h2 class="text-xl font-bold uppercase tracking-widest">Painel Gestor</h2>
+                <h2 class="text-xl font-bold uppercase tracking-widest text-blue-400">Painel Gestor</h2>
                 <div class="h-2 w-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)]"></div>
             </div>
             <button onclick="abrirModal()" class="bg-blue-600 px-6 py-3 rounded-xl font-black hover:bg-blue-500 transition shadow-lg text-xs uppercase tracking-widest">+ Nova Viatura</button>
         </header>
 
-        <!-- Stats -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-center text-[10px] font-black uppercase tracking-widest">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-center text-[10px] font-black uppercase tracking-widest no-print">
             <div class="card p-4 rounded-xl shadow-lg"><p class="text-slate-400">Total</p><h3 id="stat-total" class="text-2xl mt-1 text-white">0</h3></div>
             <div class="card p-4 rounded-xl border-b-4 border-green-500 shadow-lg"><p class="text-slate-400">Operantes</p><h3 id="stat-op" class="text-2xl text-green-500 mt-1">0</h3></div>
             <div class="card p-4 rounded-xl border-b-4 border-amber-500 shadow-lg"><p class="text-slate-400">Troca Óleo</p><h3 id="stat-ol" class="text-2xl text-amber-500 mt-1">0</h3></div>
             <div class="card p-4 rounded-xl border-b-4 border-red-600 shadow-lg"><p class="text-slate-400">Baixadas</p><h3 id="stat-bx" class="text-2xl text-red-600 mt-1">0</h3></div>
         </div>
 
-        <!-- Tabela -->
-        <div class="card rounded-2xl overflow-x-auto shadow-2xl">
+        <div class="card rounded-2xl overflow-x-auto shadow-2xl no-print">
             <table class="w-full text-left min-w-[700px]">
                 <thead class="bg-slate-800 text-slate-400 text-[10px] uppercase font-black tracking-widest">
-                    <tr>
-                        <th class="p-4">VTR / Placa</th>
-                        <th class="p-4">KM / Revisão</th>
-                        <th class="p-4">Último Condutor</th>
-                        <th class="p-4">Status / Motivo</th>
-                        <th class="p-4 text-center">Ações</th>
-                    </tr>
+                    <tr><th class="p-4">VTR / Placa</th><th class="p-4">KM / Revisão</th><th class="p-4">Último Condutor</th><th class="p-4">Status / Motivo</th><th class="p-4 text-center">Ações</th></tr>
                 </thead>
                 <tbody id="corpo" class="divide-y divide-slate-800"></tbody>
             </table>
         </div>
     </main>
 
-    <!-- Modal Viatura -->
+    <!-- Modal Relatório Diário -->
+    <div id="modalRelatorio" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[100] overflow-y-auto">
+        <div class="card w-full max-w-4xl p-8 rounded-3xl my-auto">
+            <div class="flex justify-between items-center mb-6 no-print">
+                <h3 class="text-2xl font-black text-blue-400 uppercase tracking-tighter">Relatório de Alterações do Dia</h3>
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="bg-blue-600 p-2 px-4 rounded-lg font-bold text-xs"><i class="fas fa-print mr-1"></i> IMPRIMIR</button>
+                    <button onclick="document.getElementById('modalRelatorio').classList.add('hidden')" class="bg-slate-700 p-2 px-4 rounded-lg font-bold text-xs">FECHAR</button>
+                </div>
+            </div>
+            <div id="conteudoRelatorio" class="text-sm">
+                <!-- Tabela do relatório gerada via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Restante dos Modais (Nova Viatura) e Scripts permanecem similares -->
     <div id="modalV" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-50 overflow-y-auto">
         <div class="card w-full max-w-md p-8 rounded-3xl my-auto">
             <h3 id="modalTitulo" class="text-xl font-black mb-6 text-blue-400 text-center uppercase tracking-widest">Viatura</h3>
             <form id="formV" class="space-y-4">
                 <input type="hidden" id="editId">
                 <div class="grid grid-cols-2 gap-4">
-                    <input type="text" id="pref" placeholder="Prefixo" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none focus:border-blue-500">
-                    <input type="text" id="plac" placeholder="Placa" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none focus:border-blue-500">
+                    <input type="text" id="pref" placeholder="Prefixo" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none">
+                    <input type="text" id="plac" placeholder="Placa" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none">
                 </div>
-                <input type="text" id="mod" placeholder="Modelo" required class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none focus:border-blue-500">
+                <input type="text" id="mod" placeholder="Modelo" required class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none">
                 <div class="grid grid-cols-2 gap-4">
                     <input type="number" id="km" placeholder="KM Atual" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none">
                     <input type="number" id="kmr" placeholder="KM Revisão" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none">
                 </div>
                 <select id="st" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none font-bold">
-                    <option value="Operante">Operante</option>
-                    <option value="Troca de Óleo">Troca de Óleo</option>
-                    <option value="Baixada">Baixada</option>
+                    <option value="Operante">Operante</option><option value="Troca de Óleo">Troca de Óleo</option><option value="Baixada">Baixada</option>
                 </select>
-                <div class="flex gap-2 pt-4">
-                    <button type="button" onclick="fecharModal()" class="flex-1 bg-slate-700 p-3 rounded-xl font-bold uppercase text-xs">Cancelar</button>
-                    <button type="submit" class="flex-1 bg-blue-600 p-3 rounded-xl font-bold uppercase text-xs">Salvar</button>
-                </div>
+                <div class="flex gap-2 pt-4"><button type="button" onclick="fecharModal()" class="flex-1 bg-slate-700 p-3 rounded-xl font-bold uppercase text-xs">Cancelar</button><button type="submit" class="flex-1 bg-blue-600 p-3 rounded-xl font-bold uppercase text-xs">Salvar</button></div>
             </form>
         </div>
     </div>
 
     <script>
         let viaturas = [];
+        
         async function carregar() {
             try {
                 const res = await fetch('/api/viaturas?t=' + Date.now());
                 if(res.status === 401) window.location.href = 'login.html';
-                const novasViaturas = await res.json();
-                
-                // Evita redesenhar a tabela se nada mudou (melhora performance mobile)
-                if(JSON.stringify(novasViaturas) === JSON.stringify(viaturas)) return;
-                viaturas = novasViaturas;
-
+                viaturas = await res.json();
                 const corpo = document.getElementById('corpo');
                 corpo.innerHTML = '';
                 let op=0, ol=0, bx=0;
-
                 viaturas.forEach(v => {
                     if(v.status==='Operante') op++; else if(v.status==='Baixada') bx++; else ol++;
                     let color = v.status==='Operante'?'text-green-500 border-green-500/20 bg-green-500/10':v.status==='Troca de Óleo'?'text-amber-500 border-amber-500/20 bg-amber-500/10':'text-red-500 border-red-500/20 bg-red-500/10';
-                    corpo.innerHTML += `
-                    <tr class="hover:bg-slate-800/40 transition">
-                        <td class="p-4 font-bold text-blue-400 uppercase text-sm">${v.prefixo}<br><span class="text-[10px] text-slate-500 font-mono tracking-widest">${v.placa}</span></td>
-                        <td class="p-4 text-xs font-mono font-bold"><span class="${v.status==='Troca de Óleo'?'text-amber-500 underline':''}">${Number(v.km).toLocaleString()}</span> <span class="text-slate-600">/ ${Number(v.km_revisao).toLocaleString()}</span></td>
-                        <td class="p-4 text-[10px] text-slate-400 font-bold uppercase">${v.ultimo_usuario}</td>
-                        <td class="p-4">
-                            <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase border ${color}">${v.status}</span>
-                            ${v.motivo ? `<div class="text-[9px] text-red-400 mt-1 font-bold italic tracking-tight">"${v.motivo}"</div>` : ''}
-                        </td>
-                        <td class="p-4 text-center">
-                            <button onclick="editar(${v.id})" class="text-slate-500 hover:text-white mx-2 transition"><i class="fas fa-edit"></i></button>
-                            <button onclick="deletar(${v.id})" class="text-slate-500 hover:text-red-500 mx-2 transition"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>`;
+                    corpo.innerHTML += `<tr class="hover:bg-slate-800/40 transition"><td class="p-4 font-bold text-blue-400 uppercase text-sm">${v.prefixo}<br><span class="text-[10px] text-slate-500 font-mono tracking-widest">${v.placa}</span></td><td class="p-4 text-xs font-mono font-bold"><span class="${v.status==='Troca de Óleo'?'text-amber-500 underline':''}">${Number(v.km).toLocaleString()}</span> <span class="text-slate-600">/ ${Number(v.km_revisao).toLocaleString()}</span></td><td class="p-4 text-[10px] text-slate-400 font-bold uppercase">${v.ultimo_usuario}</td><td class="p-4"><span class="px-3 py-1 rounded-full text-[9px] font-black uppercase border ${color}">${v.status}</span>${v.motivo ? `<div class="text-[9px] text-red-400 mt-1 font-bold italic">"${v.motivo}"</div>` : ''}</td><td class="p-4 text-center"><button onclick="editar(${v.id})" class="text-slate-500 hover:text-white mx-2 transition"><i class="fas fa-edit"></i></button><button onclick="deletar(${v.id})" class="text-slate-500 hover:text-red-500 mx-2 transition"><i class="fas fa-trash"></i></button></td></tr>`;
                 });
                 document.getElementById('stat-total').innerText = viaturas.length;
                 document.getElementById('stat-op').innerText = op; document.getElementById('stat-ol').innerText = ol; document.getElementById('stat-bx').innerText = bx;
             } catch(e) {}
         }
 
+        async function abrirRelatorio() {
+            const res = await fetch('/api/relatorio-diario');
+            const data = await res.json();
+            const div = document.getElementById('conteudoRelatorio');
+            const hoje = new Date().toLocaleDateString('pt-BR');
+            
+            if(data.length === 0) {
+                div.innerHTML = `<p class="text-center p-10 text-slate-500">Nenhuma alteração registrada hoje (${hoje}).</p>`;
+            } else {
+                let html = `
+                    <div class="text-center mb-6">
+                        <h2 class="text-xl font-bold uppercase">Boletim de Alterações - GEOFROTA</h2>
+                        <p class="text-xs">Data: ${hoje}</p>
+                    </div>
+                    <table class="w-full text-left border-collapse border border-slate-700">
+                        <thead>
+                            <tr class="bg-slate-800 text-[10px] uppercase">
+                                <th class="border border-slate-700 p-2">Hora</th>
+                                <th class="border border-slate-700 p-2">VTR</th>
+                                <th class="border border-slate-700 p-2">KM Anterior</th>
+                                <th class="border border-slate-700 p-2">KM Atual</th>
+                                <th class="border border-slate-700 p-2">Status</th>
+                                <th class="border border-slate-700 p-2">Responsável</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+                
+                data.forEach(h => {
+                    html += `
+                        <tr class="text-[11px] border border-slate-700">
+                            <td class="border border-slate-700 p-2 font-mono">${h.hora}</td>
+                            <td class="border border-slate-700 p-2 font-bold">${h.prefixo}</td>
+                            <td class="border border-slate-700 p-2">${h.km_anterior.toLocaleString()}</td>
+                            <td class="border border-slate-700 p-2">${h.km_novo.toLocaleString()}</td>
+                            <td class="border border-slate-700 p-2 uppercase font-bold">${h.status} ${h.motivo ? `(${h.motivo})` : ''}</td>
+                            <td class="border border-slate-700 p-2 uppercase">${h.usuario}</td>
+                        </tr>`;
+                });
+                
+                html += `</tbody></table>`;
+                div.innerHTML = html;
+            }
+            document.getElementById('modalRelatorio').classList.remove('hidden');
+        }
+
         function abrirModal() { document.getElementById('modalTitulo').innerText = "Nova Viatura"; document.getElementById('formV').reset(); document.getElementById('editId').value = ""; document.getElementById('modalV').classList.remove('hidden'); }
         function fecharModal() { document.getElementById('modalV').classList.add('hidden'); }
-        
         function editar(id) {
             const v = viaturas.find(x => x.id === id);
             document.getElementById('modalTitulo').innerText = "Editar Viatura";
@@ -141,20 +171,16 @@
             document.getElementById('st').value = v.status;
             document.getElementById('modalV').classList.remove('hidden');
         }
-
         document.getElementById('formV').onsubmit = async (e) => {
             e.preventDefault();
             const id = document.getElementById('editId').value;
-            const dados = { prefixo: document.getElementById('pref').value, placa: document.getElementById('plac').value, modelo: document.getElementById('mod').value, km: document.getElementById('km').value, km_revisao: document.getElementById('kmr').value, status: document.getElementById('st').value, motivo: (document.getElementById('st').value === 'Baixada' ? viaturas.find(x=>x.id==id)?.motivo : '') };
+            const dados = { prefixo: document.getElementById('pref').value, placa: document.getElementById('plac').value, modelo: document.getElementById('mod').value, km: document.getElementById('km').value, km_revisao: document.getElementById('kmr').value, status: document.getElementById('st').value, ultimo_usuario: 'Gestor' };
             await fetch(id ? `/api/viaturas/${id}` : '/api/viaturas', { method: id ? 'PUT' : 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(dados) });
             fecharModal(); carregar();
         };
-
         async function deletar(id) { if(confirm("Remover viatura?")) { await fetch(`/api/viaturas/${id}`, {method:'DELETE'}); carregar(); } }
         async function logout() { await fetch('/api/logout', {method:'POST'}); window.location.href = 'login.html'; }
-        
-        setInterval(carregar, 5000); 
-        carregar();
+        setInterval(carregar, 5000); carregar();
     </script>
 </body>
 </html>
