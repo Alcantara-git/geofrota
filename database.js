@@ -7,13 +7,11 @@ const pool = new Pool({
     ssl: { rejectUnauthorized: false }
 });
 
-// Criar tabelas e colunas necessárias
 async function inicializarBanco() {
     try {
-        // Garante coluna motivo
         await pool.query(`ALTER TABLE viaturas ADD COLUMN IF NOT EXISTS motivo TEXT DEFAULT '';`);
         
-        // Cria tabela de histórico
+        // Tabela de Histórico
         await pool.query(`
             CREATE TABLE IF NOT EXISTS historico (
                 id SERIAL PRIMARY KEY,
@@ -26,12 +24,27 @@ async function inicializarBanco() {
                 data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
-        console.log("✅ Banco de Dados e Histórico prontos.");
+
+        // NOVA TABELA: Configurações (para salvar o último acesso)
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS configuracoes (
+                chave TEXT PRIMARY KEY,
+                valor TEXT
+            );
+        `);
+
+        // Inicia o marcador de tempo se não existir
+        await pool.query(`
+            INSERT INTO configuracoes (chave, valor) 
+            VALUES ('ultimo_acesso_relatorio', CURRENT_TIMESTAMP::text)
+            ON CONFLICT DO NOTHING;
+        `);
+
+        console.log("✅ Banco de Dados e Memória de Relatório prontos.");
     } catch (err) {
-        console.log("Nota: Tabelas já existem ou erro na migração.");
+        console.log("Erro na inicialização:", err);
     }
 }
 
 inicializarBanco();
-
 module.exports = pool;
