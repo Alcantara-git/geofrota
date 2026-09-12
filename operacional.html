@@ -6,57 +6,116 @@
     <title>GEOFROTA | Operacional</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>body { background-color: #0f172a; color: #f8fafc; } select option { background-color: #1e293b; color: white; }</style>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; min-height: 100vh; overflow-y: auto; }
+        select option { background-color: #1e293b; color: white; }
+    </style>
 </head>
-<body class="p-4 flex items-center justify-center min-h-screen">
-    <div class="w-full max-w-md bg-slate-800 p-8 rounded-[2.5rem] shadow-2xl border border-slate-700">
-        <h1 class="text-3xl font-black text-blue-500 text-center mb-2 tracking-tighter uppercase">Geo<span class="text-white">Frota</span></h1>
-        <p class="text-[10px] text-slate-500 text-center font-bold uppercase tracking-widest mb-8">Lançamento de Quilometragem</p>
-        <form id="formKM" class="space-y-6">
-            <div><label class="text-[10px] font-bold text-slate-500 ml-1 uppercase">Responsável pelo Lançamento</label>
-                <select id="uS" required class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-white outline-none focus:ring-2 ring-blue-600 appearance-none text-center font-bold"></select>
-            </div>
-            <div><label class="text-[10px] font-bold text-slate-500 ml-1 uppercase">Selecione a Viatura</label>
-                <select id="vS" required class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-white outline-none focus:ring-2 ring-blue-600 appearance-none text-center font-bold"></select>
-            </div>
-            <div id="info" class="hidden bg-slate-950 p-4 rounded-2xl border border-slate-800 text-center">
-                <p class="text-[10px] text-slate-500 uppercase font-black">KM ATUAL NO SISTEMA</p>
-                <p id="kmD" class="text-3xl font-mono font-bold text-blue-500">0</p>
-            </div>
-            <div><label class="text-[10px] font-bold text-slate-500 ml-1 uppercase font-black">Novo Hodômetro (Leitura Atual)</label>
-                <input type="number" id="nKM" required class="w-full bg-slate-900 p-5 rounded-2xl text-4xl text-center border border-slate-700 outline-none focus:ring-2 ring-blue-600 font-mono text-white">
-            </div>
-            <button type="submit" class="w-full bg-blue-600 p-5 rounded-2xl font-black text-xl hover:bg-blue-500 transition uppercase shadow-lg shadow-blue-900/20 active:scale-95">Confirmar Atualização</button>
-        </form>
-        <a href="index.html" class="block text-center mt-8 text-slate-500 uppercase text-[10px] font-black hover:text-white transition tracking-widest">Painel Administrativo</a>
+<body class="p-4 flex items-start justify-center">
+    <div class="w-full max-w-md py-4 md:py-10">
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-black text-blue-500 uppercase tracking-tighter">Geo<span class="text-white">Frota</span></h1>
+            <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-1">Lançamento Operacional</p>
+        </div>
+
+        <div class="bg-slate-800 p-6 rounded-[2rem] shadow-2xl border border-slate-700">
+            <form id="formKM" class="space-y-5">
+                <div>
+                    <label class="text-[10px] font-black text-slate-500 ml-1 uppercase">Responsável</label>
+                    <select id="uS" required class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-white outline-none focus:ring-2 ring-blue-600 appearance-none font-bold"></select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-black text-slate-500 ml-1 uppercase">Viatura</label>
+                    <select id="vS" required class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-white outline-none focus:ring-2 ring-blue-600 appearance-none font-bold"></select>
+                </div>
+
+                <!-- Painel de Baixa (Inoperante) -->
+                <div id="painelBaixa" class="hidden bg-red-900/10 border border-red-900/30 p-4 rounded-2xl">
+                    <label class="text-[10px] font-black text-red-500 ml-1 uppercase">Relatar Problema / Baixar VTR</label>
+                    <textarea id="motivo" placeholder="Descreva o defeito aqui..." class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-white text-sm outline-none focus:ring-1 ring-red-500 h-20 mt-2"></textarea>
+                </div>
+
+                <div id="info" class="hidden bg-slate-950 p-4 rounded-2xl text-center border border-slate-800">
+                    <p class="text-[10px] text-slate-500 uppercase font-black">KM Atual</p>
+                    <p id="kmD" class="text-3xl font-mono font-bold text-blue-500">0</p>
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-black text-slate-500 ml-1 uppercase">Novo Hodômetro</label>
+                    <input type="number" id="nKM" required class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-3xl text-center font-mono text-white outline-none focus:ring-2 ring-blue-600">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" id="btnBaixa" onclick="toggleBaixa()" class="bg-slate-700 p-4 rounded-2xl font-black text-[10px] uppercase hover:bg-red-900 transition">❌ Baixar VTR</button>
+                    <button type="submit" class="bg-blue-600 p-4 rounded-2xl font-black text-[10px] uppercase hover:bg-blue-500 shadow-lg shadow-blue-900/20">✅ Atualizar KM</button>
+                </div>
+            </form>
+        </div>
+        <a href="index.html" class="block text-center mt-8 text-slate-600 uppercase text-[10px] font-black hover:text-white transition tracking-widest italic">Acesso Gestão</a>
     </div>
+
     <script>
         let viaturas = [];
-        async function sincronizar() {
-            try {
-                const [rv, ru] = await Promise.all([fetch('/api/viaturas?t='+Date.now()), fetch('/api/usuarios?t='+Date.now())]);
-                viaturas = await rv.json(); const usuarios = await ru.json();
-                const vs = document.getElementById('vS'); const us = document.getElementById('uS');
-                const sV = vs.value; const sU = us.value;
-                vs.innerHTML = '<option value="">-- ESCOLHA A VTR --</option>' + viaturas.map(v => `<option value="${v.id}" ${v.id == sV ? 'selected' : ''}>${v.prefixo} (${v.placa})</option>`).join('');
-                us.innerHTML = '<option value="">-- QUEM É VOCÊ? --</option>' + usuarios.map(u => `<option value="${u.nome}" ${u.nome == sU ? 'selected' : ''}>${u.nome}</option>`).join('');
-                if (sV) { const v = viaturas.find(x => x.id == sV); if (v) document.getElementById('kmD').innerText = Number(v.km).toLocaleString(); }
-            } catch (e) {}
+        let estaBaixando = false;
+
+        function toggleBaixa() {
+            estaBaixando = !estaBaixando;
+            const painel = document.getElementById('painelBaixa');
+            const btn = document.getElementById('btnBaixa');
+            if(estaBaixando) {
+                painel.classList.remove('hidden');
+                btn.innerText = "🚩 CANCELAR BAIXA";
+                btn.classList.add('bg-red-600');
+            } else {
+                painel.classList.add('hidden');
+                btn.innerText = "❌ BAIXAR VIATURA";
+                btn.classList.remove('bg-red-600');
+                document.getElementById('motivo').value = '';
+            }
         }
+
+        async function sincronizar() {
+            const [rv, ru] = await Promise.all([fetch('/api/viaturas?t='+Date.now()), fetch('/api/usuarios?t='+Date.now())]);
+            viaturas = await rv.json(); const usuarios = await ru.json();
+            const vs = document.getElementById('vS'); const us = document.getElementById('uS');
+            const sV = vs.value; const sU = us.value;
+            vs.innerHTML = '<option value="">-- SELECIONE --</option>' + viaturas.map(v => `<option value="${v.id}" ${v.id == sV ? 'selected' : ''}>${v.prefixo} (${v.placa})</option>`).join('');
+            us.innerHTML = '<option value="">-- SELECIONE --</option>' + usuarios.map(u => `<option value="${u.nome}" ${u.nome == sU ? 'selected' : ''}>${u.nome}</option>`).join('');
+            if (sV) { const v = viaturas.find(x => x.id == sV); if (v) document.getElementById('kmD').innerText = Number(v.km).toLocaleString(); }
+        }
+
         document.getElementById('vS').onchange = (e) => {
             const v = viaturas.find(x => x.id == e.target.value);
-            if(v) { document.getElementById('info').classList.remove('hidden'); document.getElementById('kmD').innerText = Number(v.km).toLocaleString(); document.getElementById('nKM').value = v.km; document.getElementById('nKM').focus(); }
+            if(v) { document.getElementById('info').classList.remove('hidden'); document.getElementById('kmD').innerText = Number(v.km).toLocaleString(); document.getElementById('nKM').value = v.km; }
         };
+
         document.getElementById('formKM').onsubmit = async (e) => {
             e.preventDefault();
             const vId = document.getElementById('vS').value, user = document.getElementById('uS').value, nKM = parseInt(document.getElementById('nKM').value);
+            const motivo = document.getElementById('motivo').value;
             const v = viaturas.find(x => x.id == vId);
-            if(nKM < v.km) return alert("Erro: KM menor!");
-            await fetch(`/api/viaturas/${vId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({...v, km: nKM, ultimo_usuario: user}) });
-            alert("✅ Atualizado!"); document.getElementById('nKM').value = ''; sincronizar();
+            
+            if(nKM < v.km) return alert("ERRO: KM menor que o atual!");
+            if(estaBaixando && !motivo) return alert("Por favor, informe o motivo da baixa!");
+
+            const dados = {
+                ...v, 
+                km: nKM, 
+                ultimo_usuario: user, 
+                status: estaBaixando ? 'Baixada' : v.status,
+                motivo: estaBaixando ? motivo : ''
+            };
+
+            await fetch(`/api/viaturas/${vId}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(dados)
+            });
+            
+            alert(estaBaixando ? "⚠️ Viatura Baixada com Sucesso!" : "✅ KM Atualizado!");
+            location.reload();
         };
-        setInterval(sincronizar, 5000);
-        sincronizar();
+        setInterval(sincronizar, 5000); sincronizar();
     </script>
 </body>
 </html>

@@ -1,30 +1,17 @@
 const { Pool } = require('pg');
 
-/**
- * GEOFROTA - Conexão Blindada com PostgreSQL
- */
-
-// Puxa o link do Render ou do seu código
-let linkBanco = process.env.DATABASE_URL || 'postgresql://postgres:1BPTRANPOLCIAMILITAR@db.cggyjbdpztsnhtrroiru.supabase.co:5432/postgres';
-
-// Limpeza automática: remove espaços, aspas e quebras de linha
-linkBanco = linkBanco.trim().replace(/['"]/g, '');
+const linkBanco = process.env.DATABASE_URL || 'postgresql://postgres:1BPTRANPOLCIAMILITAR@db.cggyjbdpztsnhtrroiru.supabase.co:5432/postgres';
 
 const pool = new Pool({
-    connectionString: linkBanco,
-    ssl: {
-        rejectUnauthorized: false // Necessário para o Supabase
-    }
+    connectionString: linkBanco.trim().replace(/['"]/g, ''),
+    ssl: { rejectUnauthorized: false }
 });
 
-// Testa a conexão e avisa no log do Render
-pool.connect((err, client, release) => {
-    if (err) {
-        console.error('❌ ERRO AO CONECTAR NO SUPABASE:', err.message);
-    } else {
-        console.log('✅ CONEXÃO ESTABELECIDA COM SUCESSO AO POSTGRESQL!');
-        release();
-    }
+// Criar coluna de motivo se ela não existir (Migração automática)
+pool.query(`
+    ALTER TABLE viaturas ADD COLUMN IF NOT EXISTS motivo TEXT DEFAULT '';
+`, (err) => {
+    if (err) console.log("Nota: Coluna motivo já existe ou erro na criação.");
 });
 
 module.exports = pool;
