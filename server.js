@@ -28,23 +28,35 @@ function definirStatus(km, revisao, statusEnviado) {
     return (parseInt(km) >= parseInt(revisao)) ? 'Troca de Óleo' : 'Operante';
 }
 
-// RELATÓRIOS
+// --- RELATÓRIOS FILTRADOS POR SETOR ---
 app.get('/api/relatorio-ultimo', proteger, async (req, res) => {
     try {
+        const { setor } = req.query; // Recebe o setor selecionado no painel
         const config = await pool.query("SELECT valor FROM configuracoes WHERE chave = 'ultimo_acesso_relatorio'");
         const ultimoAcesso = new Date(config.rows[0].valor);
         const agora = new Date();
         const hojeBr = new Date(agora.toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
         hojeBr.setHours(0, 0, 0, 0);
         const ultimoAcessoBr = new Date(ultimoAcesso.toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
-        let sql, params;
+
+        let sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora FROM historico WHERE `;
+        let params = [];
+
+        // Filtro de Tempo
         if (ultimoAcessoBr < hojeBr) {
-            sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora FROM historico WHERE data_hora > $1 ORDER BY data_hora DESC`;
-            params = [ultimoAcesso];
+            sql += `data_hora > $1 `;
+            params.push(ultimoAcesso);
         } else {
-            sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'HH24:MI') as hora FROM historico WHERE data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo' >= DATE_TRUNC('day', NOW() AT TIME ZONE 'America/Sao_Paulo') ORDER BY data_hora DESC`;
-            params = [];
+            sql += `data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo' >= DATE_TRUNC('day', NOW() AT TIME ZONE 'America/Sao_Paulo') `;
         }
+
+        // Filtro de Setor (Se não for Todos)
+        if (setor && setor !== 'Todos') {
+            sql += `AND setor = $${params.length + 1} `;
+            params.push(setor);
+        }
+
+        sql += `ORDER BY data_hora DESC`;
         const result = await pool.query(sql, params);
         await pool.query("UPDATE configuracoes SET valor = CURRENT_TIMESTAMP WHERE chave = 'ultimo_acesso_relatorio'");
         res.json(result.rows);
@@ -53,19 +65,25 @@ app.get('/api/relatorio-ultimo', proteger, async (req, res) => {
 
 app.get('/api/relatorio-periodo', proteger, async (req, res) => {
     try {
-        const { inicio, fim } = req.query;
-        const sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora FROM historico WHERE data_hora::date >= $1 AND data_hora::date <= $2 ORDER BY data_hora DESC`;
-        const result = await pool.query(sql, [inicio, fim]);
+        const { inicio, fim, setor } = req.query;
+        let sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora FROM historico WHERE data_hora::date >= $1 AND data_hora::date <= $2 `;
+        let params = [inicio, fim];
+
+        if (setor && setor !== 'Todos') {
+            sql += `AND setor = $3 `;
+            params.push(setor);
+        }
+
+        sql += `ORDER BY data_hora DESC`;
+        const result = await pool.query(sql, params);
         res.json(result.rows);
     } catch (e) { res.status(500).json(e); }
 });
 
-// VIATURAS
+// --- VIATURAS ---
 app.get('/api/viaturas', async (req, res) => {
-    try {
-        const result = await pool.query("SELECT * FROM viaturas ORDER BY setor ASC, prefixo ASC");
-        res.json(result.rows);
-    } catch (e) { res.status(500).json(e); }
+    const result = await pool.query("SELECT * FROM viaturas ORDER BY setor ASC, prefixo ASC");
+    res.json(result.rows);
 });
 
 app.put('/api/viaturas/:id', async (req, res) => {
@@ -75,8 +93,12 @@ app.put('/api/viaturas/:id', async (req, res) => {
         const kmAnterior = vtrAntiga.rows[0].km;
         const st = definirStatus(km, km_revisao, status);
         const motivoFinal = (st === 'Baixada') ? (motivo || '') : '';
-        await pool.query('UPDATE viaturas SET prefixo=$1, placa=$2, modelo=$3, km=$4, km_revisao=$5, status=$6, ultimo_usuario=$7, motivo=$8, setor=$9 WHERE id=$10', [prefixo, placa, modelo, km, km_revisao, st, ultimo_usuario, motivoFinal, setor || 'CTT', req.params.id]);
-        await pool.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario) VALUES ($1,$2,$3,$4,$5,$6)', [prefixo, kmAnterior, km, st, motivoFinal, ultimo_usuario]);
+        
+        await pool.query('UPDATE viaturas SET prefixo=$1, placa=$2, modelo=$3, km=$4, km_revisao=$5, status=$6, ultimo_usuario=$7, motivo=$8, setor=$9 WHERE id=$10', [prefixo, placa, modelo, km, km_revisao, st, ultimo_usuario, motivoFinal, setor, req.params.id]);
+        
+        // GRAVA NO HISTÓRICO COM O SETOR
+        await pool.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor) VALUES ($1,$2,$3,$4,$5,$6,$7)', [prefixo, kmAnterior, km, st, motivoFinal, ultimo_usuario, setor]);
+        
         res.json({ success: true });
     } catch (e) { res.status(500).json(e); }
 });
@@ -85,8 +107,7 @@ app.post('/api/viaturas', proteger, async (req, res) => {
     try {
         let { prefixo, placa, modelo, km, km_revisao, status, setor } = req.body;
         const st = definirStatus(km, km_revisao, status);
-        const sql = 'INSERT INTO viaturas (prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario, motivo, setor) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)';
-        await pool.query(sql, [prefixo, placa, modelo, km, km_revisao, st, 'Sistema', '', setor || 'CTT']);
+        await pool.query('INSERT INTO viaturas (prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario, motivo, setor) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [prefixo, placa, modelo, km, km_revisao, st, 'Sistema', '', setor]);
         res.json({ success: true });
     } catch (e) { res.status(500).json(e); }
 });

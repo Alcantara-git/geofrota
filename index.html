@@ -10,32 +10,40 @@
         body { background-color: #0f172a; color: #f8fafc; min-height: 100vh; overflow-y: auto; }
         .card { background-color: #1e293b; border: 1px solid #334155; transition: 0.3s; }
         .sidebar { background-color: #0f172a; border-right: 1px solid #1e293b; }
-        .card-active { border-color: #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); }
+        .card-active { border-color: #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); transform: translateY(-2px); }
         .btn-setor { background: #1e293b; border: 1px solid #334155; color: #94a3b8; transition: 0.2s; white-space: nowrap; }
         .btn-setor.active { background: #3b82f6; color: white; border-color: #60a5fa; font-weight: 800; }
-        @media print { .no-print { display: none; } }
+        
+        /* Botões Artísticos do Relatório */
+        .btn-art { background: linear-gradient(145deg, #1e293b, #0f172a); border: 1px solid #334155; position: relative; overflow: hidden; transition: 0.4s; }
+        .btn-art:hover { transform: scale(1.02); border-color: #3b82f6; box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
+        .btn-art i { font-size: 1.5rem; margin-bottom: 10px; opacity: 0.8; }
+        
+        @media print { .no-print { display: none; } body { background: white; color: black; } }
     </style>
 </head>
 <body class="flex flex-col md:flex-row">
     <!-- Sidebar -->
     <aside class="w-full md:w-64 sidebar p-6 flex flex-col md:min-h-screen no-print">
-        <div class="text-2xl font-bold text-blue-500 mb-8 uppercase text-center tracking-tighter">Geo<span class="text-white">Frota</span></div>
+        <div class="text-2xl font-bold text-blue-500 mb-8 tracking-tighter uppercase text-center italic">Geo<span class="text-white">Frota</span></div>
         <nav class="space-y-2 flex-1">
-            <a href="index.html" class="flex items-center p-3 bg-blue-600 text-white rounded-xl font-bold"><i class="fas fa-chart-line mr-3"></i> Dashboard</a>
-            <button onclick="document.getElementById('modalEscolhaRelatorio').classList.remove('hidden')" class="w-full flex items-center p-3 text-slate-400 hover:bg-slate-800 rounded-xl transition font-medium"><i class="fas fa-file-alt mr-3"></i> Relatório</button>
-            <a href="operacional.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 rounded-xl transition font-medium"><i class="fas fa-mobile-alt mr-3"></i> Operacional</a>
-            <a href="usuarios.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 rounded-xl transition font-medium"><i class="fas fa-users mr-3"></i> Usuários</a>
+            <a href="index.html" class="flex items-center p-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-900/20"><i class="fas fa-chart-line mr-3"></i> Dashboard</a>
+            <button onclick="document.getElementById('modalEscolhaRelatorio').classList.remove('hidden')" class="w-full flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition font-medium"><i class="fas fa-file-alt mr-3"></i> Relatório</button>
+            <a href="operacional.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition font-medium"><i class="fas fa-mobile-alt mr-3"></i> Operacional</a>
+            <a href="usuarios.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition font-medium"><i class="fas fa-users mr-3"></i> Usuários</a>
             <button onclick="logout()" class="flex items-center p-3 text-red-500 mt-10 hover:bg-red-500/10 w-full text-left rounded-xl transition font-bold uppercase text-[10px]"><i class="fas fa-sign-out-alt mr-2"></i> Sair</button>
         </nav>
     </aside>
 
     <main class="flex-1 p-4 md:p-8">
         <header class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4 no-print">
-            <h2 class="text-xl font-bold uppercase tracking-widest text-blue-400">Painel Gestor</h2>
+            <div class="flex items-center gap-3">
+                <h2 class="text-xl font-bold uppercase tracking-widest text-blue-400">Painel Gestor</h2>
+                <div class="h-2 w-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)]"></div>
+            </div>
             
-            <!-- 7 BOTÕES DE SUBDIVISÃO -->
-            <div class="flex overflow-x-auto gap-2 py-2 no-scrollbar">
-                <button onclick="setSetor('Todos')" id="btn-Todos" class="btn-setor active px-4 py-2 rounded-lg text-[10px] uppercase">1° BPTRAN</button>
+            <div class="flex overflow-x-auto gap-2 py-2 no-scrollbar border-x border-slate-800 px-4">
+                <button onclick="setSetor('Todos')" id="btn-Todos" class="btn-setor active px-4 py-2 rounded-lg text-[10px] uppercase font-black">1° BPTRAN</button>
                 <button onclick="setSetor('EM')" id="btn-EM" class="btn-setor px-4 py-2 rounded-lg text-[10px] uppercase">EM</button>
                 <button onclick="setSetor('CTT')" id="btn-CTT" class="btn-setor px-4 py-2 rounded-lg text-[10px] uppercase">CTT</button>
                 <button onclick="setSetor('1° CIA')" id="btn-1CIA" class="btn-setor px-4 py-2 rounded-lg text-[10px] uppercase">1° CIA</button>
@@ -47,17 +55,16 @@
             <button onclick="abrirModal()" class="bg-blue-600 px-6 py-3 rounded-xl font-black hover:bg-blue-500 transition shadow-lg text-xs uppercase">+ Nova Viatura</button>
         </header>
 
-        <!-- Stats -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-center text-[10px] font-black uppercase tracking-widest no-print">
-            <div id="card-total" onclick="setFiltroStatus('Todos')" class="card p-4 rounded-xl cursor-pointer card-active"><p class="text-slate-400">Total</p><h3 id="stat-total" class="text-2xl mt-1">0</h3></div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-center text-[10px] font-black uppercase tracking-widest no-print">
+            <div id="card-total" onclick="setFiltroStatus('Todos')" class="card p-4 rounded-xl shadow-lg cursor-pointer card-active"><p class="text-slate-400">Total</p><h3 id="stat-total" class="text-3xl mt-1">0</h3></div>
             <div id="card-operante" onclick="setFiltroStatus('Operante')" class="card p-4 rounded-xl border-b-4 border-green-500 cursor-pointer"><p class="text-slate-400">Operantes</p><h3 id="stat-op" class="text-2xl text-green-500 mt-1">0</h3></div>
             <div id="card-oleo" onclick="setFiltroStatus('Troca de Óleo')" class="card p-4 rounded-xl border-b-4 border-amber-500 cursor-pointer"><p class="text-slate-400">Troca Óleo</p><h3 id="stat-ol" class="text-2xl text-amber-500 mt-1">0</h3></div>
             <div id="card-baixada" onclick="setFiltroStatus('Baixada')" class="card p-4 rounded-xl border-b-4 border-red-600 cursor-pointer"><p class="text-slate-400">Baixadas</p><h3 id="stat-bx" class="text-2xl text-red-600 mt-1">0</h3></div>
         </div>
 
         <div class="card rounded-2xl overflow-x-auto shadow-2xl no-print">
-            <table class="w-full text-left min-w-[800px]">
-                <thead class="bg-slate-800 text-slate-400 text-[10px] uppercase font-black">
+            <table class="w-full text-left min-w-[700px]">
+                <thead class="bg-slate-800 text-slate-400 text-[10px] uppercase font-black tracking-widest">
                     <tr><th class="p-4">Subunidade</th><th class="p-4">VTR / Placa</th><th class="p-4">KM / Revisão</th><th class="p-4">Status / Motivo</th><th class="p-4 text-center">Ações</th></tr>
                 </thead>
                 <tbody id="corpo" class="divide-y divide-slate-800"></tbody>
@@ -65,10 +72,63 @@
         </div>
     </main>
 
+    <!-- MODAL ESCOLHA RELATÓRIO (VISUAL ARTÍSTICO RESTAURADO) -->
+    <div id="modalEscolhaRelatorio" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[130] no-print">
+        <div class="card w-full max-w-md p-8 rounded-[2.5rem] text-center border-t-4 border-blue-500 shadow-2xl">
+            <h3 class="text-xl font-black text-white mb-2 uppercase tracking-tighter">Relatórios</h3>
+            <p id="labelSetorRelatorio" class="text-[10px] text-blue-400 font-bold mb-8 uppercase tracking-widest">Filtro: 1° BPTRAN</p>
+            
+            <div class="grid grid-cols-1 gap-4">
+                <button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden'); gerarRelatorio('ultimo')" class="btn-art p-6 rounded-3xl flex flex-col items-center group">
+                    <i class="fas fa-history text-blue-500 group-hover:animate-bounce"></i>
+                    <span class="font-black text-sm uppercase">Último Acesso</span>
+                    <span class="text-[9px] text-slate-500 mt-1 uppercase">Sincronizar pendências</span>
+                </button>
+
+                <button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden'); document.getElementById('modalFiltro').classList.remove('hidden')" class="btn-art p-6 rounded-3xl flex flex-col items-center group">
+                    <i class="fas fa-calendar-alt text-amber-500 group-hover:scale-110 transition"></i>
+                    <span class="font-black text-sm uppercase">Filtrar por Período</span>
+                    <span class="text-[9px] text-slate-500 mt-1 uppercase">Escolher data específica</span>
+                </button>
+
+                <button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden')" class="mt-4 text-slate-500 text-xs font-bold uppercase tracking-widest hover:text-white transition">Voltar ao Painel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Calendário -->
+    <div id="modalFiltro" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[140]">
+        <div class="card w-full max-w-sm p-8 rounded-3xl text-center">
+            <h3 class="text-xl font-black text-blue-400 mb-6 uppercase">Definir Datas</h3>
+            <div class="space-y-4">
+                <div><label class="text-[10px] text-slate-500 uppercase font-bold text-left block ml-1">Início</label><input type="date" id="dataInicio" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl text-white outline-none"></div>
+                <div><label class="text-[10px] text-slate-500 uppercase font-bold text-left block ml-1">Fim</label><input type="date" id="dataFim" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl text-white outline-none"></div>
+                <div class="flex gap-2 pt-4">
+                    <button onclick="document.getElementById('modalFiltro').classList.add('hidden'); document.getElementById('modalEscolhaRelatorio').classList.remove('hidden')" class="flex-1 bg-slate-700 p-3 rounded-xl font-bold text-xs uppercase">Voltar</button>
+                    <button onclick="gerarRelatorio('periodo')" class="flex-1 bg-blue-600 p-3 rounded-xl font-bold text-xs uppercase">Gerar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Relatório Visualização -->
+    <div id="modalRelatorio" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[150] overflow-y-auto">
+        <div class="card w-full max-w-5xl p-8 rounded-3xl my-auto">
+            <div class="flex justify-between items-center mb-6 no-print">
+                <h3 class="text-xl font-black text-blue-400 uppercase italic">Boletim de Alterações</h3>
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="bg-blue-600 p-2 px-6 rounded-lg font-bold text-xs uppercase"><i class="fas fa-print mr-2"></i>Imprimir</button>
+                    <button onclick="document.getElementById('modalRelatorio').classList.add('hidden')" class="bg-slate-700 p-2 px-6 rounded-lg font-bold text-xs uppercase">Fechar</button>
+                </div>
+            </div>
+            <div id="conteudoRelatorio" class="text-sm"></div>
+        </div>
+    </div>
+
     <!-- Modal VTR -->
     <div id="modalV" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-50 overflow-y-auto">
-        <div class="card w-full max-w-md p-8 rounded-3xl my-auto">
-            <h3 id="modalTitulo" class="text-xl font-black mb-6 text-blue-400 text-center uppercase">Viatura</h3>
+        <div class="card w-full max-w-md p-8 rounded-3xl my-auto border-t-4 border-blue-500">
+            <h3 id="modalTitulo" class="text-xl font-black mb-6 text-blue-400 text-center uppercase tracking-widest">Viatura</h3>
             <form id="formV" class="space-y-4">
                 <input type="hidden" id="editId">
                 <div class="space-y-1"><label class="text-[9px] font-bold text-slate-500 ml-1">SUBUNIDADE / SETOR</label>
@@ -83,20 +143,15 @@
                 <input type="text" id="mod" placeholder="Modelo" required class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none">
                 <div class="grid grid-cols-2 gap-4">
                     <input type="number" id="km" placeholder="KM Atual" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none">
-                    <input type="number" id="kmr" placeholder="KM Revisão" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none">
+                    <input type="number" id="kmr" placeholder="Próx. Revisão" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none">
                 </div>
                 <select id="st" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-white font-bold">
                     <option value="Operante">Operante</option><option value="Troca de Óleo">Troca de Óleo</option><option value="Baixada">Baixada</option>
                 </select>
-                <div class="flex gap-2 pt-4"><button type="button" onclick="fecharModal()" class="flex-1 bg-slate-700 p-3 rounded-xl font-bold uppercase text-xs">Cancelar</button><button type="submit" class="flex-1 bg-blue-600 p-3 rounded-xl font-bold uppercase text-xs">Salvar</button></div>
+                <button type="submit" class="w-full bg-blue-600 p-4 rounded-xl font-bold uppercase text-xs">Salvar Alterações</button>
             </form>
         </div>
     </div>
-
-    <!-- Modais de Relatório (Simplificados para o código não ficar gigante, mas mantendo a lógica anterior) -->
-    <div id="modalEscolhaRelatorio" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[130]"><div class="card p-8 rounded-3xl text-center"><h3 class="text-blue-400 font-black mb-6">RELATÓRIO</h3><button onclick="gerarRelatorio('ultimo')" class="w-full bg-slate-800 p-4 rounded-xl mb-2 font-bold">ÚLTIMO ACESSO</button><button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden'); document.getElementById('modalFiltro').classList.remove('hidden')" class="w-full bg-slate-800 p-4 rounded-xl mb-4 font-bold">POR PERÍODO</button><button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden')" class="text-slate-500">Voltar</button></div></div>
-    <div id="modalRelatorio" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[150] p-4 overflow-y-auto"><div class="card w-full max-w-4xl p-8 rounded-3xl my-auto"><div class="flex justify-between items-center mb-6 no-print"><h3 class="text-blue-400 font-black uppercase">Relatório</h3><button onclick="window.print()" class="bg-blue-600 p-2 rounded px-4">Imprimir</button><button onclick="document.getElementById('modalRelatorio').classList.add('hidden')" class="bg-slate-700 p-2 rounded px-4">Fechar</button></div><div id="conteudoRelatorio" class="text-sm"></div></div></div>
-    <div id="modalFiltro" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[140] p-4"><div class="card p-8 rounded-3xl w-full max-w-sm"><h3 class="mb-4">FILTRAR PERÍODO</h3><input type="date" id="dataInicio" class="w-full bg-slate-900 mb-2 p-3 rounded-xl text-white"><input type="date" id="dataFim" class="w-full bg-slate-900 mb-4 p-3 rounded-xl text-white"><button onclick="gerarRelatorio('periodo')" class="w-full bg-blue-600 p-3 rounded-xl font-bold mb-2">GERAR</button><button onclick="document.getElementById('modalFiltro').classList.add('hidden')" class="w-full text-slate-500">Voltar</button></div></div>
 
     <script>
         let viaturasLocal = [];
@@ -116,14 +171,12 @@
             const corpo = document.getElementById('corpo');
             corpo.innerHTML = '';
             
-            // Filtra os dados baseados no Setor E no Status
             const filtradas = viaturasLocal.filter(v => {
                 const matchSetor = (setorFiltro === 'Todos' || v.setor === setorFiltro);
                 const matchStatus = (statusFiltro === 'Todos' || v.status === statusFiltro);
                 return matchSetor && matchStatus;
             });
 
-            // Atualiza os cards (somente do setor selecionado)
             const baseCards = setorFiltro === 'Todos' ? viaturasLocal : viaturasLocal.filter(v => v.setor === setorFiltro);
             document.getElementById('stat-total').innerText = baseCards.length;
             document.getElementById('stat-op').innerText = baseCards.filter(v => v.status === 'Operante').length;
@@ -136,10 +189,12 @@
                     <td class="p-4 font-black text-[10px] text-slate-500 uppercase">${v.setor}</td>
                     <td class="p-4 font-bold text-blue-400 uppercase text-sm">${v.prefixo}<br><span class="text-[10px] text-slate-500">${v.placa}</span></td>
                     <td class="p-4 text-xs font-mono font-bold">${Number(v.km).toLocaleString()} / ${Number(v.km_revisao).toLocaleString()}</td>
+                    <td class="p-4 text-[10px] text-slate-400 uppercase font-bold">${v.ultimo_usuario}</td>
                     <td class="p-4"><span class="px-3 py-1 rounded-full text-[9px] font-black uppercase border ${color}">${v.status}</span>${v.motivo ? `<div class="text-[9px] text-red-400 mt-1 italic">"${v.motivo}"</div>` : ''}</td>
-                    <td class="p-4 text-center"><button onclick="editar(${v.id})" class="text-slate-500 mr-2"><i class="fas fa-edit"></i></button><button onclick="deletar(${v.id})" class="text-slate-500"><i class="fas fa-trash"></i></button></td>
+                    <td class="p-4 text-center"><button onclick="editar(${v.id})" class="text-slate-500 mr-2 transition hover:text-white"><i class="fas fa-edit"></i></button><button onclick="deletar(${v.id})" class="text-slate-500 transition hover:text-red-500"><i class="fas fa-trash"></i></button></td>
                 </tr>`;
             });
+            document.getElementById('labelSetorRelatorio').innerText = 'Filtro: ' + (setorFiltro === 'Todos' ? '1° BPTRAN' : setorFiltro);
         }
 
         function setSetor(s) {
@@ -158,8 +213,33 @@
             renderizarTabela();
         }
 
-        function abrirModal() { document.getElementById('modalTitulo').innerText = "Nova Viatura"; document.getElementById('formV').reset(); document.getElementById('editId').value = ""; document.getElementById('modalV').classList.remove('hidden'); }
+        async function gerarRelatorio(tipo) {
+            let url = `/api/relatorio-ultimo?setor=${setorFiltro}`;
+            if (tipo === 'periodo') {
+                const inicio = document.getElementById('dataInicio').value;
+                const fim = document.getElementById('dataFim').value;
+                if (!inicio || !fim) return alert("Selecione as datas!");
+                url = `/api/relatorio-periodo?inicio=${inicio}&fim=${fim}&setor=${setorFiltro}`;
+                document.getElementById('modalFiltro').classList.add('hidden');
+            }
+            const res = await fetch(url);
+            const data = await res.json();
+            const div = document.getElementById('conteudoRelatorio');
+            const unit = setorFiltro === 'Todos' ? '1° BPTRAN (GERAL)' : setorFiltro;
+
+            if(data.length === 0) {
+                div.innerHTML = `<p class="text-center p-10 text-slate-500 uppercase font-black tracking-widest">Nenhuma alteração registrada para ${unit}.</p>`;
+            } else {
+                let html = `<div class="text-center mb-8"><h2 class="text-2xl font-black uppercase">Relatório GEOFROTA</h2><p class="text-xs text-blue-500 font-bold uppercase">${unit}</p></div><table class="w-full border-collapse border border-slate-700 text-left"><thead><tr class="bg-slate-800 text-[10px] uppercase text-white"><th class="border border-slate-700 p-2">Data/Hora</th><th class="border border-slate-700 p-2">VTR</th><th class="border border-slate-700 p-2 text-center">KM Ant.</th><th class="border border-slate-700 p-2 text-center">KM Novo</th><th class="border border-slate-700 p-2">Status / Motivo</th><th class="border border-slate-700 p-2">Responsável</th></tr></thead><tbody>`;
+                data.forEach(h => { html += `<tr class="text-[11px] border border-slate-700"><td class="border border-slate-700 p-2 font-mono">${h.hora}</td><td class="border border-slate-700 p-2 font-bold">${h.prefixo}</td><td class="border border-slate-700 p-2 text-center">${h.km_anterior.toLocaleString()}</td><td class="border border-slate-700 p-2 text-center font-bold">${h.km_novo.toLocaleString()}</td><td class="border border-slate-700 p-2 uppercase font-bold">${h.status} ${h.motivo ? `(${h.motivo})` : ''}</td><td class="border border-slate-700 p-2 uppercase">${h.usuario}</td></tr>`; });
+                html += `</tbody></table>`;
+                div.innerHTML = html;
+            }
+            document.getElementById('modalRelatorio').classList.remove('hidden');
+        }
+
         function fecharModal() { document.getElementById('modalV').classList.add('hidden'); }
+        function abrirModal() { document.getElementById('modalTitulo').innerText = "Nova Viatura"; document.getElementById('formV').reset(); document.getElementById('editId').value = ""; document.getElementById('modalV').classList.remove('hidden'); }
         function editar(id) {
             const v = viaturasLocal.find(x => x.id === id);
             document.getElementById('modalTitulo').innerText = "Editar Viatura";
@@ -176,30 +256,6 @@
         };
         async function deletar(id) { if(confirm("Excluir?")) { await fetch(`/api/viaturas/${id}`, {method:'DELETE'}); carregar(); } }
         async function logout() { await fetch('/api/logout', {method:'POST'}); window.location.href = 'login.html'; }
-
-        async function gerarRelatorio(tipo) {
-            let url = '/api/relatorio-ultimo';
-            if (tipo === 'periodo') {
-                const inicio = document.getElementById('dataInicio').value;
-                const fim = document.getElementById('dataFim').value;
-                if (!inicio || !fim) return alert("Selecione as datas!");
-                url = `/api/relatorio-periodo?inicio=${inicio}&fim=${fim}`;
-                document.getElementById('modalFiltro').classList.add('hidden');
-            }
-            const res = await fetch(url);
-            const data = await res.json();
-            const div = document.getElementById('conteudoRelatorio');
-            if(data.length === 0) {
-                div.innerHTML = `<p class="text-center p-10 text-slate-500">Nenhuma alteração registrada.</p>`;
-            } else {
-                let html = `<div class="text-center mb-8"><h2 class="text-2xl font-black uppercase">Relatório GEOFROTA</h2><p class="text-xs text-slate-500 font-bold uppercase">Rastro Histórico</p></div><table class="w-full border-collapse border border-slate-700 text-left"><thead><tr class="bg-slate-800 text-[10px] uppercase"><th class="border border-slate-700 p-2">Data/Hora</th><th class="border border-slate-700 p-2">VTR</th><th class="border border-slate-700 p-2">Status</th><th class="border border-slate-700 p-2">Responsável</th></tr></thead><tbody>`;
-                data.forEach(h => { html += `<tr class="text-[11px] border border-slate-700"><td class="border border-slate-700 p-2 font-mono">${h.hora}</td><td class="border border-slate-700 p-2 font-bold">${h.prefixo}</td><td class="border border-slate-700 p-2 uppercase font-bold">${h.status}</td><td class="border border-slate-700 p-2 uppercase">${h.usuario}</td></tr>`; });
-                html += `</tbody></table>`;
-                div.innerHTML = html;
-            }
-            document.getElementById('modalRelatorio').classList.remove('hidden');
-        }
-
         setInterval(carregar, 5000); carregar();
     </script>
 </body>
