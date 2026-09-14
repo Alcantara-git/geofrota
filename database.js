@@ -1,5 +1,4 @@
 const { Pool } = require('pg');
-
 const linkBanco = process.env.DATABASE_URL || 'postgresql://postgres:1BPTRANPOLCIAMILITAR@db.cggyjbdpztsnhtrroiru.supabase.co:5432/postgres';
 
 const pool = new Pool({
@@ -10,8 +9,9 @@ const pool = new Pool({
 async function inicializarBanco() {
     try {
         await pool.query(`ALTER TABLE viaturas ADD COLUMN IF NOT EXISTS motivo TEXT DEFAULT '';`);
+        // Adiciona a coluna setor
+        await pool.query(`ALTER TABLE viaturas ADD COLUMN IF NOT EXISTS setor TEXT DEFAULT 'CTT';`);
         
-        // Tabela de Histórico
         await pool.query(`
             CREATE TABLE IF NOT EXISTS historico (
                 id SERIAL PRIMARY KEY,
@@ -25,26 +25,13 @@ async function inicializarBanco() {
             );
         `);
 
-        // NOVA TABELA: Configurações (para salvar o último acesso)
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS configuracoes (
-                chave TEXT PRIMARY KEY,
-                valor TEXT
-            );
-        `);
+        await pool.query(`CREATE TABLE IF NOT EXISTS configuracoes (chave TEXT PRIMARY KEY, valor TEXT);`);
+        await pool.query(`INSERT INTO configuracoes (chave, valor) VALUES ('ultimo_acesso_relatorio', CURRENT_TIMESTAMP::text) ON CONFLICT DO NOTHING;`);
 
-        // Inicia o marcador de tempo se não existir
-        await pool.query(`
-            INSERT INTO configuracoes (chave, valor) 
-            VALUES ('ultimo_acesso_relatorio', CURRENT_TIMESTAMP::text)
-            ON CONFLICT DO NOTHING;
-        `);
-
-        console.log("✅ Banco de Dados e Memória de Relatório prontos.");
+        console.log("✅ Banco de Dados atualizado com setores.");
     } catch (err) {
-        console.log("Erro na inicialização:", err);
+        console.log("Erro na migração:", err);
     }
 }
-
 inicializarBanco();
 module.exports = pool;
