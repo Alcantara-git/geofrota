@@ -28,10 +28,10 @@ function definirStatus(km, revisao, statusEnviado) {
     return (parseInt(km) >= parseInt(revisao)) ? 'Troca de Óleo' : 'Operante';
 }
 
-// --- RELATÓRIOS FILTRADOS POR SETOR ---
+// --- RELATÓRIOS COM FILTRO DE SETOR CORRIGIDO ---
 app.get('/api/relatorio-ultimo', proteger, async (req, res) => {
     try {
-        const { setor } = req.query; // Recebe o setor selecionado no painel
+        const { setor } = req.query; 
         const config = await pool.query("SELECT valor FROM configuracoes WHERE chave = 'ultimo_acesso_relatorio'");
         const ultimoAcesso = new Date(config.rows[0].valor);
         const agora = new Date();
@@ -42,7 +42,7 @@ app.get('/api/relatorio-ultimo', proteger, async (req, res) => {
         let sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora FROM historico WHERE `;
         let params = [];
 
-        // Filtro de Tempo
+        // Filtro de Tempo (Lógica acumulada ou Diária)
         if (ultimoAcessoBr < hojeBr) {
             sql += `data_hora > $1 `;
             params.push(ultimoAcesso);
@@ -50,7 +50,7 @@ app.get('/api/relatorio-ultimo', proteger, async (req, res) => {
             sql += `data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo' >= DATE_TRUNC('day', NOW() AT TIME ZONE 'America/Sao_Paulo') `;
         }
 
-        // Filtro de Setor (Se não for Todos)
+        // FILTRO DE SETOR (Crucial para sua correção)
         if (setor && setor !== 'Todos') {
             sql += `AND setor = $${params.length + 1} `;
             params.push(setor);
@@ -68,12 +68,10 @@ app.get('/api/relatorio-periodo', proteger, async (req, res) => {
         const { inicio, fim, setor } = req.query;
         let sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora FROM historico WHERE data_hora::date >= $1 AND data_hora::date <= $2 `;
         let params = [inicio, fim];
-
         if (setor && setor !== 'Todos') {
             sql += `AND setor = $3 `;
             params.push(setor);
         }
-
         sql += `ORDER BY data_hora DESC`;
         const result = await pool.query(sql, params);
         res.json(result.rows);
@@ -95,10 +93,7 @@ app.put('/api/viaturas/:id', async (req, res) => {
         const motivoFinal = (st === 'Baixada') ? (motivo || '') : '';
         
         await pool.query('UPDATE viaturas SET prefixo=$1, placa=$2, modelo=$3, km=$4, km_revisao=$5, status=$6, ultimo_usuario=$7, motivo=$8, setor=$9 WHERE id=$10', [prefixo, placa, modelo, km, km_revisao, st, ultimo_usuario, motivoFinal, setor, req.params.id]);
-        
-        // GRAVA NO HISTÓRICO COM O SETOR
         await pool.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor) VALUES ($1,$2,$3,$4,$5,$6,$7)', [prefixo, kmAnterior, km, st, motivoFinal, ultimo_usuario, setor]);
-        
         res.json({ success: true });
     } catch (e) { res.status(500).json(e); }
 });
