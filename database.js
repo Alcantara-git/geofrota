@@ -1,4 +1,5 @@
 const { Pool } = require('pg');
+
 const linkBanco = process.env.DATABASE_URL || 'postgresql://postgres:1BPTRANPOLCIAMILITAR@db.cggyjbdpztsnhtrroiru.supabase.co:5432/postgres';
 
 const pool = new Pool({
@@ -8,11 +9,11 @@ const pool = new Pool({
 
 async function inicializarBanco() {
     try {
-        // 1. Viaturas
+        // Garante as colunas da VTR
         await pool.query(`ALTER TABLE viaturas ADD COLUMN IF NOT EXISTS motivo TEXT DEFAULT '';`);
         await pool.query(`ALTER TABLE viaturas ADD COLUMN IF NOT EXISTS setor TEXT DEFAULT 'CTT';`);
         
-        // 2. Histórico (Garante coluna SETOR)
+        // Garante a tabela de Histórico com suporte a Fuso Horário (TIMESTAMPTZ)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS historico (
                 id SERIAL PRIMARY KEY,
@@ -23,19 +24,19 @@ async function inicializarBanco() {
                 motivo TEXT,
                 usuario TEXT,
                 setor TEXT,
-                data_hora TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                data_hora TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             );
         `);
-        await pool.query(`ALTER TABLE historico ADD COLUMN IF NOT EXISTS setor TEXT;`);
 
-        // 3. Configurações
+        // Tabela de Configurações para o Relatório
         await pool.query(`CREATE TABLE IF NOT EXISTS configuracoes (chave TEXT PRIMARY KEY, valor TEXT);`);
         await pool.query(`INSERT INTO configuracoes (chave, valor) VALUES ('ultimo_acesso_relatorio', CURRENT_TIMESTAMP::text) ON CONFLICT DO NOTHING;`);
 
-        console.log("✅ Banco de Dados e Histórico Totalmente Sincronizados.");
+        console.log("✅ Banco de Dados GEOFROTA: Sincronizado e Protegido.");
     } catch (err) {
-        console.error("Erro DB:", err);
+        console.error("Erro na inicialização do banco:", err);
     }
 }
+
 inicializarBanco();
 module.exports = pool;
