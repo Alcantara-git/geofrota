@@ -10,8 +10,8 @@ const pool = new Pool({
 async function inicializarBanco() {
     try {
         await pool.query(`ALTER TABLE viaturas ADD COLUMN IF NOT EXISTS motivo TEXT DEFAULT '';`);
+        await pool.query(`ALTER TABLE viaturas ADD COLUMN IF NOT EXISTS setor TEXT DEFAULT 'CTT';`);
         
-        // Tabela de Histórico
         await pool.query(`
             CREATE TABLE IF NOT EXISTS historico (
                 id SERIAL PRIMARY KEY,
@@ -21,26 +21,15 @@ async function inicializarBanco() {
                 status TEXT,
                 motivo TEXT,
                 usuario TEXT,
+                setor TEXT DEFAULT 'CTT',
                 data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
 
-        // NOVA TABELA: Configurações (para salvar o último acesso)
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS configuracoes (
-                chave TEXT PRIMARY KEY,
-                valor TEXT
-            );
-        `);
+        await pool.query(`CREATE TABLE IF NOT EXISTS configuracoes (chave TEXT PRIMARY KEY, valor TEXT);`);
+        await pool.query(`INSERT INTO configuracoes (chave, valor) VALUES ('ultimo_acesso_relatorio', CURRENT_TIMESTAMP::text) ON CONFLICT DO NOTHING;`);
 
-        // Inicia o marcador de tempo se não existir
-        await pool.query(`
-            INSERT INTO configuracoes (chave, valor) 
-            VALUES ('ultimo_acesso_relatorio', CURRENT_TIMESTAMP::text)
-            ON CONFLICT DO NOTHING;
-        `);
-
-        console.log("✅ Banco de Dados e Memória de Relatório prontos.");
+        console.log("✅ Banco de Dados e Histórico por Setor prontos.");
     } catch (err) {
         console.log("Erro na inicialização:", err);
     }
