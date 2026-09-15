@@ -29,27 +29,29 @@ function definirStatus(km, revisao, statusEnviado) {
     return (parseInt(km) >= parseInt(revisao)) ? 'Troca de Óleo' : 'Operante';
 }
 
-// --- RELATÓRIOS (FILTRO POR SETOR E FUSO BRASIL) ---
+// --- RELATÓRIOS INDIVIDUALIZADOS ---
 app.get('/api/relatorio-ultimo', proteger, async (req, res) => {
     try {
         const { setor } = req.query;
         const config = await pool.query("SELECT valor FROM configuracoes WHERE chave = 'ultimo_acesso_relatorio'");
-        const ultimoAcesso = config.rows[0].valor;
+        const ultimoAcesso = new Date(config.rows[0].valor);
+        const agoraBr = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
+        const hojeMeiaNoite = new Date(agoraBr);
+        hojeMeiaNoite.setHours(0,0,0,0);
+        
+        let sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora FROM historico WHERE `;
+        let params = [];
 
-        // SQL: Converte UTC para Brasília e filtra por Setor
-        let sql = `
-            SELECT *, 
-            TO_CHAR(data_hora AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora 
-            FROM historico 
-            WHERE (
-                (data_hora AT TIME ZONE 'America/Sao_Paulo')::date = (now() AT TIME ZONE 'America/Sao_Paulo')::date
-                OR data_hora > $1::timestamp
-            )
-        `;
-        let params = [ultimoAcesso];
+        // Lógica: Se acessou hoje, mostra o dia todo. Se não, mostra desde o último clique.
+        if (ultimoAcesso < hojeMeiaNoite) {
+            sql += `data_hora > $1 `;
+            params.push(ultimoAcesso);
+        } else {
+            sql += `data_hora AT TIME ZONE 'America/Sao_Paulo' >= DATE_TRUNC('day', NOW() AT TIME ZONE 'America/Sao_Paulo') `;
+        }
 
         if (setor && setor !== 'Todos') {
-            sql += ` AND setor = $2`;
+            sql += ` AND setor = $${params.length + 1} `;
             params.push(setor);
         }
 
@@ -62,21 +64,15 @@ app.get('/api/relatorio-ultimo', proteger, async (req, res) => {
 app.get('/api/relatorio-periodo', proteger, async (req, res) => {
     try {
         const { inicio, fim, setor } = req.query;
-        let sql = `
-            SELECT *, 
-            TO_CHAR(data_hora AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora 
-            FROM historico 
-            WHERE (data_hora AT TIME ZONE 'America/Sao_Paulo')::date >= $1 
-            AND (data_hora AT TIME ZONE 'America/Sao_Paulo')::date <= $2
-        `;
+        let sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora FROM historico WHERE data_hora::date >= $1 AND data_hora::date <= $2 `;
         let params = [inicio, fim];
-        if (setor && setor !== 'Todos') { sql += ` AND setor = $3`; params.push(setor); }
+        if (setor && setor !== 'Todos') { sql += ` AND setor = $3 `; params.push(setor); }
         const result = await pool.query(sql + ` ORDER BY data_hora DESC`, params);
         res.json(result.rows);
     } catch (e) { res.status(500).json(e); }
 });
 
-// --- VIATURAS (ATUALIZAÇÃO COM RASTRO GARANTIDO) ---
+// --- VIATURAS (GRAVAÇÃO SEGURA) ---
 app.get('/api/viaturas', async (req, res) => {
     const result = await pool.query("SELECT * FROM viaturas ORDER BY setor ASC, prefixo ASC");
     res.json(result.rows);
@@ -84,30 +80,29 @@ app.get('/api/viaturas', async (req, res) => {
 
 app.put('/api/viaturas/:id', async (req, res) => {
     try {
-        const { km, km_revisao, status, ultimo_usuario, motivo, setor } = req.body;
+        let { km, km_revisao, status, ultimo_usuario, motivo, setor } = req.body;
         
-        // 1. Busca os dados atuais da viatura antes de mudar (Crucial para o rastro)
-        const vCheck = await pool.query("SELECT prefixo, setor, km, km_revisao FROM viaturas WHERE id = $1", [req.params.id]);
-        if (vCheck.rows.length === 0) return res.status(404).json({error: "VTR não encontrada"});
-        const vtr = vCheck.rows[0];
+        // 1. Busca dados fixos da viatura no banco
+        const check = await pool.query("SELECT prefixo, setor, km, km_revisao FROM viaturas WHERE id = $1", [req.params.id]);
+        const vtr = check.rows[0];
 
-        const prefixoVtr = vtr.prefixo;
+        const prefixoFinal = vtr.prefixo;
+        const setorFinal = setor || vtr.setor; // Garante que o setor seja gravado
         const kmAntigo = vtr.km;
-        const setorVtr = setor || vtr.setor; // Garante o setor no rastro
-        const kmRevFinal = km_revisao || vtr.km_revisao;
-        const statusFinal = definirStatus(km, kmRevFinal, status);
+        const revFinal = km_revisao || vtr.km_revisao;
+        const statusFinal = definirStatus(km, revFinal, status);
         const motFinal = (statusFinal === 'Baixada') ? (motivo || '') : '';
 
-        // 2. Atualiza a viatura no banco
+        // 2. Atualiza VTR
         await pool.query('UPDATE viaturas SET km=$1, km_revisao=$2, status=$3, ultimo_usuario=$4, motivo=$5, setor=$6 WHERE id=$7', 
-            [km, kmRevFinal, statusFinal, ultimo_usuario, motFinal, setorVtr, req.params.id]);
+            [km, revFinal, statusFinal, ultimo_usuario, motFinal, setorFinal, req.params.id]);
 
-        // 3. GRAVA NO HISTÓRICO COM O CARIMBO DO SETOR (O que estava faltando!)
+        // 3. Grava Histórico COM CARIMBO DE SETOR
         await pool.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor) VALUES ($1,$2,$3,$4,$5,$6,$7)', 
-            [prefixoVtr, kmAntigo, km, statusFinal, motFinal, ultimo_usuario, setorVtr]);
+            [prefixoFinal, kmAntigo, km, statusFinal, motFinal, ultimo_usuario, setorFinal]);
 
         res.json({ success: true });
-    } catch (e) { console.error(e); res.status(500).json(e); }
+    } catch (e) { res.status(500).json(e); }
 });
 
 app.post('/api/viaturas', proteger, async (req, res) => {
@@ -132,4 +127,4 @@ app.get('/operacional.html', (req, res) => res.sendFile(path.join(__dirname, 'op
 app.get('/', (req, res) => res.redirect('/operacional.html'));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`GEOFROTA ONLINE: Porta ${PORT}`));
+app.listen(PORT, () => console.log(`GEOFROTA NO AR PORTA ${PORT}`));
