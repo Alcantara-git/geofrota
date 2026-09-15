@@ -11,13 +11,12 @@
         .custom-select { background-color: #0f172a; border: 1px solid #334155; padding: 1rem; border-radius: 1rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
         .list-item { padding: 1rem; border-bottom: 1px solid #1e293b; cursor: pointer; transition: 0.2s; }
         .list-item:hover { background-color: #1e293b; color: #3b82f6; }
-        /* Toast Fixado Embaixo */
         #toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); transition: 0.5s ease; z-index: 9999; }
         #toast.show { bottom: 30px; }
     </style>
 </head>
 <body class="p-4">
-    <div id="toast" class="bg-green-600 text-white px-8 py-4 rounded-2xl font-black shadow-2xl uppercase text-[10px] tracking-widest border border-green-400">✅ Atualizado com Sucesso!</div>
+    <div id="toast" class="bg-green-600 text-white px-8 py-4 rounded-2xl font-black shadow-2xl uppercase text-[10px] tracking-widest border border-green-400">✅ Hodômetro Atualizado!</div>
 
     <div class="w-full max-w-md">
         <div class="text-center mb-6"><h1 class="text-3xl font-black text-blue-500 uppercase tracking-tighter italic">Geo<span class="text-white">Frota</span></h1><p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-1">Lançamento de Quilometragem</p></div>
@@ -42,7 +41,7 @@
 
     <script>
         let viaturas = [], usuarios = [], estaB = false, tBusca = '', sV = null, sU = null;
-        function showToast() { const t = document.getElementById('toast'); t.classList.add('show'); setTimeout(() => { t.classList.remove('show'); setTimeout(() => location.reload(), 500); }, 3000); }
+        function showToast() { const t = document.getElementById('toast'); t.classList.add('show'); setTimeout(() => { t.classList.remove('show'); setTimeout(() => location.reload(), 200); }, 2500); }
         function toggleB() { estaB = !estaB; document.getElementById('pBaixa').classList.toggle('hidden', !estaB); const btn = document.getElementById('btnBaixa'); btn.innerText = estaB ? "🚩 CANCELAR" : "❌ BAIXAR VTR"; btn.classList.toggle('bg-red-600', estaB); if(!estaB) document.getElementById('motivo').value = ''; }
         function abrirBusca(t) { tBusca = t; document.getElementById('mTit').innerText = t === 'usuarios' ? 'Selecionar Responsável' : 'Selecionar Viatura'; document.getElementById('iBusca').value = ''; document.getElementById('mBusca').classList.remove('hidden'); document.getElementById('iBusca').focus(); renderLista(''); }
         function fecharB() { document.getElementById('mBusca').classList.add('hidden'); }
@@ -63,9 +62,10 @@
         document.getElementById('formKM').onsubmit = async (e) => {
             e.preventDefault(); if(!sU || !sV) return;
             const nKM = parseInt(document.getElementById('nKM').value), mot = document.getElementById('motivo').value, v = viaturas.find(x => x.id == sV);
-            if(nKM < v.km) return alert("ERRO: KM menor!");
+            if(nKM < v.km) return alert("ERRO: KM menor que o atual!");
             if(estaB && !mot) return alert("Informe o motivo!");
-            await fetch(`/api/viaturas/${sV}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({...v, km: nKM, ultimo_usuario: sU, status: estaB ? 'Baixada' : v.status, motivo: estaB ? mot : (v.status === 'Baixada' ? v.motivo : '')}) });
+            // IMPORTANTE: Enviamos o setor atual da viatura para o servidor gravar no histórico
+            await fetch(`/api/viaturas/${sV}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({...v, km: nKM, ultimo_usuario: sU, status: estaB ? 'Baixada' : v.status, motivo: estaB ? mot : (v.status === 'Baixada' ? v.motivo : ''), setor: v.setor}) });
             showToast();
         };
         setInterval(sincronizar, 5000); sincronizar();

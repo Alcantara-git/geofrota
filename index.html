@@ -15,7 +15,6 @@
         .btn-setor.active { background: #3b82f6; color: white; border-color: #60a5fa; font-weight: 900; }
         .btn-art { background: linear-gradient(145deg, #1e293b, #0f172a); border: 1px solid #334155; transition: 0.4s; }
         .btn-art:hover { transform: scale(1.02); border-color: #3b82f6; box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
-        /* Toast Fixado Embaixo */
         #toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); transition: 0.5s ease; z-index: 9999; }
         #toast.show { bottom: 30px; }
         @media print { .no-print { display: none; } body { background: white; color: black; } }
@@ -76,11 +75,11 @@
         </div>
     </main>
 
-    <!-- Modais (Relatório, Calendário, VTR) -->
     <div id="modalEscolhaRelatorio" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[130] no-print"><div class="card w-full max-w-md p-8 rounded-[2.5rem] text-center border-t-4 border-blue-500 shadow-2xl"><h3 class="text-xl font-black text-white mb-2 uppercase">Relatórios</h3><p id="labelSetorRelatorio" class="text-[10px] text-blue-400 font-bold mb-8 uppercase tracking-widest">Filtro: 1° BPTRAN</p><div class="grid gap-4"><button onclick="gerarRelatorio('ultimo')" class="btn-art p-6 rounded-3xl flex flex-col items-center group"><i class="fas fa-history text-blue-500 text-2xl mb-2 group-hover:animate-bounce"></i><span class="font-black text-sm uppercase">Último Acesso</span></button><button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden'); document.getElementById('modalFiltro').classList.remove('hidden')" class="btn-art p-6 rounded-3xl flex flex-col items-center"><i class="fas fa-calendar-alt text-amber-500 text-2xl mb-2"></i><span class="font-black text-sm uppercase">Filtrar Período</span></button><button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden')" class="mt-4 text-slate-500 text-xs font-bold uppercase">Voltar</button></div></div></div>
     <div id="modalFiltro" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[140] p-4"><div class="card p-8 rounded-3xl w-full max-w-sm text-center"><h3>FILTRAR PERÍODO</h3><input type="date" id="dataInicio" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-2 text-white"><input type="date" id="dataFim" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-6 text-white"><button onclick="gerarRelatorio('periodo')" class="w-full bg-blue-600 p-3 rounded-xl font-bold mb-2 uppercase">GERAR</button><button onclick="document.getElementById('modalFiltro').classList.add('hidden'); document.getElementById('modalEscolhaRelatorio').classList.remove('hidden')" class="text-slate-500 text-xs font-bold uppercase">Voltar</button></div></div>
     <div id="modalRelatorio" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[150] p-4 overflow-y-auto"><div class="card w-full max-w-5xl p-8 rounded-3xl my-auto text-sm"><div class="flex justify-between items-center mb-6 no-print"><h3 class="font-black uppercase text-blue-400 italic">Boletim GEOFROTA</h3><div><button onclick="window.print()" class="bg-blue-600 p-2 px-6 rounded-lg font-bold mr-2">IMPRIMIR</button><button onclick="document.getElementById('modalRelatorio').classList.add('hidden')" class="bg-slate-700 p-2 px-6 rounded-lg font-bold">SAIR</button></div></div><div id="conteudoRelatorio"></div></div></div>
 
+    <!-- Modal VTR com LABELS e BOTAO SAIR -->
     <div id="modalV" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-50 overflow-y-auto">
         <div class="card w-full max-w-md p-8 rounded-3xl my-auto border-t-4 border-blue-500 shadow-2xl">
             <h3 id="modalTitulo" class="text-xl font-black mb-6 text-blue-400 text-center uppercase tracking-widest italic">Viatura</h3>
@@ -97,7 +96,11 @@
                     <div class="space-y-1"><label class="text-[10px] font-bold text-slate-500 ml-1 uppercase">KM Revisão</label><input type="number" id="kmr" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white w-full"></div>
                 </div>
                 <div class="space-y-1"><label class="text-[10px] font-bold text-slate-500 ml-1 uppercase">Status</label><select id="st" class="bg-slate-900 border border-slate-700 p-3 rounded-xl w-full text-white font-bold outline-none"><option value="Operante">Operante</option><option value="Troca de Óleo">Troca de Óleo</option><option value="Baixada">Baixada</option></select></div>
-                <button type="submit" class="w-full bg-blue-600 p-4 rounded-xl font-bold uppercase">Salvar Dados</button>
+                
+                <div class="grid grid-cols-2 gap-2 pt-4">
+                    <button type="button" onclick="fecharModal()" class="bg-slate-700 p-4 rounded-xl font-bold uppercase text-xs">Sair</button>
+                    <button type="submit" class="bg-blue-600 p-4 rounded-xl font-bold uppercase text-xs">Salvar</button>
+                </div>
             </form>
         </div>
     </div>
@@ -153,7 +156,7 @@
             e.preventDefault(); const id = document.getElementById('editId').value;
             const dados = { prefixo: document.getElementById('pref').value, placa: document.getElementById('plac').value, modelo: document.getElementById('mod').value, km: document.getElementById('km').value, km_revisao: document.getElementById('kmr').value, status: document.getElementById('st').value, setor: document.getElementById('setor').value, ultimo_usuario: 'Gestor' };
             await fetch(id ? `/api/viaturas/${id}` : '/api/viaturas', { method: id ? 'PUT' : 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(dados) });
-            fecharModal(); showToast("Viatura Salva com Sucesso!"); carregar();
+            fecharModal(); showToast("Viatura Salva!"); carregar();
         };
         async function deletar(id) { if(confirm("Remover?")) { await fetch(`/api/viaturas/${id}`, {method:'DELETE'}); carregar(); } }
         async function logout() { await fetch('/api/logout', {method:'POST'}); window.location.href = 'login.html'; }
