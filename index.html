@@ -13,16 +13,30 @@
         .card-active { border-color: #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); transform: translateY(-2px); }
         .btn-setor { background: #1e293b; border: 1px solid #334155; color: #94a3b8; transition: 0.2s; white-space: nowrap; font-size: 10px; font-weight: bold; }
         .btn-setor.active { background: #3b82f6; color: white; border-color: #60a5fa; font-weight: 900; }
-        .btn-art { background: linear-gradient(145deg, #1e293b, #0f172a); border: 1px solid #334155; transition: 0.4s; }
+        
+        /* Botões Artísticos do Relatório */
+        .btn-art { 
+            background: linear-gradient(145deg, #1e293b, #0f172a); 
+            border: 1px solid #334155; 
+            transition: 0.4s; 
+            cursor: pointer;
+        }
         .btn-art:hover { transform: scale(1.02); border-color: #3b82f6; box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
+        .btn-art i { font-size: 2rem; margin-bottom: 10px; }
+
+        /* Toast Notificação */
         #toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); transition: 0.5s ease; z-index: 9999; }
         #toast.show { bottom: 30px; }
+
         @media print { .no-print { display: none; } body { background: white; color: black; } }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body class="flex flex-col md:flex-row">
+    <!-- Aviso de Sucesso -->
     <div id="toast" class="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black shadow-2xl uppercase text-[10px] tracking-widest border border-blue-400">Viatura Atualizada!</div>
 
+    <!-- Sidebar -->
     <aside class="w-full md:w-64 sidebar p-6 flex flex-col md:min-h-screen no-print">
         <div class="text-2xl font-bold text-blue-500 mb-8 uppercase text-center italic tracking-tighter">Geo<span class="text-white">Frota</span></div>
         <nav class="space-y-2 flex-1">
@@ -35,6 +49,7 @@
     </aside>
 
     <main class="flex-1 p-4 md:p-8">
+        <!-- Cabeçalho com Filtros de Subunidade -->
         <header class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4 no-print">
             <div class="flex items-center gap-3">
                 <h2 class="text-xl font-bold uppercase tracking-widest text-blue-400">Painel Gestor</h2>
@@ -57,6 +72,7 @@
             <button onclick="abrirModal()" class="bg-blue-600 px-6 py-3 rounded-xl font-black hover:bg-blue-500 transition shadow-lg text-xs uppercase">+ Nova Viatura</button>
         </header>
 
+        <!-- Cards de Resumo -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-center text-[10px] font-black uppercase tracking-widest no-print">
             <div id="card-total" onclick="setFiltroStatus('Todos')" class="card p-4 rounded-xl shadow-lg cursor-pointer card-active"><p class="text-slate-400">Total</p><h3 id="stat-total" class="text-2xl mt-1 text-white">0</h3></div>
             <div id="card-operante" onclick="setFiltroStatus('Operante')" class="card p-4 rounded-xl border-b-4 border-green-500 cursor-pointer"><p class="text-slate-400">Operantes</p><h3 id="stat-op" class="text-2xl text-green-500 mt-1">0</h3></div>
@@ -64,11 +80,13 @@
             <div id="card-baixada" onclick="setFiltroStatus('Baixada')" class="card p-4 rounded-xl border-b-4 border-red-600 cursor-pointer"><p class="text-slate-400">Baixadas</p><h3 id="stat-bx" class="text-2xl text-red-600 mt-1">0</h3></div>
         </div>
 
+        <!-- Barra de Pesquisa -->
         <div class="relative mb-6 no-print">
             <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
             <input type="text" id="inputBusca" oninput="renderizarTabela()" placeholder="Pesquisar por prefixo, placa ou modelo..." class="w-full bg-slate-800 border border-slate-700 p-4 pl-12 rounded-2xl text-white font-bold text-sm outline-none focus:border-blue-500 transition">
         </div>
 
+        <!-- Tabela -->
         <div class="card rounded-2xl overflow-x-auto shadow-2xl no-print">
             <table class="w-full text-left min-w-[700px]">
                 <thead class="bg-slate-800 text-slate-400 text-[10px] uppercase font-black tracking-widest">
@@ -79,40 +97,43 @@
         </div>
     </main>
 
+    <!-- Modal Escolha Relatório (Visual Artístico) -->
     <div id="modalEscolhaRelatorio" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[130] no-print">
         <div class="card w-full max-w-md p-8 rounded-[2.5rem] text-center border-t-4 border-blue-500 shadow-2xl">
-            <h3 class="text-xl font-black text-white mb-2 uppercase">Relatórios</h3>
+            <h3 class="text-xl font-black text-white mb-2 uppercase">Gerar Relatório</h3>
             <p id="labelSetorRelatorio" class="text-[10px] text-blue-400 font-bold mb-8 uppercase tracking-widest">Filtro: 1° BPTRAN</p>
-            <div class="grid gap-4">
+            <div class="grid grid-cols-1 gap-4">
                 <button onclick="gerarRelatorio('ultimo')" class="btn-art p-6 rounded-3xl flex flex-col items-center group">
-                    <i class="fas fa-history text-blue-500 text-2xl mb-2 group-hover:animate-bounce"></i>
+                    <i class="fas fa-history text-blue-500 group-hover:animate-bounce"></i>
                     <span class="font-black text-sm uppercase">Último Acesso</span>
                 </button>
-                <button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden'); document.getElementById('modalFiltro').classList.remove('hidden')" class="btn-art p-6 rounded-3xl flex flex-col items-center">
-                    <i class="fas fa-calendar-alt text-amber-500 text-2xl mb-2"></i>
-                    <span class="font-black text-sm uppercase">Filtrar Período</span>
+                <button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden'); document.getElementById('modalFiltro').classList.remove('hidden')" class="btn-art p-6 rounded-3xl flex flex-col items-center group">
+                    <i class="fas fa-calendar-alt text-amber-500 group-hover:scale-110 transition"></i>
+                    <span class="font-black text-sm uppercase">Filtrar por Período</span>
                 </button>
-                <button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden')" class="mt-4 text-slate-500 text-xs font-bold uppercase">Voltar</button>
+                <button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden')" class="mt-4 text-slate-500 text-xs font-bold uppercase hover:text-white transition">Voltar ao Painel</button>
             </div>
         </div>
     </div>
 
+    <!-- Modal Filtro Datas -->
     <div id="modalFiltro" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[140] p-4">
         <div class="card p-8 rounded-3xl w-full max-w-sm text-center">
-            <h3>FILTRAR PERÍODO</h3>
-            <input type="date" id="dataInicio" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-2 text-white">
-            <input type="date" id="dataFim" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-6 text-white">
-            <button onclick="gerarRelatorio('periodo')" class="w-full bg-blue-600 p-3 rounded-xl font-bold mb-2 uppercase text-xs">Gerar</button>
-            <button onclick="document.getElementById('modalFiltro').classList.add('hidden'); document.getElementById('modalEscolhaRelatorio').classList.remove('hidden')" class="text-slate-500 text-xs font-bold uppercase">Voltar</button>
+            <h3 class="text-blue-400 font-black mb-6 uppercase">Definir Datas</h3>
+            <input type="date" id="dataInicio" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-2 text-white outline-none">
+            <input type="date" id="dataFim" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-6 text-white outline-none">
+            <button onclick="gerarRelatorio('periodo')" class="w-full bg-blue-600 p-3 rounded-xl font-bold mb-2 uppercase text-xs">Gerar Relatório</button>
+            <button onclick="document.getElementById('modalFiltro').classList.add('hidden'); document.getElementById('modalEscolhaRelatorio').classList.remove('hidden')" class="text-slate-500 text-xs uppercase font-bold">Voltar</button>
         </div>
     </div>
 
+    <!-- Modal Visualização Relatório -->
     <div id="modalRelatorio" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[150] p-4 overflow-y-auto">
-        <div class="card w-full max-w-5xl p-8 rounded-3xl my-auto text-sm">
+        <div class="card w-full max-w-5xl p-8 rounded-3xl my-auto text-sm shadow-2xl">
             <div class="flex justify-between items-center mb-6 no-print">
                 <h3 class="font-black uppercase text-blue-400 italic">Boletim GEOFROTA</h3>
-                <div>
-                    <button onclick="window.print()" class="bg-blue-600 p-2 px-6 rounded-lg font-bold mr-2 uppercase text-xs">Imprimir</button>
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="bg-blue-600 p-2 px-6 rounded-lg font-bold uppercase text-xs">Imprimir</button>
                     <button onclick="document.getElementById('modalRelatorio').classList.add('hidden')" class="bg-slate-700 p-2 px-6 rounded-lg font-bold uppercase text-xs">Fechar</button>
                 </div>
             </div>
@@ -120,6 +141,7 @@
         </div>
     </div>
 
+    <!-- Modal VTR (COM LABELS ACIMA DO CAMPO) -->
     <div id="modalV" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-50 overflow-y-auto">
         <div class="card w-full max-w-md p-8 rounded-3xl my-auto border-t-4 border-blue-500 shadow-2xl">
             <h3 id="modalTitulo" class="text-xl font-black mb-6 text-blue-400 text-center uppercase tracking-widest italic">Viatura</h3>
@@ -214,7 +236,7 @@
                 corpo.innerHTML += `
                     <tr class="hover:bg-slate-800/40 transition border-b border-slate-800">
                         <td class="p-4 font-black text-[9px] text-slate-500 uppercase">${v.setor}</td>
-                        <td class="p-4 font-bold text-blue-400 uppercase text-sm">${v.prefixo}<br><span class="text-[10px] text-slate-500 font-mono">${v.placa}</span></td>
+                        <td class="p-4 font-bold text-blue-400 uppercase text-sm">${v.prefixo}<br><span class="text-[10px] text-slate-500 font-mono tracking-widest">${v.placa}</span></td>
                         <td class="p-4 text-xs font-mono font-bold"><span>${Number(v.km).toLocaleString()}</span> / ${Number(v.km_revisao).toLocaleString()}</td>
                         <td class="p-4 text-[10px] text-slate-400 font-bold uppercase">
                             <i class="fas fa-user-circle mr-1 opacity-50"></i> ${v.ultimo_usuario}
@@ -253,18 +275,18 @@
             let url = `/api/relatorio-ultimo?setor=${setorFiltro}`;
             if (tipo === 'periodo') {
                 const i = document.getElementById('dataInicio').value, f = document.getElementById('dataFim').value;
-                if (!i || !f) return alert("Preencha as datas!");
+                if (!i || !f) return alert("Selecione as datas!");
                 url = `/api/relatorio-periodo?inicio=${i}&fim=${f}&setor=${setorFiltro}`;
                 document.getElementById('modalFiltro').classList.add('hidden');
             }
             const res = await fetch(url); 
             const data = await res.json();
             const div = document.getElementById('conteudoRelatorio'); 
-            const unit = setorFiltro === 'Todos' ? '1° BPTRAN' : setorFiltro;
+            const unit = setorFiltro === 'Todos' ? '1° BPTRAN (GERAL)' : setorFiltro;
             if(data.length === 0) div.innerHTML = `<p class="text-center p-10 uppercase font-black text-slate-500 tracking-widest">Sem registros para ${unit}.</p>`;
             else {
                 let h = `<div class="text-center mb-8"><h2 class="text-2xl font-black uppercase text-blue-500 italic">Boletim GEOFROTA</h2><p class="text-xs uppercase font-bold text-slate-500">${unit}</p></div><table class="w-full border border-slate-700 text-left"><thead><tr class="bg-slate-800 text-[10px] uppercase text-white"><th class="p-2 border border-slate-700 text-center">Data/Hora</th><th class="p-2 border border-slate-700 text-center">VTR</th><th class="p-2 border border-slate-700 text-center text-blue-400">Novo KM</th><th class="p-2 border border-slate-700 text-center">Status</th><th class="p-2 border border-slate-700 text-center">Responsável</th></tr></thead><tbody>`;
-                data.forEach(d => h += `<tr class="border border-slate-700 text-[11px]"><td class="p-2 border border-slate-700 font-mono text-center">${d.hora}</td><td class="p-2 border border-slate-700 font-bold text-center">${d.prefixo}</td><td class="p-2 border border-slate-700 text-center font-bold text-blue-400 text-center">${d.km_novo.toLocaleString()}</td><td class="p-2 border border-slate-700 font-bold uppercase text-[10px] text-center">${d.status}</td><td class="p-2 border border-slate-700 uppercase text-center">${d.usuario}</td></tr>`);
+                data.forEach(d => h += `<tr class="border border-slate-700 text-[10px]"><td class="p-2 border border-slate-700 font-mono text-center">${d.hora}</td><td class="p-2 border border-slate-700 font-bold text-center">${d.prefixo}</td><td class="p-2 border border-slate-700 text-center font-bold text-blue-400 text-center">${d.km_novo.toLocaleString()}</td><td class="p-2 border border-slate-700 font-bold uppercase text-[10px] text-center">${d.status}</td><td class="p-2 border border-slate-700 uppercase text-center">${d.usuario}</td></tr>`);
                 div.innerHTML = h + `</tbody></table>`;
             }
             document.getElementById('modalRelatorio').classList.remove('hidden');
