@@ -36,11 +36,14 @@
 
     <main class="flex-1 p-4 md:p-8">
         <header class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4 no-print">
-            <div class="flex items-center gap-3"><h2 class="text-xl font-bold uppercase tracking-widest text-blue-400">Painel Gestor</h2>
+            <div class="flex items-center gap-3">
+                <h2 class="text-xl font-bold uppercase tracking-widest text-blue-400">Painel Gestor</h2>
                 <div class="flex items-center gap-1 bg-green-500/10 px-2 py-1 rounded-full border border-green-500/20">
-                    <div class="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div><span class="text-[8px] text-green-500 font-black uppercase">Live</span>
+                    <div class="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span class="text-[8px] text-green-500 font-black uppercase">Live</span>
                 </div>
             </div>
+            
             <div class="flex overflow-x-auto gap-2 py-2 no-scrollbar px-2 border-x border-slate-800">
                 <button onclick="setSetor('Todos')" id="btn-Todos" class="btn-setor active px-4 py-2 rounded-lg uppercase">1° BPTRAN</button>
                 <button onclick="setSetor('EM')" id="btn-EM" class="btn-setor px-4 py-2 rounded-lg uppercase">EM</button>
@@ -50,6 +53,7 @@
                 <button onclick="setSetor('3° CIA')" id="btn-3CIA" class="btn-setor px-4 py-2 rounded-lg uppercase">3° CIA</button>
                 <button onclick="setSetor('4° CIA')" id="btn-4CIA" class="btn-setor px-4 py-2 rounded-lg uppercase">4° CIA</button>
             </div>
+
             <button onclick="abrirModal()" class="bg-blue-600 px-6 py-3 rounded-xl font-black hover:bg-blue-500 transition shadow-lg text-xs uppercase">+ Nova Viatura</button>
         </header>
 
@@ -75,8 +79,27 @@
         </div>
     </main>
 
-    <div id="modalEscolhaRelatorio" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[130] no-print"><div class="card w-full max-w-md p-8 rounded-[2.5rem] text-center border-t-4 border-blue-500 shadow-2xl"><h3 class="text-xl font-black text-white mb-2 uppercase">Relatórios</h3><p id="labelSetorRelatorio" class="text-[10px] text-blue-400 font-bold mb-8 uppercase tracking-widest">Filtro: 1° BPTRAN</p><div class="grid gap-4"><button onclick="gerarRelatorio('ultimo')" class="btn-art p-6 rounded-3xl flex flex-col items-center group"><i class="fas fa-history text-blue-500 text-2xl mb-2 group-hover:animate-bounce"></i><span class="font-black text-sm uppercase">Último Acesso</span></button><button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden'); document.getElementById('modalFiltro').classList.remove('hidden')" class="btn-art p-6 rounded-3xl flex flex-col items-center"><i class="fas fa-calendar-alt text-amber-500 text-2xl mb-2"></i><span class="font-black text-sm uppercase">Filtrar Período</span></button><button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden')" class="mt-4 text-slate-500 text-xs font-bold uppercase">Voltar</button></div></div></div>
-    <div id="modalFiltro" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[140] p-4"><div class="card p-8 rounded-3xl w-full max-w-sm text-center"><h3>FILTRAR PERÍODO</h3><input type="date" id="dataInicio" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-2 text-white"><input type="date" id="dataFim" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-6 text-white"><button onclick="gerarRelatorio('periodo')" class="w-full bg-blue-600 p-3 rounded-xl font-bold mb-2 uppercase">GERAR</button><button onclick="document.getElementById('modalFiltro').classList.add('hidden'); document.getElementById('modalEscolhaRelatorio').classList.remove('hidden')" class="text-slate-500 text-xs font-bold uppercase">Voltar</button></div></div>
+    <!-- Modal Relatório -->
+    <div id="modalEscolhaRelatorio" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[130] no-print">
+        <div class="card w-full max-w-md p-8 rounded-[2.5rem] text-center border-t-4 border-blue-500 shadow-2xl">
+            <h3 class="text-xl font-black text-white mb-2 uppercase">Relatórios</h3>
+            <p id="labelSetorRelatorio" class="text-[10px] text-blue-400 font-bold mb-8 uppercase tracking-widest">Filtro: 1° BPTRAN</p>
+            <div class="grid grid-cols-1 gap-4">
+                <button onclick="gerarRelatorio('ultimo')" class="btn-art p-6 rounded-3xl flex flex-col items-center group">
+                    <i class="fas fa-history text-blue-500 text-2xl mb-2 group-hover:animate-bounce"></i>
+                    <span class="font-black text-sm uppercase">Último Acesso</span>
+                </button>
+                <button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden'); document.getElementById('modalFiltro').classList.remove('hidden')" class="btn-art p-6 rounded-3xl flex flex-col items-center">
+                    <i class="fas fa-calendar-alt text-amber-500 text-2xl mb-2"></i>
+                    <span class="font-black text-sm uppercase">Filtrar Período</span>
+                </button>
+                <button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden')" class="mt-4 text-slate-500 text-xs font-bold uppercase">Voltar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modais de Calendário e Visualização -->
+    <div id="modalFiltro" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[140] p-4"><div class="card p-8 rounded-3xl w-full max-w-sm text-center"><h3>FILTRAR PERÍODO</h3><input type="date" id="dataInicio" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-2 text-white"><input type="date" id="dataFim" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-6 text-white"><button onclick="gerarRelatorio('periodo')" class="w-full bg-blue-600 p-3 rounded-xl font-bold mb-2">GERAR</button><button onclick="document.getElementById('modalFiltro').classList.add('hidden'); document.getElementById('modalEscolhaRelatorio').classList.remove('hidden')" class="text-slate-500 text-xs font-bold uppercase">Voltar</button></div></div>
     <div id="modalRelatorio" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[150] p-4 overflow-y-auto"><div class="card w-full max-w-5xl p-8 rounded-3xl my-auto text-sm"><div class="flex justify-between items-center mb-6 no-print"><h3 class="font-black uppercase text-blue-400 italic">Boletim GEOFROTA</h3><div><button onclick="window.print()" class="bg-blue-600 p-2 px-6 rounded-lg font-bold mr-2">IMPRIMIR</button><button onclick="document.getElementById('modalRelatorio').classList.add('hidden')" class="bg-slate-700 p-2 px-6 rounded-lg font-bold">SAIR</button></div></div><div id="conteudoRelatorio"></div></div></div>
 
     <!-- Modal VTR com LABELS e BOTAO SAIR -->
@@ -99,7 +122,7 @@
                 
                 <div class="grid grid-cols-2 gap-2 pt-4">
                     <button type="button" onclick="fecharModal()" class="bg-slate-700 p-4 rounded-xl font-bold uppercase text-xs">Sair</button>
-                    <button type="submit" class="bg-blue-600 p-4 rounded-xl font-bold uppercase text-xs">Salvar</button>
+                    <button type="submit" class="flex-1 bg-blue-600 p-4 rounded-xl font-bold uppercase text-xs">Salvar</button>
                 </div>
             </form>
         </div>
@@ -156,7 +179,7 @@
             e.preventDefault(); const id = document.getElementById('editId').value;
             const dados = { prefixo: document.getElementById('pref').value, placa: document.getElementById('plac').value, modelo: document.getElementById('mod').value, km: document.getElementById('km').value, km_revisao: document.getElementById('kmr').value, status: document.getElementById('st').value, setor: document.getElementById('setor').value, ultimo_usuario: 'Gestor' };
             await fetch(id ? `/api/viaturas/${id}` : '/api/viaturas', { method: id ? 'PUT' : 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(dados) });
-            fecharModal(); showToast("Viatura Salva!"); carregar();
+            fecharModal(); showToast("Viatura Salva com Sucesso!"); carregar();
         };
         async function deletar(id) { if(confirm("Remover?")) { await fetch(`/api/viaturas/${id}`, {method:'DELETE'}); carregar(); } }
         async function logout() { await fetch('/api/logout', {method:'POST'}); window.location.href = 'login.html'; }

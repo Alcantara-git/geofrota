@@ -64,7 +64,7 @@
             const nKM = parseInt(document.getElementById('nKM').value), mot = document.getElementById('motivo').value, v = viaturas.find(x => x.id == sV);
             if(nKM < v.km) return alert("ERRO: KM menor que o atual!");
             if(estaB && !mot) return alert("Informe o motivo!");
-            // IMPORTANTE: Enviamos o setor atual da viatura para o servidor gravar no histórico
+            // IMPORTANTE: Enviamos o SETOR original da viatura para que o relatório não bugue
             await fetch(`/api/viaturas/${sV}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({...v, km: nKM, ultimo_usuario: sU, status: estaB ? 'Baixada' : v.status, motivo: estaB ? mot : (v.status === 'Baixada' ? v.motivo : ''), setor: v.setor}) });
             showToast();
         };
