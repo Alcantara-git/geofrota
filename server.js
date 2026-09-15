@@ -15,34 +15,26 @@ const proteger = (req, res, next) => {
     else res.redirect('/login.html');
 };
 
-app.post('/api/login', (req, res) => {
-    if (req.body.senha === ADMIN_PASSWORD) {
-        res.cookie('auth', 'true', { httpOnly: true, maxAge: 24 * 60 * 60 * 1000, sameSite: 'lax' });
-        res.json({ success: true });
-    } else res.status(401).json({ error: "Senha incorreta" });
-});
-app.post('/api/logout', (req, res) => { res.clearCookie('auth'); res.json({ success: true }); });
-
 function definirStatus(km, revisao, statusEnviado) {
     if (statusEnviado === 'Baixada') return 'Baixada';
     return (parseInt(km) >= parseInt(revisao)) ? 'Troca de Óleo' : 'Operante';
 }
 
-// --- RELATÓRIOS COM FILTRO DE SETOR CORRIGIDO ---
+// --- RELATÓRIOS INDIVIDUALIZADOS ---
 app.get('/api/relatorio-ultimo', proteger, async (req, res) => {
     try {
-        const { setor } = req.query; 
+        const { setor } = req.query;
         const config = await pool.query("SELECT valor FROM configuracoes WHERE chave = 'ultimo_acesso_relatorio'");
         const ultimoAcesso = new Date(config.rows[0].valor);
         const agora = new Date();
+        
         const hojeBr = new Date(agora.toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
-        hojeBr.setHours(0, 0, 0, 0);
+        hojeBr.setHours(0,0,0,0);
         const ultimoAcessoBr = new Date(ultimoAcesso.toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
 
         let sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora FROM historico WHERE `;
         let params = [];
 
-        // Filtro de Tempo (Lógica acumulada ou Diária)
         if (ultimoAcessoBr < hojeBr) {
             sql += `data_hora > $1 `;
             params.push(ultimoAcesso);
@@ -50,14 +42,12 @@ app.get('/api/relatorio-ultimo', proteger, async (req, res) => {
             sql += `data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo' >= DATE_TRUNC('day', NOW() AT TIME ZONE 'America/Sao_Paulo') `;
         }
 
-        // FILTRO DE SETOR (Crucial para sua correção)
         if (setor && setor !== 'Todos') {
             sql += `AND setor = $${params.length + 1} `;
             params.push(setor);
         }
 
-        sql += `ORDER BY data_hora DESC`;
-        const result = await pool.query(sql, params);
+        const result = await pool.query(sql + ` ORDER BY data_hora DESC`, params);
         await pool.query("UPDATE configuracoes SET valor = CURRENT_TIMESTAMP WHERE chave = 'ultimo_acesso_relatorio'");
         res.json(result.rows);
     } catch (e) { res.status(500).json(e); }
@@ -72,13 +62,12 @@ app.get('/api/relatorio-periodo', proteger, async (req, res) => {
             sql += `AND setor = $3 `;
             params.push(setor);
         }
-        sql += `ORDER BY data_hora DESC`;
-        const result = await pool.query(sql, params);
+        const result = await pool.query(sql + ` ORDER BY data_hora DESC`, params);
         res.json(result.rows);
     } catch (e) { res.status(500).json(e); }
 });
 
-// --- VIATURAS ---
+// --- ROTAS DE VIATURAS (COM GRAVAÇÃO DE SETOR NO HISTÓRICO) ---
 app.get('/api/viaturas', async (req, res) => {
     const result = await pool.query("SELECT * FROM viaturas ORDER BY setor ASC, prefixo ASC");
     res.json(result.rows);
@@ -86,25 +75,25 @@ app.get('/api/viaturas', async (req, res) => {
 
 app.put('/api/viaturas/:id', async (req, res) => {
     try {
-        let { prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario, motivo, setor } = req.body;
-        const vtrAntiga = await pool.query("SELECT km FROM viaturas WHERE id = $1", [req.params.id]);
+        let { prefixo, km, km_revisao, status, ultimo_usuario, motivo, setor } = req.body;
+        const vtrAntiga = await pool.query("SELECT km, setor FROM viaturas WHERE id = $1", [req.params.id]);
         const kmAnterior = vtrAntiga.rows[0].km;
+        const setorReal = setor || vtrAntiga.rows[0].setor;
+
         const st = definirStatus(km, km_revisao, status);
         const motivoFinal = (st === 'Baixada') ? (motivo || '') : '';
         
-        await pool.query('UPDATE viaturas SET prefixo=$1, placa=$2, modelo=$3, km=$4, km_revisao=$5, status=$6, ultimo_usuario=$7, motivo=$8, setor=$9 WHERE id=$10', [prefixo, placa, modelo, km, km_revisao, st, ultimo_usuario, motivoFinal, setor, req.params.id]);
-        await pool.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor) VALUES ($1,$2,$3,$4,$5,$6,$7)', [prefixo, kmAnterior, km, st, motivoFinal, ultimo_usuario, setor]);
+        await pool.query('UPDATE viaturas SET km=$1, km_revisao=$2, status=$3, ultimo_usuario=$4, motivo=$5, setor=$6 WHERE id=$7', [km, km_revisao, st, ultimo_usuario, motivoFinal, setorReal, req.params.id]);
+        await pool.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor) VALUES ($1,$2,$3,$4,$5,$6,$7)', [prefixo, kmAnterior, km, st, motivoFinal, ultimo_usuario, setorReal]);
         res.json({ success: true });
     } catch (e) { res.status(500).json(e); }
 });
 
 app.post('/api/viaturas', proteger, async (req, res) => {
-    try {
-        let { prefixo, placa, modelo, km, km_revisao, status, setor } = req.body;
-        const st = definirStatus(km, km_revisao, status);
-        await pool.query('INSERT INTO viaturas (prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario, motivo, setor) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [prefixo, placa, modelo, km, km_revisao, st, 'Sistema', '', setor]);
-        res.json({ success: true });
-    } catch (e) { res.status(500).json(e); }
+    let { prefixo, placa, modelo, km, km_revisao, status, setor } = req.body;
+    const st = definirStatus(km, km_revisao, status);
+    await pool.query('INSERT INTO viaturas (prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario, motivo, setor) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [prefixo, placa, modelo, km, km_revisao, st, 'Sistema', '', setor]);
+    res.json({ success: true });
 });
 
 app.delete('/api/viaturas/:id', proteger, async (req, res) => { await pool.query('DELETE FROM viaturas WHERE id = $1', [req.params.id]); res.json({ success: true }); });
@@ -119,4 +108,4 @@ app.get('/operacional.html', (req, res) => res.sendFile(path.join(__dirname, 'op
 app.get('/', (req, res) => res.redirect('/operacional.html'));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`GEOFROTA NO AR: Porta ${PORT}`));
+app.listen(PORT, () => console.log(`GEOFROTA ONLINE NA PORTA ${PORT}`));

@@ -23,7 +23,7 @@
     <aside class="w-full md:w-64 sidebar p-6 flex flex-col md:min-h-screen no-print">
         <div class="text-2xl font-bold text-blue-500 mb-8 uppercase text-center italic tracking-tighter">Geo<span class="text-white">Frota</span></div>
         <nav class="space-y-2 flex-1">
-            <a href="index.html" class="flex items-center p-3 bg-blue-600 text-white rounded-xl font-bold"><i class="fas fa-chart-line mr-3"></i> Dashboard</a>
+            <a href="index.html" class="flex items-center p-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg"><i class="fas fa-chart-line mr-3"></i> Dashboard</a>
             <button onclick="document.getElementById('modalEscolhaRelatorio').classList.remove('hidden')" class="w-full flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition font-medium"><i class="fas fa-file-alt mr-3"></i> Relatório</button>
             <a href="operacional.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition font-medium"><i class="fas fa-mobile-alt mr-3"></i> Operacional</a>
             <a href="usuarios.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition font-medium"><i class="fas fa-users mr-3"></i> Usuários</a>
@@ -32,8 +32,16 @@
     </aside>
 
     <main class="flex-1 p-4 md:p-8">
+        <!-- Header com Live Indicator -->
         <header class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4 no-print">
-            <div class="flex items-center gap-3"><h2 class="text-xl font-bold uppercase tracking-widest text-blue-400">Painel Gestor</h2><div class="h-2 w-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)]"></div></div>
+            <div class="flex items-center gap-3">
+                <h2 class="text-xl font-bold uppercase tracking-widest text-blue-400">Painel Gestor</h2>
+                <div class="flex items-center gap-1 bg-green-500/10 px-2 py-1 rounded-full border border-green-500/20">
+                    <div class="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span class="text-[8px] text-green-500 font-black uppercase">Live</span>
+                </div>
+            </div>
+            
             <div class="flex overflow-x-auto gap-2 py-2 no-scrollbar px-2">
                 <button onclick="setSetor('Todos')" id="btn-Todos" class="btn-setor active px-4 py-2 rounded-lg text-[10px] font-black uppercase">1° BPTRAN</button>
                 <button onclick="setSetor('EM')" id="btn-EM" class="btn-setor px-4 py-2 rounded-lg text-[10px] uppercase">EM</button>
@@ -43,6 +51,7 @@
                 <button onclick="setSetor('3° CIA')" id="btn-3CIA" class="btn-setor px-4 py-2 rounded-lg text-[10px] uppercase">3° CIA</button>
                 <button onclick="setSetor('4° CIA')" id="btn-4CIA" class="btn-setor px-4 py-2 rounded-lg text-[10px] uppercase">4° CIA</button>
             </div>
+
             <button onclick="abrirModal()" class="bg-blue-600 px-6 py-3 rounded-xl font-black hover:bg-blue-500 transition shadow-lg text-xs uppercase">+ Nova Viatura</button>
         </header>
 
@@ -63,19 +72,21 @@
         </div>
     </main>
 
-    <!-- MODAL RELATÓRIO ARTÍSTICO -->
+    <!-- Modal Relatório Artístico -->
     <div id="modalEscolhaRelatorio" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[130] no-print">
-        <div class="card w-full max-w-md p-8 rounded-[2.5rem] text-center border-t-4 border-blue-500">
-            <h3 class="text-xl font-black mb-2 uppercase">Gerar Relatório</h3>
+        <div class="card w-full max-w-md p-8 rounded-[2.5rem] text-center border-t-4 border-blue-500 shadow-2xl">
+            <h3 class="text-xl font-black text-white mb-2 uppercase">Relatórios</h3>
             <p id="labelSetorRelatorio" class="text-[10px] text-blue-400 font-bold mb-8 uppercase tracking-widest">Filtro: 1° BPTRAN</p>
             <div class="grid grid-cols-1 gap-4">
-                <button onclick="gerarRelatorio('ultimo')" class="btn-art p-6 rounded-3xl flex flex-col items-center">
-                    <i class="fas fa-history text-blue-500"></i><span class="font-black text-sm uppercase">Último Acesso</span>
+                <button onclick="gerarRelatorio('ultimo')" class="btn-art p-6 rounded-3xl flex flex-col items-center group">
+                    <i class="fas fa-history text-blue-500 text-2xl mb-2 group-hover:animate-bounce"></i>
+                    <span class="font-black text-sm uppercase">Último Acesso</span>
                 </button>
-                <button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden'); document.getElementById('modalFiltro').classList.remove('hidden')" class="btn-art p-6 rounded-3xl flex flex-col items-center">
-                    <i class="fas fa-calendar-alt text-amber-500"></i><span class="font-black text-sm uppercase">Filtrar Período</span>
+                <button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden'); document.getElementById('modalFiltro').classList.remove('hidden')" class="btn-art p-6 rounded-3xl flex flex-col items-center group">
+                    <i class="fas fa-calendar-alt text-amber-500 text-2xl mb-2 group-hover:scale-110 transition"></i>
+                    <span class="font-black text-sm uppercase">Filtrar Período</span>
                 </button>
-                <button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden')" class="mt-4 text-slate-500 text-xs font-bold uppercase">Voltar</button>
+                <button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden')" class="mt-4 text-slate-500 text-xs font-bold uppercase hover:text-white transition">Cancelar</button>
             </div>
         </div>
     </div>
@@ -83,10 +94,10 @@
     <!-- Modal Calendário -->
     <div id="modalFiltro" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[140] p-4">
         <div class="card p-8 rounded-3xl w-full max-w-sm text-center">
-            <h3 class="text-blue-400 font-black mb-6">DEFINIR PERÍODO</h3>
+            <h3 class="text-blue-400 font-black mb-6 uppercase tracking-widest">Definir Período</h3>
             <input type="date" id="dataInicio" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-2 text-white outline-none">
             <input type="date" id="dataFim" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-6 text-white outline-none">
-            <button onclick="gerarRelatorio('periodo')" class="w-full bg-blue-600 p-3 rounded-xl font-bold mb-2">GERAR RELATÓRIO</button>
+            <button onclick="gerarRelatorio('periodo')" class="w-full bg-blue-600 p-3 rounded-xl font-bold mb-2 uppercase">Gerar</button>
             <button onclick="document.getElementById('modalFiltro').classList.add('hidden'); document.getElementById('modalEscolhaRelatorio').classList.remove('hidden')" class="text-slate-500 text-xs uppercase font-bold">Voltar</button>
         </div>
     </div>
@@ -94,10 +105,10 @@
     <div id="modalRelatorio" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[150] p-4 overflow-y-auto">
         <div class="card w-full max-w-5xl p-8 rounded-3xl my-auto text-sm">
             <div class="flex justify-between items-center mb-6 no-print">
-                <h3 class="font-black uppercase text-blue-400">Boletim GEOFROTA</h3>
+                <h3 class="font-black uppercase text-blue-400 italic">Boletim de Alterações</h3>
                 <div class="flex gap-2">
-                    <button onclick="window.print()" class="bg-blue-600 p-2 px-6 rounded-lg font-bold">Imprimir</button>
-                    <button onclick="document.getElementById('modalRelatorio').classList.add('hidden')" class="bg-slate-700 p-2 px-6 rounded-lg font-bold">Fechar</button>
+                    <button onclick="window.print()" class="bg-blue-600 p-2 px-6 rounded-lg font-bold uppercase text-xs">Imprimir</button>
+                    <button onclick="document.getElementById('modalRelatorio').classList.add('hidden')" class="bg-slate-700 p-2 px-6 rounded-lg font-bold uppercase text-xs">Fechar</button>
                 </div>
             </div>
             <div id="conteudoRelatorio"></div>
@@ -106,7 +117,7 @@
 
     <!-- Modal VTR -->
     <div id="modalV" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-50 overflow-y-auto">
-        <div class="card w-full max-w-md p-8 rounded-3xl my-auto">
+        <div class="card w-full max-w-md p-8 rounded-3xl my-auto border-t-4 border-blue-500">
             <h3 id="modalTitulo" class="text-xl font-black mb-6 text-blue-400 text-center uppercase">Viatura</h3>
             <form id="formV" class="space-y-4">
                 <input type="hidden" id="editId">
@@ -115,9 +126,9 @@
                 </select>
                 <div class="grid grid-cols-2 gap-4"><input type="text" id="pref" placeholder="Prefixo" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none"><input type="text" id="plac" placeholder="Placa" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none"></div>
                 <input type="text" id="mod" placeholder="Modelo" required class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none">
-                <div class="grid grid-cols-2 gap-4"><input type="number" id="km" placeholder="KM Atual" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none"><input type="number" id="kmr" placeholder="KM Revisão" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none"></div>
+                <div class="grid grid-cols-2 gap-4"><input type="number" id="km" placeholder="KM" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none"><input type="number" id="kmr" placeholder="Revisão" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white outline-none"></div>
                 <select id="st" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-white font-bold"><option value="Operante">Operante</option><option value="Troca de Óleo">Troca de Óleo</option><option value="Baixada">Baixada</option></select>
-                <button type="submit" class="w-full bg-blue-600 p-4 rounded-xl font-bold uppercase">Salvar</button>
+                <button type="submit" class="w-full bg-blue-600 p-4 rounded-xl font-bold uppercase">Salvar Alterações</button>
             </form>
         </div>
     </div>
@@ -148,7 +159,14 @@
 
             filtradas.forEach(v => {
                 let color = v.status==='Operante'?'text-green-500 border-green-500/20 bg-green-500/10':v.status==='Troca de Óleo'?'text-amber-500 border-amber-500/20 bg-amber-500/10':'text-red-500 border-red-500/20 bg-red-500/10';
-                corpo.innerHTML += `<tr class="hover:bg-slate-800/40 transition"><td class="p-4 font-black text-[10px] text-slate-500 uppercase">${v.setor}</td><td class="p-4 font-bold text-blue-400 uppercase text-sm">${v.prefixo}<br><span class="text-[10px] text-slate-500">${v.placa}</span></td><td class="p-4 text-xs font-mono font-bold">${Number(v.km).toLocaleString()} / ${Number(v.km_revisao).toLocaleString()}</td><td class="p-4 text-[10px] text-slate-400 uppercase font-bold">${v.ultimo_usuario}</td><td class="p-4"><span class="px-3 py-1 rounded-full text-[9px] font-black uppercase border ${color}">${v.status}</span>${v.motivo ? `<div class="text-[9px] text-red-400 mt-1 italic">"${v.motivo}"</div>` : ''}</td><td class="p-4 text-center"><button onclick="editar(${v.id})" class="text-slate-500 mr-2 transition hover:text-white"><i class="fas fa-edit"></i></button><button onclick="deletar(${v.id})" class="text-slate-500 transition hover:text-red-500"><i class="fas fa-trash"></i></button></td></tr>`;
+                corpo.innerHTML += `<tr class="hover:bg-slate-800/40 transition">
+                    <td class="p-4 font-black text-[10px] text-slate-500 uppercase">${v.setor}</td>
+                    <td class="p-4 font-bold text-blue-400 uppercase text-sm">${v.prefixo}<br><span class="text-[10px] text-slate-500">${v.placa}</span></td>
+                    <td class="p-4 text-xs font-mono font-bold">${Number(v.km).toLocaleString()} / ${Number(v.km_revisao).toLocaleString()}</td>
+                    <td class="p-4 text-[10px] text-slate-400 uppercase font-bold">${v.ultimo_usuario}</td>
+                    <td class="p-4"><span class="px-3 py-1 rounded-full text-[9px] font-black uppercase border ${color}">${v.status}</span>${v.motivo ? `<div class="text-[9px] text-red-400 mt-1 italic font-bold">"${v.motivo}"</div>` : ''}</td>
+                    <td class="p-4 text-center"><button onclick="editar(${v.id})" class="text-slate-500 mr-2 hover:text-white transition"><i class="fas fa-edit"></i></button><button onclick="deletar(${v.id})" class="text-slate-500 hover:text-red-500 transition"><i class="fas fa-trash"></i></button></td>
+                </tr>`;
             });
             document.getElementById('labelSetorRelatorio').innerText = 'Filtro: ' + (setorFiltro === 'Todos' ? '1° BPTRAN' : setorFiltro);
         }
@@ -185,10 +203,10 @@
             const unit = setorFiltro === 'Todos' ? '1° BPTRAN (GERAL)' : setorFiltro;
 
             if(data.length === 0) {
-                div.innerHTML = `<p class="text-center p-10 text-slate-500 uppercase font-black">Nenhuma alteração registrada para ${unit}.</p>`;
+                div.innerHTML = `<p class="text-center p-10 text-slate-500 font-bold uppercase tracking-widest">Nenhuma alteração registrada para ${unit}.</p>`;
             } else {
-                let html = `<div class="text-center mb-8"><h2 class="text-2xl font-black uppercase tracking-tighter">Relatório GEOFROTA</h2><p class="text-xs text-blue-500 font-bold uppercase">${unit}</p></div><table class="w-full border-collapse border border-slate-700 text-left"><thead><tr class="bg-slate-800 text-[10px] uppercase text-white"><th class="border border-slate-700 p-2">Data/Hora</th><th class="border border-slate-700 p-2">VTR</th><th class="border border-slate-700 p-2 text-center">KM Ant.</th><th class="border border-slate-700 p-2 text-center">KM Novo</th><th class="border border-slate-700 p-2">Status / Motivo</th><th class="border border-slate-700 p-2">Responsável</th></tr></thead><tbody>`;
-                data.forEach(h => { html += `<tr class="text-[11px] border border-slate-700"><td class="border border-slate-700 p-2 font-mono">${h.hora}</td><td class="border border-slate-700 p-2 font-bold">${h.prefixo}</td><td class="border border-slate-700 p-2 text-center">${h.km_anterior.toLocaleString()}</td><td class="border border-slate-700 p-2 text-center font-bold">${h.km_novo.toLocaleString()}</td><td class="border border-slate-700 p-2 uppercase font-bold">${h.status} ${h.motivo ? `(${h.motivo})` : ''}</td><td class="border border-slate-700 p-2 uppercase">${h.usuario}</td></tr>`; });
+                let html = `<div class="text-center mb-8"><h2 class="text-2xl font-black uppercase tracking-tighter text-blue-500">Relatório GEOFROTA</h2><p class="text-xs text-slate-500 font-black uppercase tracking-widest">${unit}</p></div><table class="w-full border-collapse border border-slate-700 text-left"><thead><tr class="bg-slate-800 text-[10px] uppercase text-white"><th class="border border-slate-700 p-2">Data/Hora</th><th class="border border-slate-700 p-2">VTR</th><th class="border border-slate-700 p-2 text-center">KM Ant.</th><th class="border border-slate-700 p-2 text-center">KM Novo</th><th class="border border-slate-700 p-2">Status / Motivo</th><th class="border border-slate-700 p-2">Responsável</th></tr></thead><tbody>`;
+                data.forEach(h => { html += `<tr class="text-[11px] border border-slate-700"><td class="border border-slate-700 p-2 font-mono">${h.hora}</td><td class="border border-slate-700 p-2 font-bold">${h.prefixo}</td><td class="border border-slate-700 p-2 text-center">${h.km_anterior.toLocaleString()}</td><td class="border border-slate-700 p-2 text-center font-bold text-blue-400">${h.km_novo.toLocaleString()}</td><td class="border border-slate-700 p-2 uppercase font-black">${h.status} ${h.motivo ? `(${h.motivo})` : ''}</td><td class="border border-slate-700 p-2 uppercase">${h.usuario}</td></tr>`; });
                 html += `</tbody></table>`;
                 div.innerHTML = html;
             }
@@ -196,10 +214,7 @@
         }
 
         function abrirModal() { 
-            document.getElementById('modalTitulo').innerText = "Nova Viatura"; 
-            document.getElementById('formV').reset(); 
-            document.getElementById('editId').value = ""; 
-            // INTELIGÊNCIA: Se estiver em uma CIA, já marca ela no formulário
+            document.getElementById('modalTitulo').innerText = "Nova Viatura"; document.getElementById('formV').reset(); document.getElementById('editId').value = ""; 
             if(setorFiltro !== 'Todos') document.getElementById('setor').value = setorFiltro;
             document.getElementById('modalV').classList.remove('hidden'); 
         }
@@ -215,8 +230,8 @@
             e.preventDefault();
             const id = document.getElementById('editId').value;
             const dados = { prefixo: document.getElementById('pref').value, placa: document.getElementById('plac').value, modelo: document.getElementById('mod').value, km: document.getElementById('km').value, km_revisao: document.getElementById('kmr').value, status: document.getElementById('st').value, setor: document.getElementById('setor').value, ultimo_usuario: 'Gestor' };
-            await fetch(id ? `/api/viaturas/${id}` : '/api/viaturas', { method: id ? 'PUT' : 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(dados) });
-            fecharModal(); carregar();
+            const res = await fetch(id ? `/api/viaturas/${id}` : '/api/viaturas', { method: id ? 'PUT' : 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(dados) });
+            if(res.ok) { alert("Viatura salva com sucesso!"); fecharModal(); carregar(); }
         };
         async function deletar(id) { if(confirm("Excluir?")) { await fetch(`/api/viaturas/${id}`, {method:'DELETE'}); carregar(); } }
         async function logout() { await fetch('/api/logout', {method:'POST'}); window.location.href = 'login.html'; }
