@@ -3,11 +3,9 @@ const path = require('path');
 const cookieParser = require('cookie-parser');
 const pool = require('./database');
 const app = express();
-
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname)));
-
 const ADMIN_PASSWORD = "admin123";
 
 const proteger = (req, res, next) => {
@@ -22,7 +20,6 @@ app.post('/api/login', (req, res) => {
         res.json({ success: true });
     } else res.status(401).json({ error: "Senha incorreta" });
 });
-
 app.post('/api/logout', (req, res) => { res.clearCookie('auth'); res.json({ success: true }); });
 
 function definirStatus(km, revisao, statusEnviado) {
@@ -30,7 +27,7 @@ function definirStatus(km, revisao, statusEnviado) {
     return (parseInt(km) >= parseInt(revisao)) ? 'Troca de Óleo' : 'Operante';
 }
 
-// --- RELATÓRIOS (FILTRAGEM POR SETOR) ---
+// --- RELATÓRIOS INDIVIDUALIZADOS ---
 app.get('/api/relatorio-ultimo', proteger, async (req, res) => {
     try {
         const { setor } = req.query;
@@ -41,13 +38,21 @@ app.get('/api/relatorio-ultimo', proteger, async (req, res) => {
         hojeBr.setHours(0,0,0,0);
         const ultimoBr = new Date(ultimoAcesso.toLocaleString("en-US", {timeZone: "America/Sao_Paulo"}));
 
-        let condicaoTempo = (ultimoBr < hojeBr) ? "data_hora > $1" : "data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo' >= DATE_TRUNC('day', NOW() AT TIME ZONE 'America/Sao_Paulo')";
-        let params = (ultimoBr < hojeBr) ? [ultimoAcesso] : [];
+        // Se o último acesso foi em dia anterior, buscamos desde o horário do último clique.
+        // Se foi hoje, buscamos tudo desde as 00:00 de hoje.
+        let sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora FROM historico WHERE `;
+        let params = [];
 
-        let sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora FROM historico WHERE ${condicaoTempo}`;
+        if (ultimoBr < hojeBr) {
+            sql += `data_hora > $1 `;
+            params.push(ultimoAcesso);
+        } else {
+            sql += `data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo' >= DATE_TRUNC('day', NOW() AT TIME ZONE 'America/Sao_Paulo') `;
+        }
 
+        // FILTRO DE SETOR OBRIGATÓRIO
         if (setor && setor !== 'Todos') {
-            sql += ` AND setor = $${params.length + 1}`;
+            sql += `AND setor = $${params.length + 1} `;
             params.push(setor);
         }
 
@@ -60,10 +65,10 @@ app.get('/api/relatorio-ultimo', proteger, async (req, res) => {
 app.get('/api/relatorio-periodo', proteger, async (req, res) => {
     try {
         const { inicio, fim, setor } = req.query;
-        let sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora FROM historico WHERE data_hora::date >= $1 AND data_hora::date <= $2`;
+        let sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora FROM historico WHERE data_hora::date >= $1 AND data_hora::date <= $2 `;
         let params = [inicio, fim];
         if (setor && setor !== 'Todos') {
-            sql += ` AND setor = $3`;
+            sql += `AND setor = $3 `;
             params.push(setor);
         }
         const result = await pool.query(sql + ` ORDER BY data_hora DESC`, params);
@@ -71,7 +76,7 @@ app.get('/api/relatorio-periodo', proteger, async (req, res) => {
     } catch (e) { res.status(500).json(e); }
 });
 
-// --- VIATURAS (GRAVAÇÃO SEGURA DE HISTÓRICO) ---
+// --- VIATURAS (COM GRAVAÇÃO DE SETOR GARANTIDA) ---
 app.get('/api/viaturas', async (req, res) => {
     const result = await pool.query("SELECT * FROM viaturas ORDER BY setor ASC, prefixo ASC");
     res.json(result.rows);
@@ -81,23 +86,23 @@ app.put('/api/viaturas/:id', async (req, res) => {
     try {
         let { km, km_revisao, status, ultimo_usuario, motivo, setor } = req.body;
         
-        // Busca dados atuais no banco para não errar o histórico
-        const vtrCheck = await pool.query("SELECT prefixo, km, km_revisao, setor FROM viaturas WHERE id = $1", [req.params.id]);
-        const vtrOriginal = vtrCheck.rows[0];
-
-        const kmAntigo = vtrOriginal.km;
-        const prefixoVtr = vtrOriginal.prefixo;
-        const setorVtr = setor || vtrOriginal.setor; // Prioriza o enviado, senão usa o que já está no banco
-        const revVtr = km_revisao || vtrOriginal.km_revisao;
+        // 1. Antes de atualizar, buscamos o Prefixo e o Setor original da VTR no banco
+        const vtrOriginal = await pool.query("SELECT prefixo, km, setor, km_revisao FROM viaturas WHERE id = $1", [req.params.id]);
+        const vtr = vtrOriginal.rows[0];
+        
+        const kmAntigo = vtr.km;
+        const prefixoVtr = vtr.prefixo;
+        const setorVtr = setor || vtr.setor; // Usa o setor enviado ou o que já estava no banco
+        const revVtr = km_revisao || vtr.km_revisao;
 
         const stFinal = definirStatus(km, revVtr, status);
         const motFinal = (stFinal === 'Baixada') ? (motivo || '') : '';
         
-        // 1. Atualiza o estado atual da VTR
+        // 2. Atualiza a VTR
         await pool.query('UPDATE viaturas SET km=$1, km_revisao=$2, status=$3, ultimo_usuario=$4, motivo=$5, setor=$6 WHERE id=$7', 
             [km, revVtr, stFinal, ultimo_usuario, motFinal, setorVtr, req.params.id]);
         
-        // 2. Grava rastro no histórico (O SEGREDO DO RELATÓRIO)
+        // 3. GRAVA NO HISTÓRICO CARIMBANDO O SETOR CORRETO
         await pool.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor) VALUES ($1,$2,$3,$4,$5,$6,$7)', 
             [prefixoVtr, kmAntigo, km, stFinal, motFinal, ultimo_usuario, setorVtr]);
         
@@ -127,4 +132,4 @@ app.get('/operacional.html', (req, res) => res.sendFile(path.join(__dirname, 'op
 app.get('/', (req, res) => res.redirect('/operacional.html'));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`GEOFROTA ONLINE: Porta ${PORT}`));
+app.listen(PORT, () => console.log(`GEOFROTA ON: Porta ${PORT}`));
