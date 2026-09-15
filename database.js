@@ -9,7 +9,11 @@ const pool = new Pool({
 
 async function inicializarBanco() {
     try {
+        // Garante a coluna motivo
         await pool.query(`ALTER TABLE viaturas ADD COLUMN IF NOT EXISTS motivo TEXT DEFAULT '';`);
+        
+        // ADICIONA A COLUNA SETOR (Define CTT como padrão para o que já existe)
+        await pool.query(`ALTER TABLE viaturas ADD COLUMN IF NOT EXISTS setor TEXT DEFAULT 'CTT';`);
         
         // Tabela de Histórico
         await pool.query(`
@@ -25,7 +29,7 @@ async function inicializarBanco() {
             );
         `);
 
-        // NOVA TABELA: Configurações (para salvar o último acesso)
+        // Tabela de Configurações
         await pool.query(`
             CREATE TABLE IF NOT EXISTS configuracoes (
                 chave TEXT PRIMARY KEY,
@@ -33,16 +37,15 @@ async function inicializarBanco() {
             );
         `);
 
-        // Inicia o marcador de tempo se não existir
         await pool.query(`
             INSERT INTO configuracoes (chave, valor) 
             VALUES ('ultimo_acesso_relatorio', CURRENT_TIMESTAMP::text)
             ON CONFLICT DO NOTHING;
         `);
 
-        console.log("✅ Banco de Dados e Memória de Relatório prontos.");
+        console.log("✅ Banco de Dados sincronizado com Setores.");
     } catch (err) {
-        console.log("Erro na inicialização:", err);
+        console.log("Nota na inicialização:", err.message);
     }
 }
 
