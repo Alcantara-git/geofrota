@@ -19,7 +19,7 @@
 </head>
 <body class="p-4">
     <!-- Aviso de Sucesso -->
-    <div id="toast" class="bg-green-600 text-white px-8 py-4 rounded-2xl font-black shadow-2xl uppercase text-[10px] tracking-widest border border-green-400">✅ Atualizado com Sucesso!</div>
+    <div id="toast" class="bg-green-600 text-white px-8 py-4 rounded-2xl font-black shadow-2xl uppercase text-[10px] tracking-widest border border-green-400">✅ Hodômetro Atualizado!</div>
 
     <div class="w-full max-w-md">
         <div class="text-center mb-6">
@@ -123,7 +123,12 @@
             termo = termo.toLowerCase();
             if (tBusca === 'usuarios') { 
                 usuarios.filter(u => u.nome.toLowerCase().includes(termo)).forEach(u => {
-                    l.innerHTML += `<div class="list-item" onclick="sel('${u.nome}', '${u.nome}')">${u.nome}</div>`;
+                    // MUDANÇA ESTÉTICA AQUI: Exibe Nome (RE)
+                    const identificacao = `${u.nome} (${u.cargo || 'S/RE'})`;
+                    l.innerHTML += `<div class="list-item" onclick="sel('${identificacao}', '${identificacao}')">
+                        <span class="font-bold uppercase">${u.nome}</span> 
+                        <span class="text-xs text-slate-500 ml-1">(${u.cargo || 'S/RE'})</span>
+                    </div>`;
                 }); 
             } else { 
                 viaturas.filter(v => v.prefixo.toLowerCase().includes(termo) || v.placa.toLowerCase().includes(termo)).forEach(v => {
@@ -158,7 +163,6 @@
                 viaturas = await rv.json(); 
                 usuarios = await ru.json();
                 
-                // Se já tem uma VTR selecionada, mantém o KM atualizado no display
                 if (sVId) {
                     const v = viaturas.find(x => x.id == sVId);
                     if (v) document.getElementById('kmD').innerText = Number(v.km).toLocaleString();
@@ -177,14 +181,12 @@
             if(nKM < v.km) return alert("ERRO: O novo KM não pode ser menor que o atual!");
             if(estaB && !mot) return alert("Informe o motivo da baixa!");
 
-            // Enviamos os dados para o servidor
-            // O servidor cuidará de buscar o SETOR correto para o relatório
             const payload = {
                 km: nKM,
                 ultimo_usuario: sUName,
                 status: estaB ? 'Baixada' : v.status,
                 motivo: estaB ? mot : (v.status === 'Baixada' ? v.motivo : ''),
-                setor: v.setor // Enviando o setor para garantir o relatório individual
+                setor: v.setor
             };
 
             const res = await fetch(`/api/viaturas/${sVId}`, { 
