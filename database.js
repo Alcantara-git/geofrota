@@ -9,11 +9,11 @@ const pool = new Pool({
 
 async function inicializarBanco() {
     try {
-        // Garante as colunas da VTR
+        // Garante as colunas de Motivo e Setor
         await pool.query(`ALTER TABLE viaturas ADD COLUMN IF NOT EXISTS motivo TEXT DEFAULT '';`);
         await pool.query(`ALTER TABLE viaturas ADD COLUMN IF NOT EXISTS setor TEXT DEFAULT 'CTT';`);
         
-        // Garante a tabela de Histórico com suporte a Fuso Horário (TIMESTAMPTZ)
+        // Tabela de Histórico com suporte a Fuso Horário e Setor
         await pool.query(`
             CREATE TABLE IF NOT EXISTS historico (
                 id SERIAL PRIMARY KEY,
@@ -23,7 +23,7 @@ async function inicializarBanco() {
                 status TEXT,
                 motivo TEXT,
                 usuario TEXT,
-                setor TEXT,
+                setor TEXT DEFAULT 'CTT',
                 data_hora TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             );
         `);
@@ -32,9 +32,9 @@ async function inicializarBanco() {
         await pool.query(`CREATE TABLE IF NOT EXISTS configuracoes (chave TEXT PRIMARY KEY, valor TEXT);`);
         await pool.query(`INSERT INTO configuracoes (chave, valor) VALUES ('ultimo_acesso_relatorio', CURRENT_TIMESTAMP::text) ON CONFLICT DO NOTHING;`);
 
-        console.log("✅ Banco de Dados GEOFROTA: Sincronizado e Protegido.");
+        console.log("✅ Banco de Dados GEOFROTA: Pronto.");
     } catch (err) {
-        console.error("Erro na inicialização do banco:", err);
+        console.log("Erro na inicialização:", err);
     }
 }
 

@@ -11,199 +11,60 @@
         .custom-select { background-color: #0f172a; border: 1px solid #334155; padding: 1rem; border-radius: 1rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
         .list-item { padding: 1rem; border-bottom: 1px solid #1e293b; cursor: pointer; transition: 0.2s; }
         .list-item:hover { background-color: #1e293b; color: #3b82f6; }
-        
-        /* Toast Fixado Embaixo */
         #toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); transition: 0.5s ease; z-index: 9999; }
         #toast.show { bottom: 30px; }
     </style>
 </head>
 <body class="p-4">
-    <!-- Aviso de Sucesso -->
     <div id="toast" class="bg-green-600 text-white px-8 py-4 rounded-2xl font-black shadow-2xl uppercase text-[10px] tracking-widest border border-green-400">✅ Hodômetro Atualizado!</div>
-
     <div class="w-full max-w-md">
-        <div class="text-center mb-6">
-            <h1 class="text-3xl font-black text-blue-500 uppercase tracking-tighter italic">Geo<span class="text-white">Frota</span></h1>
-            <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-1">Lançamento de Quilometragem</p>
-        </div>
-
+        <div class="text-center mb-6"><h1 class="text-3xl font-black text-blue-500 uppercase tracking-tighter italic">Geo<span class="text-white">Frota</span></h1><p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-1">Lançamento de Quilometragem</p></div>
         <div class="bg-slate-800 p-6 rounded-[2.5rem] shadow-2xl border border-slate-700">
             <form id="formKM" class="space-y-5">
-                <!-- Selecionar Responsável -->
-                <div>
-                    <label class="text-[10px] font-black text-slate-500 ml-1 uppercase">Responsável</label>
-                    <div onclick="abrirBusca('usuarios')" class="custom-select">
-                        <span id="labelU">-- Selecione seu Nome --</span>
-                        <i class="fas fa-chevron-down text-xs text-slate-500"></i>
-                    </div>
-                </div>
-
-                <!-- Selecionar Viatura -->
-                <div>
-                    <label class="text-[10px] font-black text-slate-500 ml-1 uppercase">Viatura</label>
-                    <div onclick="abrirBusca('viaturas')" class="custom-select">
-                        <span id="labelV">-- Selecione a VTR --</span>
-                        <i class="fas fa-chevron-down text-xs text-slate-500"></i>
-                    </div>
-                </div>
-
-                <!-- Painel de Baixa Oculto -->
-                <div id="pBaixa" class="hidden bg-red-900/10 border border-red-900/30 p-4 rounded-2xl">
-                    <label class="text-[10px] font-black text-red-500 ml-1 uppercase">Relatar Problema</label>
-                    <textarea id="motivo" placeholder="Descreva o defeito aqui..." class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-white text-sm outline-none h-20 mt-2 focus:ring-1 ring-red-500"></textarea>
-                </div>
-
-                <!-- Exibição do KM Atual -->
-                <div id="info" class="hidden bg-slate-950 p-4 rounded-2xl text-center border border-slate-800">
-                    <p class="text-[10px] text-slate-500 uppercase font-black">KM ATUAL REGISTRADO</p>
-                    <p id="kmD" class="text-3xl font-mono font-bold text-blue-400">0</p>
-                </div>
-
-                <!-- Campo Novo KM -->
-                <div>
-                    <label class="text-[10px] font-black text-slate-500 ml-1 uppercase">Novo Hodômetro (Leitura Atual)</label>
-                    <input type="number" id="nKM" required placeholder="000000" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-3xl text-center font-mono text-white outline-none focus:ring-2 ring-blue-600 transition">
-                </div>
-
-                <!-- Botões de Ação -->
-                <div class="grid grid-cols-2 gap-3">
-                    <button type="button" id="btnBaixa" onclick="toggleB()" class="bg-slate-700 p-4 rounded-2xl font-black text-[10px] uppercase transition hover:bg-slate-600">❌ Baixar VTR</button>
-                    <button type="submit" class="bg-blue-600 p-4 rounded-2xl font-black text-[10px] uppercase hover:bg-blue-500 shadow-lg shadow-blue-900/20 active:scale-95">✅ Atualizar KM</button>
-                </div>
+                <div><label class="text-[10px] font-black text-slate-500 ml-1 uppercase">Responsável</label><div onclick="abrirBusca('usuarios')" class="custom-select"><span id="labelU">-- Selecione seu Nome --</span><i class="fas fa-chevron-down text-xs"></i></div></div>
+                <div><label class="text-[10px] font-black text-slate-500 ml-1 uppercase">Viatura</label><div onclick="abrirBusca('viaturas')" class="custom-select"><span id="labelV">-- Selecione a VTR --</span><i class="fas fa-chevron-down text-xs"></i></div></div>
+                <div id="pBaixa" class="hidden bg-red-900/10 border border-red-900/30 p-4 rounded-2xl"><textarea id="motivo" placeholder="Descreva o defeito aqui..." class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-white text-sm outline-none h-20"></textarea></div>
+                <div id="info" class="hidden bg-slate-950 p-4 rounded-2xl text-center border border-slate-800"><p class="text-[10px] text-slate-500 uppercase font-black">KM ATUAL REGISTRADO</p><p id="kmD" class="text-3xl font-mono font-bold text-blue-400">0</p></div>
+                <div><label class="text-[10px] font-black text-slate-500 ml-1 uppercase">Novo Hodômetro</label><input type="number" id="nKM" required class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-3xl text-center font-mono text-white outline-none focus:ring-2 ring-blue-600 transition"></div>
+                <div class="grid grid-cols-2 gap-3"><button type="button" id="btnBaixa" onclick="toggleB()" class="bg-slate-700 p-4 rounded-2xl font-black text-[10px] uppercase transition">❌ Baixar VTR</button><button type="submit" class="bg-blue-600 p-4 rounded-2xl font-black text-[10px] uppercase hover:bg-blue-500 shadow-lg">✅ Atualizar KM</button></div>
             </form>
         </div>
         <a href="index.html" class="block text-center mt-8 text-slate-600 uppercase text-[10px] font-black hover:text-white transition tracking-widest italic decoration-blue-500 underline decoration-2 underline-offset-4">Acesso Gestão</a>
     </div>
-
-    <!-- Interface de Busca (Overlay) -->
     <div id="mBusca" class="hidden fixed inset-0 z-[100] bg-slate-950/98 backdrop-blur-md p-4 flex flex-col">
-        <div class="flex justify-between items-center mb-4">
-            <h2 id="mTit" class="text-blue-400 font-black uppercase text-sm tracking-widest">Pesquisar</h2>
-            <button onclick="fecharB()" class="text-white text-3xl">&times;</button>
-        </div>
-        <input type="text" id="iBusca" oninput="renderLista(this.value)" placeholder="Digite para filtrar..." class="w-full bg-slate-800 border border-blue-500 p-4 rounded-2xl text-xl outline-none font-bold text-white mb-4 shadow-2xl">
-        <div id="lRes" class="flex-1 overflow-y-auto rounded-2xl bg-slate-900/50 border border-slate-800"></div>
+        <div class="flex justify-between items-center mb-4"><h2 id="mTit" class="text-blue-400 font-black uppercase text-sm">Pesquisar</h2><button onclick="fecharB()" class="text-white text-2xl">&times;</button></div>
+        <input type="text" id="iBusca" oninput="renderLista(this.value)" placeholder="Digite para filtrar..." class="w-full bg-slate-800 border border-blue-500 p-4 rounded-2xl text-xl outline-none font-bold text-white mb-4">
+        <div id="lRes" class="flex-1 overflow-y-auto rounded-2xl bg-slate-900/50"></div>
     </div>
-
     <script>
-        let viaturas = [], usuarios = [], estaB = false, tBusca = '', sVId = null, sUName = null;
-
-        function showToast() { 
-            const t = document.getElementById('toast'); 
-            t.classList.add('show'); 
-            setTimeout(() => { 
-                t.classList.remove('show'); 
-                setTimeout(() => location.reload(), 300); 
-            }, 3000); 
-        }
-
-        function toggleB() { 
-            estaB = !estaB; 
-            document.getElementById('pBaixa').classList.toggle('hidden', !estaB); 
-            const btn = document.getElementById('btnBaixa'); 
-            btn.innerText = estaB ? "🚩 CANCELAR" : "❌ BAIXAR VTR"; 
-            btn.classList.toggle('bg-red-600', estaB); 
-            if(!estaB) document.getElementById('motivo').value = ''; 
-        }
-
-        function abrirBusca(t) { 
-            tBusca = t; 
-            document.getElementById('mTit').innerText = t === 'usuarios' ? 'Selecionar Responsável' : 'Selecionar Viatura'; 
-            document.getElementById('iBusca').value = ''; 
-            document.getElementById('mBusca').classList.remove('hidden'); 
-            document.getElementById('iBusca').focus(); 
-            renderLista(''); 
-        }
-
+        let viaturas = [], usuarios = [], estaB = false, tBusca = '', sV = null, sU = null;
+        function showToast() { const t = document.getElementById('toast'); t.classList.add('show'); setTimeout(() => { t.classList.remove('show'); setTimeout(() => location.reload(), 200); }, 2500); }
+        function toggleB() { estaB = !estaB; document.getElementById('pBaixa').classList.toggle('hidden', !estaB); const btn = document.getElementById('btnBaixa'); btn.innerText = estaB ? "🚩 CANCELAR" : "❌ BAIXAR VTR"; btn.classList.toggle('bg-red-600', estaB); if(!estaB) document.getElementById('motivo').value = ''; }
+        function abrirBusca(t) { tBusca = t; document.getElementById('mTit').innerText = t === 'usuarios' ? 'Selecionar Responsável' : 'Selecionar Viatura'; document.getElementById('iBusca').value = ''; document.getElementById('mBusca').classList.remove('hidden'); document.getElementById('iBusca').focus(); renderLista(''); }
         function fecharB() { document.getElementById('mBusca').classList.add('hidden'); }
-
         function renderLista(termo) {
-            const l = document.getElementById('lRes'); 
-            l.innerHTML = ''; 
-            termo = termo.toLowerCase();
-            if (tBusca === 'usuarios') { 
-                usuarios.filter(u => u.nome.toLowerCase().includes(termo)).forEach(u => {
-                    // MUDANÇA ESTÉTICA AQUI: Exibe Nome (RE)
-                    const identificacao = `${u.nome} (${u.cargo || 'S/RE'})`;
-                    l.innerHTML += `<div class="list-item" onclick="sel('${identificacao}', '${identificacao}')">
-                        <span class="font-bold uppercase">${u.nome}</span> 
-                        <span class="text-xs text-slate-500 ml-1">(${u.cargo || 'S/RE'})</span>
-                    </div>`;
-                }); 
-            } else { 
-                viaturas.filter(v => v.prefixo.toLowerCase().includes(termo) || v.placa.toLowerCase().includes(termo)).forEach(v => {
-                    l.innerHTML += `<div class="list-item" onclick="sel(${v.id}, '${v.prefixo} (${v.placa})')"><div class="font-bold">${v.prefixo}</div><div class="text-xs text-slate-500">${v.placa} - ${v.modelo}</div></div>`;
-                }); 
-            }
+            const l = document.getElementById('lRes'); l.innerHTML = ''; termo = termo.toLowerCase();
+            if (tBusca === 'usuarios') { usuarios.filter(u => u.nome.toLowerCase().includes(termo)).forEach(u => l.innerHTML += `<div class="list-item" onclick="sel('${u.nome} (${u.cargo})', '${u.nome} (${u.cargo})')"><span class="font-bold uppercase">${u.nome}</span> <span class="text-xs text-slate-500 ml-1">(${u.cargo})</span></div>`); }
+            else { viaturas.filter(v => v.prefixo.toLowerCase().includes(termo) || v.placa.toLowerCase().includes(termo)).forEach(v => l.innerHTML += `<div class="list-item" onclick="sel(${v.id}, '${v.prefixo} (${v.placa})')"><div class="font-bold">${v.prefixo}</div><div class="text-xs text-slate-500">${v.placa} - ${v.modelo}</div></div>`); }
         }
-
         function sel(id, display) {
-            if (tBusca === 'usuarios') { 
-                sUName = id; 
-                document.getElementById('labelU').innerText = display; 
-                document.getElementById('labelU').classList.add('text-blue-400'); 
-            } else { 
-                sVId = id; 
-                document.getElementById('labelV').innerText = display; 
-                document.getElementById('labelV').classList.add('text-blue-400'); 
-                const v = viaturas.find(x => x.id == id); 
-                document.getElementById('info').classList.remove('hidden'); 
-                document.getElementById('kmD').innerText = Number(v.km).toLocaleString(); 
-                document.getElementById('nKM').value = v.km; 
-            }
+            if (tBusca === 'usuarios') { sU = id; document.getElementById('labelU').innerText = display; document.getElementById('labelU').classList.add('text-blue-400'); }
+            else { sV = id; document.getElementById('labelV').innerText = display; document.getElementById('labelV').classList.add('text-blue-400'); const v = viaturas.find(x => x.id == id); document.getElementById('info').classList.remove('hidden'); document.getElementById('kmD').innerText = Number(v.km).toLocaleString(); document.getElementById('nKM').value = v.km; }
             fecharB();
         }
-
         async function sincronizar() {
-            try {
-                const [rv, ru] = await Promise.all([
-                    fetch('/api/viaturas?t='+Date.now()), 
-                    fetch('/api/usuarios?t='+Date.now())
-                ]);
-                viaturas = await rv.json(); 
-                usuarios = await ru.json();
-                
-                if (sVId) {
-                    const v = viaturas.find(x => x.id == sVId);
-                    if (v) document.getElementById('kmD').innerText = Number(v.km).toLocaleString();
-                }
-            } catch (e) { console.error("Erro sincronização", e); }
+            const [rv, ru] = await Promise.all([fetch('/api/viaturas?t='+Date.now()), fetch('/api/usuarios?t='+Date.now())]);
+            viaturas = await rv.json(); usuarios = await ru.json();
+            if (sV) { const v = viaturas.find(x => x.id == sV); if (v) document.getElementById('kmD').innerText = Number(v.km).toLocaleString(); }
         }
-
         document.getElementById('formKM').onsubmit = async (e) => {
-            e.preventDefault(); 
-            if(!sUName || !sVId) return alert("Selecione o Responsável e a Viatura!");
-            
-            const nKM = parseInt(document.getElementById('nKM').value);
-            const mot = document.getElementById('motivo').value;
-            const v = viaturas.find(x => x.id == sVId);
-            
-            if(nKM < v.km) return alert("ERRO: O novo KM não pode ser menor que o atual!");
-            if(estaB && !mot) return alert("Informe o motivo da baixa!");
-
-            const payload = {
-                km: nKM,
-                ultimo_usuario: sUName,
-                status: estaB ? 'Baixada' : v.status,
-                motivo: estaB ? mot : (v.status === 'Baixada' ? v.motivo : ''),
-                setor: v.setor
-            };
-
-            const res = await fetch(`/api/viaturas/${sVId}`, { 
-                method: 'PUT', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify(payload) 
-            });
-
-            if (res.ok) {
-                showToast();
-            } else {
-                alert("Erro ao enviar dados.");
-            }
+            e.preventDefault(); if(!sU || !sV) return;
+            const nKM = parseInt(document.getElementById('nKM').value), mot = document.getElementById('motivo').value, v = viaturas.find(x => x.id == sV);
+            if(nKM < v.km) return alert("ERRO: KM menor!"); if(estaB && !mot) return alert("Informe o motivo!");
+            await fetch(`/api/viaturas/${sV}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({...v, km: nKM, ultimo_usuario: sU, status: estaB ? 'Baixada' : v.status, motivo: estaB ? mot : (v.status === 'Baixada' ? v.motivo : ''), setor: v.setor}) });
+            showToast();
         };
-
-        setInterval(sincronizar, 5000); 
-        sincronizar();
+        setInterval(sincronizar, 5000); sincronizar();
     </script>
 </body>
 </html>
