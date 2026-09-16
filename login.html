@@ -4,18 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GEOFROTA | Portal de Acesso</title>
-    <!-- Tailwind CSS para o visual moderno que você aprovou -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* Cor base do site */
         body { background-color: #0f172a; color: #f8fafc; font-family: sans-serif; }
         
-        /* Fundo em degradê artístico que você gostou */
         .bg-portal { 
             background: radial-gradient(circle at top, #1e293b 0%, #0f172a 100%); 
         }
         
-        /* Cards com bordas arredondadas e efeito de levitação */
         .card-access { 
             background: #1e293b; 
             border: 1px solid #334155; 
@@ -29,23 +27,24 @@
             box-shadow: 0 20px 40px rgba(0,0,0,0.6); 
         }
 
-        /* AJUSTE DO BRASÃO: Preenche o vazio e funde a imagem com o azul do site */
+        /* TÉCNICA PARA O BRASÃO: Mistura o fundo da imagem com o do site */
         .brasao-container {
-            width: 220px;
-            height: 220px;
+            width: 200px;
+            height: 200px;
             margin: 0 auto 1.5rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            /* Se o fundo da imagem for preto, o comando abaixo limpa o 'vazio' */
-            mix-blend-mode: screen; 
-            filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.4));
+            background-color: #0f172a; /* Preenche o vazio com o azul do site */
+            border-radius: 50%; /* Opcional: deixa a área de toque circular */
         }
 
         .brasao-img { 
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
+            width: 100%;
+            height: auto;
+            /* Se o fundo da sua imagem for preto, o comando abaixo deixa transparente */
+            mix-blend-mode: screen; 
+            filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.3));
         }
 
         .fade-in { animation: fadeIn 0.4s ease-out forwards; }
@@ -55,15 +54,13 @@
 <body class="bg-portal min-h-screen flex items-center justify-center p-4">
 
     <div class="w-full max-w-4xl text-center">
-        
-        <!-- BRASÃO INTEGRADO -->
+        <!-- Container do Brasão Corrigido -->
         <div class="brasao-container">
             <img src="https://raw.githubusercontent.com/Alcantara-git/geofrota/main/BRASAO%201BPTRAN.jpg" 
                  alt="1° BPTran" 
                  class="brasao-img">
         </div>
         
-        <!-- Títulos com tipografia forte -->
         <h1 class="text-4xl md:text-5xl font-black tracking-tighter uppercase mb-2 italic">
             Geo<span class="text-blue-500">Frota</span>
         </h1>
@@ -71,56 +68,48 @@
             Sistema de Comando - 1° BPTran
         </p>
 
-        <!-- Grid de acesso com os dois cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 px-4 md:px-0">
             
-            <!-- CARD 1: OPERACIONAL -->
+            <!-- CARD OPERACIONAL -->
             <div onclick="abrirLogin('oper')" class="card-access p-10 rounded-[2.5rem] flex flex-col items-center">
                 <div class="bg-blue-500/10 p-6 rounded-full mb-6 text-blue-500">
                     <i class="fas fa-mobile-alt text-4xl"></i>
                 </div>
                 <h2 class="text-2xl font-black uppercase italic tracking-tighter">Operacional</h2>
-                <p class="text-slate-500 text-[10px] mt-2 uppercase font-bold tracking-widest">Atualização de KM</p>
                 
                 <div id="form-oper" class="hidden mt-8 w-full fade-in">
                     <input type="password" id="senha-oper" 
-                           placeholder="Senha da Unidade" 
+                           placeholder="Senha Unidade" 
                            class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-center text-white outline-none focus:ring-2 ring-blue-500 mb-4 font-bold">
                     <button onclick="fazerLogin('oper')" 
-                            class="w-full bg-blue-600 p-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg">
+                            class="w-full bg-blue-600 p-4 rounded-2xl font-black uppercase text-xs tracking-widest">
                         Entrar
                     </button>
                 </div>
             </div>
 
-            <!-- CARD 2: ADMINISTRATIVO -->
+            <!-- CARD ADMINISTRATIVO -->
             <div onclick="abrirLogin('admin')" class="card-access p-10 rounded-[2.5rem] flex flex-col items-center">
                 <div class="bg-amber-500/10 p-6 rounded-full mb-6 text-amber-500">
                     <i class="fas fa-user-shield text-4xl"></i>
                 </div>
                 <h2 class="text-2xl font-black uppercase italic tracking-tighter">Administrativo</h2>
-                <p class="text-slate-500 text-[10px] mt-2 uppercase font-bold tracking-widest">Painel Gestor</p>
 
                 <div id="form-admin" class="hidden mt-8 w-full fade-in">
                     <input type="password" id="senha-admin" 
-                           placeholder="Senha Administrativa" 
+                           placeholder="Senha Gestor" 
                            class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-center text-white outline-none focus:ring-2 ring-amber-500 mb-4 font-bold">
                     <button onclick="fazerLogin('admin')" 
-                            class="w-full bg-amber-600 p-4 rounded-2xl font-black uppercase text-xs text-white shadow-lg">
+                            class="w-full bg-amber-600 p-4 rounded-2xl font-black uppercase text-xs text-white">
                         Acessar Painel
                     </button>
                 </div>
             </div>
 
         </div>
-
-        <p class="mt-16 text-slate-600 text-[9px] font-bold uppercase tracking-[0.3em]">
-            Uso Restrito - PMMG
-        </p>
     </div>
 
     <script>
-        // Lógica de interação da tela
         function abrirLogin(tipo) {
             document.getElementById('form-oper').classList.add('hidden');
             document.getElementById('form-admin').classList.add('hidden');
@@ -130,23 +119,16 @@
 
         async function fazerLogin(tipo) {
             const senha = document.getElementById('senha-' + tipo).value;
-            if(!senha) return;
-
             const res = await fetch('/api/login', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ senha, tipo })
             });
             const data = await res.json();
-            if (res.ok) {
-                window.location.href = data.redirect;
-            } else {
-                alert("⚠️ Senha Incorreta!");
-                document.getElementById('senha-' + tipo).value = '';
-            }
+            if (res.ok) window.location.href = data.redirect;
+            else alert("Senha Incorreta!");
         }
 
-        // Impede fechar card ao clicar no input e permite 'Enter'
         document.querySelectorAll('input').forEach(i => {
             i.onclick = (e) => e.stopPropagation();
             i.onkeypress = (e) => { if(e.key === 'Enter') fazerLogin(i.id.split('-')[1]); };
