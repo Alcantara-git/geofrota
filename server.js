@@ -10,21 +10,15 @@ app.use(express.static(path.join(__dirname)));
 const PWD_ADMIN = "administrador1bptran";
 const PWD_OPER = "1bptran";
 
-// TRAVA RÍGIDA: Operador NÃO entra no Admin
 const protegerAdmin = (req, res, next) => {
-    if (req.cookies.auth_admin === 'true') {
-        next();
-    } else {
-        res.status(401).json({ error: "Acesso restrito ao Gestor" });
-    }
+    if (req.cookies.auth_admin === 'true') next();
+    else res.status(401).json({ error: "Acesso restrito ao Gestor" });
 };
 
 const protegerOperacional = (req, res, next) => {
-    if (req.cookies.auth_oper === 'true' || req.cookies.auth_admin === 'true') {
-        next();
-    } else {
-        res.status(401).json({ error: "Acesso negado" });
-    }
+    // Permitir se tiver cookie de OPERADOR ou cookie de ADMIN
+    if (req.cookies.auth_oper === 'true' || req.cookies.auth_admin === 'true') next();
+    else res.status(401).json({ error: "Acesso negado" });
 };
 
 app.post('/api/login', (req, res) => {
@@ -45,7 +39,11 @@ app.post('/api/logout', (req, res) => {
     res.json({ success: true });
 });
 
-// APIs PROTEGIDAS
+function definirStatus(km, revisao, statusEnviado) {
+    if (statusEnviado === 'Baixada') return 'Baixada';
+    return (parseInt(km) >= parseInt(revisao)) ? 'Troca de Óleo' : 'Operante';
+}
+
 app.get('/api/relatorio-ultimo', protegerAdmin, async (req, res) => {
     try {
         const { setor } = req.query;
@@ -63,7 +61,6 @@ app.get('/api/relatorio-ultimo', protegerAdmin, async (req, res) => {
 app.get('/api/relatorio-periodo', protegerAdmin, async (req, res) => {
     try {
         const { inicio, fim, setor } = req.query;
-        // Correção de filtro de data para Postgres
         let sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora FROM historico WHERE (data_hora AT TIME ZONE 'America/Sao_Paulo')::date >= $1 AND (data_hora AT TIME ZONE 'America/Sao_Paulo')::date <= $2`;
         let params = [inicio, fim];
         if (setor && setor !== 'Todos') { sql += ` AND setor = $3`; params.push(setor); }
@@ -79,19 +76,29 @@ app.get('/api/viaturas', protegerOperacional, async (req, res) => {
 
 app.put('/api/viaturas/:id', protegerOperacional, async (req, res) => {
     try {
-        let { km, status, ultimo_usuario, motivo } = req.body;
-        const vtrCheck = await pool.query("SELECT prefixo, km, setor, km_revisao FROM viaturas WHERE id = $1", [req.params.id]);
-        const v = vtrCheck.rows[0];
-        const statusFinal = (status === 'Baixada') ? 'Baixada' : (parseInt(km) >= parseInt(v.km_revisao) ? 'Troca de Óleo' : 'Operante');
-        await pool.query('UPDATE viaturas SET km=$1, status=$2, ultimo_usuario=$3, motivo=$4 WHERE id=$5', [km, statusFinal, ultimo_usuario, (statusFinal === 'Baixada' ? motivo : ''), req.params.id]);
-        await pool.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor) VALUES ($1,$2,$3,$4,$5,$6,$7)', [v.prefixo, v.km, km, statusFinal, (statusFinal === 'Baixada' ? motivo : ''), ultimo_usuario, v.setor]);
+        let { km, km_revisao, status, ultimo_usuario, motivo, setor } = req.body;
+        const vtrOld = await pool.query("SELECT prefixo, km, setor, km_revisao FROM viaturas WHERE id = $1", [req.params.id]);
+        const d = vtrOld.rows[0];
+        
+        const kmNovo = km || d.km;
+        const revFinal = km_revisao || d.km_revisao;
+        const setFinal = setor || d.setor;
+        const stFinal = (status === 'Baixada') ? 'Baixada' : (parseInt(kmNovo) >= parseInt(revFinal) ? 'Troca de Óleo' : 'Operante');
+        
+        await pool.query('UPDATE viaturas SET km=$1, km_revisao=$2, status=$3, ultimo_usuario=$4, motivo=$5, setor=$6 WHERE id=$7', 
+            [kmNovo, revFinal, stFinal, ultimo_usuario, (stFinal === 'Baixada' ? motivo : ''), setFinal, req.params.id]);
+        
+        await pool.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor) VALUES ($1,$2,$3,$4,$5,$6,$7)', 
+            [d.prefixo, d.km, kmNovo, stFinal, (stFinal === 'Baixada' ? motivo : ''), ultimo_usuario, setFinal]);
+            
         res.json({ success: true });
     } catch (e) { res.status(500).json(e); }
 });
 
 app.post('/api/viaturas', protegerAdmin, async (req, res) => {
     let { prefixo, placa, modelo, km, km_revisao, status, setor } = req.body;
-    await pool.query('INSERT INTO viaturas (prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario, motivo, setor) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [prefixo, placa, modelo, km, km_revisao, status, 'Sistema', '', setor]);
+    const st = definirStatus(km, km_revisao, status);
+    await pool.query('INSERT INTO viaturas (prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario, motivo, setor) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [prefixo, placa, modelo, km, km_revisao, st, 'Sistema', '', setor]);
     res.json({ success: true });
 });
 

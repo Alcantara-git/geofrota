@@ -62,7 +62,7 @@
         document.getElementById('formKM').onsubmit = async (e) => {
             e.preventDefault(); if(!sU || !sV) return;
             const nKM = parseInt(document.getElementById('nKM').value), mot = document.getElementById('motivo').value, v = viaturas.find(x => x.id == sV);
-            if(nKM < v.km) return alert("ERRO: KM menor!"); if(estaB && !mot) return alert("Motivo!");
+            if(nKM < v.km) return alert("ERRO: KM menor que o atual!"); if(estaB && !mot) return alert("Motivo!");
             await fetch(`/api/viaturas/${sV}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({...v, km: nKM, ultimo_usuario: sU, status: estaB ? 'Baixada' : v.status, motivo: estaB ? mot : (v.status === 'Baixada' ? v.motivo : ''), setor: v.setor}) });
             showToast();
         };
