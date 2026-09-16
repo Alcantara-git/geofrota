@@ -1,42 +1,18 @@
 const { Pool } = require('pg');
-
 const linkBanco = process.env.DATABASE_URL || 'postgresql://postgres:1BPTRANPOLCIAMILITAR@db.cggyjbdpztsnhtrroiru.supabase.co:5432/postgres';
-
 const pool = new Pool({
     connectionString: linkBanco.trim().replace(/['"]/g, ''),
     ssl: { rejectUnauthorized: false }
 });
-
 async function inicializarBanco() {
     try {
-        // Garante as colunas de Motivo e Setor
         await pool.query(`ALTER TABLE viaturas ADD COLUMN IF NOT EXISTS motivo TEXT DEFAULT '';`);
         await pool.query(`ALTER TABLE viaturas ADD COLUMN IF NOT EXISTS setor TEXT DEFAULT 'CTT';`);
-        
-        // Tabela de Histórico com suporte a Fuso Horário e Setor
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS historico (
-                id SERIAL PRIMARY KEY,
-                prefixo TEXT,
-                km_anterior INTEGER,
-                km_novo INTEGER,
-                status TEXT,
-                motivo TEXT,
-                usuario TEXT,
-                setor TEXT DEFAULT 'CTT',
-                data_hora TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-            );
-        `);
-
-        // Tabela de Configurações para o Relatório
+        await pool.query(`CREATE TABLE IF NOT EXISTS historico (id SERIAL PRIMARY KEY, prefixo TEXT, km_anterior INTEGER, km_novo INTEGER, status TEXT, motivo TEXT, usuario TEXT, setor TEXT, data_hora TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP);`);
         await pool.query(`CREATE TABLE IF NOT EXISTS configuracoes (chave TEXT PRIMARY KEY, valor TEXT);`);
         await pool.query(`INSERT INTO configuracoes (chave, valor) VALUES ('ultimo_acesso_relatorio', CURRENT_TIMESTAMP::text) ON CONFLICT DO NOTHING;`);
-
-        console.log("✅ Banco de Dados GEOFROTA: Pronto.");
-    } catch (err) {
-        console.log("Erro na inicialização:", err);
-    }
+        console.log("✅ Banco de Dados Pronto.");
+    } catch (err) { console.log("Erro DB:", err); }
 }
-
 inicializarBanco();
 module.exports = pool;
