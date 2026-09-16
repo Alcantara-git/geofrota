@@ -3,55 +3,166 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GEOFROTA | Acesso</title>
+    <title>GEOFROTA | Portal de Acesso</title>
+    <!-- Tailwind CSS para design moderno -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome para ícones -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { background-color: #0f172a; color: #f8fafc; font-family: sans-serif; }
         .bg-portal { background: radial-gradient(circle at top, #1e293b 0%, #0f172a 100%); }
-        .card-access { background: #1e293b; border: 1px solid #334155; transition: 0.4s; cursor: pointer; }
-        .card-access:hover { border-color: #3b82f6; transform: translateY(-5px); }
-        .brasao { width: 150px; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5)); }
+        
+        /* Estilo dos Cards de Acesso */
+        .card-access { 
+            background: #1e293b; 
+            border: 1px solid #334155; 
+            transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+            cursor: pointer; 
+            position: relative;
+            overflow: hidden;
+        }
+        .card-access:hover { 
+            border-color: #3b82f6; 
+            transform: translateY(-8px); 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6); 
+        }
+
+        /* Ajuste do Brasão */
+        .brasao { 
+            width: 180px; 
+            height: auto;
+            filter: drop-shadow(0 0 20px rgba(0,0,0,0.6)); 
+            margin-bottom: 2rem;
+        }
+
+        /* Animação suave para aparecer os campos de senha */
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Estilização dos Inputs */
+        input::placeholder { color: #64748b; font-weight: normal; }
     </style>
 </head>
 <body class="bg-portal min-h-screen flex items-center justify-center p-4">
+
     <div class="w-full max-w-4xl text-center">
-        <!-- LINK RAW DO GITHUB PARA A IMAGEM APARECER -->
-        <img src="https://github.com/Alcantara-git/geofrota/blob/main/BRASAO%201BPTRAN.jpg" class="brasao mx-auto mb-6">
-        <h1 class="text-4xl font-black uppercase mb-12 italic">Geo<span class="text-blue-500">Frota</span></h1>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div onclick="abrirLogin('oper')" class="card-access p-10 rounded-[2.5rem]">
-                <i class="fas fa-mobile-alt text-4xl text-blue-500 mb-4"></i>
-                <h2 class="text-2xl font-black uppercase italic">Operacional</h2>
-                <div id="form-oper" class="hidden mt-6">
-                    <input type="password" id="senha-oper" placeholder="Senha Unidade" class="w-full bg-slate-900 p-4 rounded-2xl text-center text-white outline-none border border-slate-700 mb-4 font-bold">
-                    <button onclick="fazerLogin('oper')" class="w-full bg-blue-600 p-4 rounded-2xl font-bold uppercase">Entrar</button>
+        <!-- BRASÃO OFICIAL (Link Raw convertido do GitHub para funcionar no site) -->
+        <img src="https://raw.githubusercontent.com/Alcantara-git/geofrota/main/BRASAO%201BPTRAN.jpg" 
+             alt="1° BPTran" 
+             class="brasao mx-auto">
+        
+        <h1 class="text-4xl md:text-5xl font-black tracking-tighter uppercase mb-2 italic">
+            Geo<span class="text-blue-500">Frota</span>
+        </h1>
+        <p class="text-slate-500 text-xs md:text-sm font-bold uppercase tracking-[0.4em] mb-12">
+            Sistema de Comando e Controle - 1° BPTran
+        </p>
+
+        <!-- Grade com as duas opções de entrada -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 px-4 md:px-0">
+            
+            <!-- CARD OPERACIONAL -->
+            <div onclick="abrirLogin('oper')" class="card-access p-10 rounded-[2.5rem] flex flex-col items-center">
+                <div class="bg-blue-500/10 p-6 rounded-full mb-6 text-blue-500">
+                    <i class="fas fa-mobile-alt text-4xl"></i>
+                </div>
+                <h2 class="text-2xl font-black uppercase italic tracking-tighter">Operacional</h2>
+                <p class="text-slate-500 text-[10px] mt-2 font-bold uppercase tracking-widest">Lançamento de KM e Baixas</p>
+                
+                <!-- Formulário Oculto que aparece ao clicar -->
+                <div id="form-oper" class="hidden mt-8 w-full fade-in">
+                    <input type="password" id="senha-oper" 
+                           placeholder="Senha da Unidade" 
+                           class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-center text-white outline-none focus:ring-2 ring-blue-500 mb-4 font-bold text-lg">
+                    <button onclick="fazerLogin('oper')" 
+                            class="w-full bg-blue-600 hover:bg-blue-500 p-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg transition">
+                        Entrar Agora
+                    </button>
                 </div>
             </div>
-            <div onclick="abrirLogin('admin')" class="card-access p-10 rounded-[2.5rem]">
-                <i class="fas fa-user-shield text-4xl text-amber-500 mb-4"></i>
-                <h2 class="text-2xl font-black uppercase italic">Administrativo</h2>
-                <div id="form-admin" class="hidden mt-6">
-                    <input type="password" id="senha-admin" placeholder="Senha Gestor" class="w-full bg-slate-900 p-4 rounded-2xl text-center text-white outline-none border border-slate-700 mb-4 font-bold">
-                    <button onclick="fazerLogin('admin')" class="w-full bg-amber-600 p-4 rounded-2xl font-bold uppercase">Acessar</button>
+
+            <!-- CARD ADMINISTRATIVO -->
+            <div onclick="abrirLogin('admin')" class="card-access p-10 rounded-[2.5rem] flex flex-col items-center border-amber-500/20">
+                <div class="bg-amber-500/10 p-6 rounded-full mb-6 text-amber-500">
+                    <i class="fas fa-user-shield text-4xl"></i>
+                </div>
+                <h2 class="text-2xl font-black uppercase italic tracking-tighter">Administrativo</h2>
+                <p class="text-slate-500 text-[10px] mt-2 font-bold uppercase tracking-widest">Gestão, Usuários e Relatórios</p>
+
+                <!-- Formulário Oculto que aparece ao clicar -->
+                <div id="form-admin" class="hidden mt-8 w-full fade-in">
+                    <input type="password" id="senha-admin" 
+                           placeholder="Senha do Gestor" 
+                           class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-center text-white outline-none focus:ring-2 ring-amber-500 mb-4 font-bold text-lg">
+                    <button onclick="fazerLogin('admin')" 
+                            class="w-full bg-amber-600 hover:bg-amber-500 p-4 rounded-2xl font-black uppercase text-xs text-white tracking-widest shadow-lg transition">
+                        Acessar Painel
+                    </button>
                 </div>
             </div>
+
         </div>
+
+        <p class="mt-16 text-slate-600 text-[10px] font-bold uppercase tracking-widest">
+            Desenvolvido para uso exclusivo da PMMG - 1° BPTran
+        </p>
     </div>
+
     <script>
-        function abrirLogin(t) { 
-            document.getElementById('form-oper').classList.add('hidden'); 
-            document.getElementById('form-admin').classList.add('hidden'); 
-            document.getElementById('form-'+t).classList.remove('hidden'); 
-            document.getElementById('senha-'+t).focus();
+        // Função para mostrar os campos de senha
+        function abrirLogin(tipo) {
+            // Esconde os dois primeiro
+            document.getElementById('form-oper').classList.add('hidden');
+            document.getElementById('form-admin').classList.add('hidden');
+            
+            // Mostra apenas o selecionado
+            const form = document.getElementById('form-' + tipo);
+            form.classList.remove('hidden');
+            
+            // Foca automaticamente no campo de senha
+            document.getElementById('senha-' + tipo).focus();
         }
-        async function fazerLogin(t) {
-            const senha = document.getElementById('senha-'+t).value;
-            const res = await fetch('/api/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ senha, tipo: t }) });
-            const data = await res.json();
-            if (res.ok) window.location.href = data.redirect; else alert("Senha Incorreta!");
+
+        // Função de Login enviando o Tipo para o Servidor
+        async function fazerLogin(tipo) {
+            const senha = document.getElementById('senha-' + tipo).value;
+            
+            if(!senha) return alert("Por favor, digite a senha.");
+
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ senha, tipo })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    // O servidor envia o link (redirect) correto baseado na senha
+                    window.location.href = data.redirect;
+                } else {
+                    alert("⚠️ Senha Incorreta!");
+                    document.getElementById('senha-' + tipo).value = '';
+                }
+            } catch (error) {
+                alert("Erro ao conectar com o servidor.");
+            }
         }
-        document.querySelectorAll('input').forEach(i => i.onclick = (e) => e.stopPropagation());
+
+        // Importante: Impede que ao clicar no campo de texto o card feche (Stop Propagation)
+        document.querySelectorAll('input').forEach(input => {
+            input.onclick = (e) => e.stopPropagation();
+            
+            // Permite dar 'Enter' para logar
+            input.addEventListener("keypress", function(event) {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    const tipo = this.id.split('-')[1];
+                    fazerLogin(tipo);
+                }
+            });
+        });
     </script>
 </body>
 </html>
