@@ -5,18 +5,26 @@ const pool = require('./database');
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
+app.use(express.static(path.join(__dirname)));
 
 const PWD_ADMIN = "administrador1bptran";
 const PWD_OPER = "1bptran";
 
+// TRAVA RÍGIDA: Operador NÃO entra no Admin
 const protegerAdmin = (req, res, next) => {
-    if (req.cookies.auth_admin === 'true') next();
-    else res.status(401).json({ error: "Acesso Negado" });
+    if (req.cookies.auth_admin === 'true') {
+        next();
+    } else {
+        res.status(401).json({ error: "Acesso restrito ao Gestor" });
+    }
 };
 
 const protegerOperacional = (req, res, next) => {
-    if (req.cookies.auth_oper === 'true' || req.cookies.auth_admin === 'true') next();
-    else res.status(401).json({ error: "Acesso Negado" });
+    if (req.cookies.auth_oper === 'true' || req.cookies.auth_admin === 'true') {
+        next();
+    } else {
+        res.status(401).json({ error: "Acesso negado" });
+    }
 };
 
 app.post('/api/login', (req, res) => {
@@ -37,11 +45,7 @@ app.post('/api/logout', (req, res) => {
     res.json({ success: true });
 });
 
-app.get('/api/viaturas', protegerOperacional, async (req, res) => {
-    const result = await pool.query("SELECT * FROM viaturas ORDER BY setor ASC, prefixo ASC");
-    res.json(result.rows);
-});
-
+// APIs PROTEGIDAS
 app.get('/api/relatorio-ultimo', protegerAdmin, async (req, res) => {
     try {
         const { setor } = req.query;
@@ -56,14 +60,31 @@ app.get('/api/relatorio-ultimo', protegerAdmin, async (req, res) => {
     } catch (e) { res.status(500).json(e); }
 });
 
+app.get('/api/relatorio-periodo', protegerAdmin, async (req, res) => {
+    try {
+        const { inicio, fim, setor } = req.query;
+        // Correção de filtro de data para Postgres
+        let sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora FROM historico WHERE (data_hora AT TIME ZONE 'America/Sao_Paulo')::date >= $1 AND (data_hora AT TIME ZONE 'America/Sao_Paulo')::date <= $2`;
+        let params = [inicio, fim];
+        if (setor && setor !== 'Todos') { sql += ` AND setor = $3`; params.push(setor); }
+        const result = await pool.query(sql + ` ORDER BY data_hora DESC`, params);
+        res.json(result.rows);
+    } catch (e) { res.status(500).json(e); }
+});
+
+app.get('/api/viaturas', protegerOperacional, async (req, res) => {
+    const result = await pool.query("SELECT * FROM viaturas ORDER BY setor ASC, prefixo ASC");
+    res.json(result.rows);
+});
+
 app.put('/api/viaturas/:id', protegerOperacional, async (req, res) => {
     try {
         let { km, status, ultimo_usuario, motivo } = req.body;
-        const vtrOld = await pool.query("SELECT prefixo, km, setor, km_revisao FROM viaturas WHERE id = $1", [req.params.id]);
-        const d = vtrOld.rows[0];
-        const st = (status === 'Baixada') ? 'Baixada' : (parseInt(km) >= parseInt(d.km_revisao) ? 'Troca de Óleo' : 'Operante');
-        await pool.query('UPDATE viaturas SET km=$1, status=$2, ultimo_usuario=$3, motivo=$4 WHERE id=$5', [km, st, ultimo_usuario, (st === 'Baixada' ? motivo : ''), req.params.id]);
-        await pool.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor) VALUES ($1,$2,$3,$4,$5,$6,$7)', [d.prefixo, d.km, km, st, (st === 'Baixada' ? motivo : ''), ultimo_usuario, d.setor]);
+        const vtrCheck = await pool.query("SELECT prefixo, km, setor, km_revisao FROM viaturas WHERE id = $1", [req.params.id]);
+        const v = vtrCheck.rows[0];
+        const statusFinal = (status === 'Baixada') ? 'Baixada' : (parseInt(km) >= parseInt(v.km_revisao) ? 'Troca de Óleo' : 'Operante');
+        await pool.query('UPDATE viaturas SET km=$1, status=$2, ultimo_usuario=$3, motivo=$4 WHERE id=$5', [km, statusFinal, ultimo_usuario, (statusFinal === 'Baixada' ? motivo : ''), req.params.id]);
+        await pool.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor) VALUES ($1,$2,$3,$4,$5,$6,$7)', [v.prefixo, v.km, km, statusFinal, (statusFinal === 'Baixada' ? motivo : ''), ultimo_usuario, v.setor]);
         res.json({ success: true });
     } catch (e) { res.status(500).json(e); }
 });
@@ -79,6 +100,5 @@ app.get('/api/usuarios', protegerOperacional, async (req, res) => { const result
 app.post('/api/usuarios', protegerAdmin, async (req, res) => { await pool.query("INSERT INTO usuarios (nome, cargo) VALUES ($1, $2)", [req.body.nome, req.body.cargo]); res.json({ success: true }); });
 app.delete('/api/usuarios/:id', protegerAdmin, async (req, res) => { await pool.query("DELETE FROM usuarios WHERE id = $1", [req.params.id]); res.json({ success: true }); });
 
-app.use(express.static(path.join(__dirname)));
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`GEOFROTA ON: ${PORT}`));

@@ -16,35 +16,42 @@
 </head>
 <body class="bg-portal min-h-screen flex items-center justify-center p-4">
     <div class="w-full max-w-4xl text-center">
-        <img src="https://i.postimg.cc/mD8Zz0yM/brasao-1bptran.png" class="brasao mx-auto mb-6">
-        <h1 class="text-4xl font-black uppercase mb-12">Geo<span class="text-blue-500">Frota</span></h1>
+        <!-- LINK RAW DO GITHUB PARA A IMAGEM APARECER -->
+        <img src="https://raw.githubusercontent.com/Alcantara-git/geofrota/main/BRASAO%201BPTRAN.jpeg" class="brasao mx-auto mb-6">
+        <h1 class="text-4xl font-black uppercase mb-12 italic">Geo<span class="text-blue-500">Frota</span></h1>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div onclick="abrirLogin('oper')" class="card-access p-10 rounded-[2.5rem]">
                 <i class="fas fa-mobile-alt text-4xl text-blue-500 mb-4"></i>
-                <h2 class="text-2xl font-black uppercase">Operacional</h2>
+                <h2 class="text-2xl font-black uppercase italic">Operacional</h2>
                 <div id="form-oper" class="hidden mt-6">
-                    <input type="password" id="senha-oper" placeholder="Senha Unidade" class="w-full bg-slate-900 p-4 rounded-2xl text-center text-white outline-none border border-slate-700 mb-4">
+                    <input type="password" id="senha-oper" placeholder="Senha Unidade" class="w-full bg-slate-900 p-4 rounded-2xl text-center text-white outline-none border border-slate-700 mb-4 font-bold">
                     <button onclick="fazerLogin('oper')" class="w-full bg-blue-600 p-4 rounded-2xl font-bold uppercase">Entrar</button>
                 </div>
             </div>
             <div onclick="abrirLogin('admin')" class="card-access p-10 rounded-[2.5rem]">
                 <i class="fas fa-user-shield text-4xl text-amber-500 mb-4"></i>
-                <h2 class="text-2xl font-black uppercase">Administrativo</h2>
+                <h2 class="text-2xl font-black uppercase italic">Administrativo</h2>
                 <div id="form-admin" class="hidden mt-6">
-                    <input type="password" id="senha-admin" placeholder="Senha Gestor" class="w-full bg-slate-900 p-4 rounded-2xl text-center text-white outline-none border border-slate-700 mb-4">
+                    <input type="password" id="senha-admin" placeholder="Senha Gestor" class="w-full bg-slate-900 p-4 rounded-2xl text-center text-white outline-none border border-slate-700 mb-4 font-bold">
                     <button onclick="fazerLogin('admin')" class="w-full bg-amber-600 p-4 rounded-2xl font-bold uppercase">Acessar</button>
                 </div>
             </div>
         </div>
     </div>
     <script>
-        function abrirLogin(t) { document.getElementById('form-oper').classList.add('hidden'); document.getElementById('form-admin').classList.add('hidden'); document.getElementById('form-'+t).classList.remove('hidden'); }
+        function abrirLogin(t) { 
+            document.getElementById('form-oper').classList.add('hidden'); 
+            document.getElementById('form-admin').classList.add('hidden'); 
+            document.getElementById('form-'+t).classList.remove('hidden'); 
+            document.getElementById('senha-'+t).focus();
+        }
         async function fazerLogin(t) {
             const senha = document.getElementById('senha-'+t).value;
             const res = await fetch('/api/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ senha, tipo: t }) });
             const data = await res.json();
             if (res.ok) window.location.href = data.redirect; else alert("Senha Incorreta!");
         }
+        document.querySelectorAll('input').forEach(i => i.onclick = (e) => e.stopPropagation());
     </script>
 </body>
 </html>
