@@ -38,13 +38,11 @@ app.post('/api/logout', (req, res) => {
     res.json({ success: true });
 });
 
-// RELATÓRIOS COM CORREÇÃO DE FUSO 22:52
 app.get('/api/relatorio-ultimo', protegerAdmin, async (req, res) => {
     try {
         const { setor } = req.query;
         const config = await pool.query("SELECT valor FROM configuracoes WHERE chave = 'ultimo_acesso_relatorio'");
         const ultimoAcesso = new Date(config.rows[0].valor);
-        
         const agora = new Date();
         const formatter = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
         const dataHojeBR = formatter.format(agora).split('/').reverse().join('-');
@@ -58,21 +56,9 @@ app.get('/api/relatorio-ultimo', protegerAdmin, async (req, res) => {
             sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora FROM historico WHERE data_hora > $1`;
             params = [ultimoAcesso];
         }
-
         if (setor && setor !== 'Todos') { sql += ` AND setor = $${params.length + 1}`; params.push(setor); }
         const result = await pool.query(sql + ` ORDER BY data_hora DESC`, params);
         await pool.query("UPDATE configuracoes SET valor = CURRENT_TIMESTAMP WHERE chave = 'ultimo_acesso_relatorio'");
-        res.json(result.rows);
-    } catch (e) { res.status(500).json(e); }
-});
-
-app.get('/api/relatorio-periodo', protegerAdmin, async (req, res) => {
-    try {
-        const { inicio, fim, setor } = req.query;
-        let sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora FROM historico WHERE (data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo')::date >= $1 AND (data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo')::date <= $2`;
-        let params = [inicio, fim];
-        if (setor && setor !== 'Todos') { sql += ` AND setor = $3`; params.push(setor); }
-        const result = await pool.query(sql + ` ORDER BY data_hora DESC`, params);
         res.json(result.rows);
     } catch (e) { res.status(500).json(e); }
 });
@@ -84,19 +70,28 @@ app.get('/api/viaturas', protegerOperacional, async (req, res) => {
 
 app.put('/api/viaturas/:id', protegerOperacional, async (req, res) => {
     try {
-        let { km, status, ultimo_usuario, motivo } = req.body;
+        let { km, km_revisao, status, ultimo_usuario, motivo, setor } = req.body;
         const vtrOld = await pool.query("SELECT prefixo, km, setor, km_revisao FROM viaturas WHERE id = $1", [req.params.id]);
         const d = vtrOld.rows[0];
-        const statusFinal = (status === 'Baixada') ? 'Baixada' : (parseInt(km) >= parseInt(d.km_revisao) ? 'Troca de Óleo' : 'Operante');
-        await pool.query('UPDATE viaturas SET km=$1, status=$2, ultimo_usuario=$3, motivo=$4 WHERE id=$5', [km, statusFinal, ultimo_usuario, (statusFinal === 'Baixada' ? motivo : ''), req.params.id]);
-        await pool.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor) VALUES ($1,$2,$3,$4,$5,$6,$7)', [d.prefixo, d.km, km, statusFinal, (statusFinal === 'Baixada' ? motivo : ''), ultimo_usuario, d.setor]);
+        
+        // CORREÇÃO: Pega o KM Revisão enviado ou mantém o antigo se não enviado
+        const kmRevFinal = km_revisao !== undefined ? parseInt(km_revisao) : d.km_revisao;
+        const statusFinal = (status === 'Baixada') ? 'Baixada' : (parseInt(km) >= kmRevFinal ? 'Troca de Óleo' : 'Operante');
+        
+        await pool.query('UPDATE viaturas SET km=$1, km_revisao=$2, status=$3, ultimo_usuario=$4, motivo=$5, setor=$6 WHERE id=$7', 
+            [km, kmRevFinal, statusFinal, ultimo_usuario, (statusFinal === 'Baixada' ? motivo : ''), setor || d.setor, req.params.id]);
+        
+        await pool.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor) VALUES ($1,$2,$3,$4,$5,$6,$7)', 
+            [d.prefixo, d.km, km, statusFinal, (statusFinal === 'Baixada' ? motivo : ''), ultimo_usuario, setor || d.setor]);
+        
         res.json({ success: true });
     } catch (e) { res.status(500).json(e); }
 });
 
 app.post('/api/viaturas', protegerAdmin, async (req, res) => {
     let { prefixo, placa, modelo, km, km_revisao, status, setor } = req.body;
-    await pool.query('INSERT INTO viaturas (prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario, motivo, setor) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [prefixo, placa, modelo, km, km_revisao, status, 'Sistema', '', setor]);
+    const st = (status === 'Baixada') ? 'Baixada' : (parseInt(km) >= parseInt(km_revisao) ? 'Troca de Óleo' : 'Operante');
+    await pool.query('INSERT INTO viaturas (prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario, motivo, setor) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [prefixo, placa, modelo, km, km_revisao, st, 'Sistema', '', setor]);
     res.json({ success: true });
 });
 
