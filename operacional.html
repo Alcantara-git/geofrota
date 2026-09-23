@@ -18,8 +18,8 @@
         .status-baixada { border: 1px solid #ef4444; background: rgba(239, 68, 68, 0.1); color: #f87171; }
     </style>
 </head>
-<body class="p-4">
-    <div id="toast" class="bg-green-600 text-white px-8 py-4 rounded-2xl font-black shadow-2xl uppercase text-[10px] tracking-widest border border-green-400 text-center">✅ Hodômetro Atualizado!</div>
+<body class="p-4 text-center">
+    <div id="toast" class="bg-green-600 text-white px-8 py-4 rounded-2xl font-black shadow-2xl uppercase text-[10px] tracking-widest border border-green-400 text-center text-white">✅ Hodômetro Atualizado!</div>
     <div class="w-full max-w-md">
         <div class="text-center mb-6"><h1 class="text-3xl font-black text-blue-500 uppercase tracking-tighter italic text-center">Geo<span class="text-white">Frota</span></h1><p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-1 text-center">Lançamento de Quilometragem</p></div>
         <div class="bg-slate-800 p-6 rounded-[2.5rem] shadow-2xl border border-slate-700">
@@ -30,7 +30,7 @@
                 <div id="pBaixa" class="hidden bg-red-900/10 border border-red-900/30 p-4 rounded-2xl text-center"><textarea id="motivo" placeholder="Descreva o defeito aqui..." class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-white text-sm outline-none h-20 text-center"></textarea></div>
                 <div id="info" class="hidden bg-slate-950 p-4 rounded-2xl text-center border border-slate-800"><p class="text-[10px] text-slate-500 uppercase font-black text-center">KM ATUAL REGISTRADO</p><p id="kmD" class="text-3xl font-mono font-bold text-blue-400 text-center">0</p></div>
                 <div><label class="text-[10px] font-black text-slate-500 ml-1 uppercase text-left block">Novo Hodômetro</label><input type="number" id="nKM" required class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-3xl text-center font-mono text-white outline-none focus:ring-2 ring-blue-600 transition"></div>
-                <div class="grid grid-cols-2 gap-3"><button type="button" id="btnBaixa" onclick="toggleB()" class="bg-slate-700 p-4 rounded-2xl font-black text-[10px] uppercase transition">❌ Baixar VTR</button><button type="submit" class="bg-blue-600 p-4 rounded-2xl font-black text-[10px] uppercase hover:bg-blue-500 shadow-lg text-white">✅ Atualizar KM</button></div>
+                <div class="grid grid-cols-2 gap-3"><button type="button" id="btnBaixa" onclick="toggleB()" class="bg-slate-700 p-4 rounded-2xl font-black text-[10px] uppercase transition">❌ Baixar VTR</button><button type="submit" class="bg-blue-600 p-4 rounded-2xl font-black text-[10px] uppercase hover:bg-blue-500 shadow-lg shadow-blue-900/20 active:scale-95 text-white">✅ Atualizar KM</button></div>
             </form>
         </div>
     </div>
