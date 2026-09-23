@@ -14,25 +14,25 @@
         <nav class="space-y-4 flex-1">
             <a href="index.html" class="block p-3 text-slate-400 hover:bg-slate-800 rounded-xl transition font-medium">Dashboard</a>
             <a href="operacional.html" class="block p-3 text-slate-400 hover:bg-slate-800 rounded-xl transition font-medium">Operacional</a>
-            <a href="usuarios.html" class="block p-3 bg-blue-600 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest">Usuários</a>
-            <button onclick="logout()" class="flex items-center p-3 text-red-500 mt-10 hover:bg-red-500/10 w-full text-left rounded-xl transition font-bold uppercase text-xs"><i class="fas fa-sign-out-alt mr-2"></i> Sair</button>
+            <a href="usuarios.html" class="block p-3 bg-blue-600 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest text-center">Usuários</a>
+            <button onclick="logout()" class="flex items-center p-3 text-red-500 mt-10 hover:bg-red-500/10 w-full text-left rounded-xl transition font-bold uppercase text-xs"><i class="fas fa-sign-out-alt mr-2 text-center"></i> Sair</button>
         </nav>
     </aside>
-    <main class="flex-1 p-4 md:p-8">
+    <main class="flex-1 p-4 md:p-8 text-center">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-            <h2 class="text-2xl font-black uppercase italic tracking-tighter text-blue-400">Gestão de Efetivo</h2>
+            <h2 class="text-2xl font-black uppercase italic tracking-tighter text-blue-400 text-center">Gestão de Efetivo</h2>
             <div class="flex flex-wrap gap-2 w-full md:w-auto">
-                <input type="text" id="un" placeholder="Nome do Militar" class="flex-1 bg-slate-800 p-3 rounded-xl border border-slate-700 outline-none text-white focus:border-blue-500">
-                <input type="text" id="ure" placeholder="RE" class="flex-1 bg-slate-800 p-3 rounded-xl border border-slate-700 outline-none text-white focus:border-blue-500 w-32">
+                <input type="text" id="un" placeholder="Militar" class="flex-1 bg-slate-800 p-3 rounded-xl border border-slate-700 outline-none text-white focus:border-blue-500 text-center">
+                <input type="text" id="ure" placeholder="RE" class="flex-1 bg-slate-800 p-3 rounded-xl border border-slate-700 outline-none text-white focus:border-blue-500 w-32 text-center text-center">
                 <button onclick="addU()" class="bg-blue-600 px-6 py-3 rounded-xl font-bold hover:bg-blue-500 uppercase text-xs w-full md:w-auto">Adicionar</button>
             </div>
         </div>
         <div class="bg-slate-800 rounded-2xl overflow-x-auto shadow-2xl">
             <table class="w-full text-left text-sm min-w-[500px]">
-                <thead class="bg-slate-900 text-slate-400 text-[10px] uppercase font-black tracking-widest">
+                <thead class="bg-slate-900 text-slate-400 text-[10px] uppercase font-black tracking-widest text-center">
                     <tr><th class="p-4 text-center">Identificação do Militar (Nome e RE)</th><th class="p-4 text-center">Ações</th></tr>
                 </thead>
-                <tbody id="listaU" class="divide-y divide-slate-900"></tbody>
+                <tbody id="listaU" class="divide-y divide-slate-900 text-center"></tbody>
             </table>
         </div>
     </main>
@@ -42,15 +42,7 @@
                 const res = await fetch('/api/usuarios?t='+Date.now());
                 if(res.status === 401) { window.location.href = 'login.html'; return; }
                 const data = await res.json();
-                document.getElementById('listaU').innerHTML = data.map(u => `
-                    <tr class="hover:bg-slate-900/50 transition border-b border-slate-900">
-                        <td class="p-4 uppercase font-bold text-slate-200 text-center">
-                            ${u.nome} <span class="text-xs text-blue-400 ml-1">(${u.cargo || '---'})</span>
-                        </td>
-                        <td class="p-4 text-center">
-                            <button onclick="del(${u.id})" class="text-slate-500 hover:text-red-500 transition px-4"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>`).join('');
+                document.getElementById('listaU').innerHTML = data.map(u => `<tr class="hover:bg-slate-900/50 transition border-b border-slate-900"><td class="p-4 uppercase font-bold text-slate-200">${u.nome} <span class="text-xs text-blue-400 ml-1">(${u.cargo || '---'})</span></td><td class="p-4 text-center"><button onclick="del(${u.id})" class="text-slate-500 hover:text-red-500 transition px-4"><i class="fas fa-trash"></i></button></td></tr>`).join('');
             } catch(e) {}
         }
         async function addU() {

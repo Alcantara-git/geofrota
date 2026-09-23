@@ -11,49 +11,39 @@
         .bg-portal { background: radial-gradient(circle at top, #1e293b 0%, #0f172a 100%); }
         .card-access { background: #1e293b; border: 1px solid #334155; transition: 0.4s; cursor: pointer; }
         .card-access:hover { border-color: #3b82f6; transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .brasao { width: 220px; filter: drop-shadow(0 0 15px rgba(0,0,0,0.4)); margin-bottom: 2rem; }
+        .brasao { width: 180px; filter: drop-shadow(0 0 15px rgba(0,0,0,0.4)); margin-bottom: 2rem; }
     </style>
 </head>
 <body class="bg-portal min-h-screen flex items-center justify-center p-4">
     <div class="w-full max-w-4xl text-center">
-        <!-- Link RAW do GitHub para transparência funcionar -->
         <img src="https://raw.githubusercontent.com/Alcantara-git/geofrota/main/BRASAO%201BPTRAN.png" alt="1° BPTran" class="brasao mx-auto">
-        
-        <h1 class="text-4xl font-black tracking-tighter uppercase mb-2 italic text-white">Geo<span class="text-blue-500">Frota</span></h1>
+        <h1 class="text-4xl font-black uppercase mb-2 italic">Geo<span class="text-blue-500">Frota</span></h1>
         <p class="text-slate-500 text-[10px] font-bold uppercase tracking-[0.4em] mb-12">1° Batalhão de Polícia de Trânsito</p>
-
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div onclick="abrirLogin('oper')" class="card-access p-10 rounded-[2.5rem] flex flex-col items-center">
                 <i class="fas fa-mobile-alt text-4xl text-blue-500 mb-4"></i>
                 <h2 class="text-2xl font-black uppercase italic">Operacional</h2>
-                <div id="form-oper" class="hidden mt-6 w-full animate-pulse">
+                <div id="form-oper" class="hidden mt-6 w-full">
                     <input type="password" id="senha-oper" placeholder="Senha Unidade" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-center text-white outline-none focus:ring-2 ring-blue-600 mb-4 font-bold">
-                    <button onclick="fazerLogin('oper')" class="w-full bg-blue-600 p-4 rounded-2xl font-bold uppercase text-xs">Acessar</button>
+                    <button onclick="fazerLogin('oper')" class="w-full bg-blue-600 p-4 rounded-2xl font-bold uppercase text-xs">Entrar</button>
                 </div>
             </div>
-
-            <div onclick="abrirLogin('admin')" class="card-access p-10 rounded-[2.5rem] flex flex-col items-center">
+            <div onclick="abrirLogin('admin')" class="card-access p-10 rounded-[2.5rem] flex flex-col items-center border-amber-500/20">
                 <i class="fas fa-user-shield text-4xl text-amber-500 mb-4"></i>
                 <h2 class="text-2xl font-black uppercase italic">Administrativo</h2>
-                <div id="form-admin" class="hidden mt-6 w-full animate-pulse">
+                <div id="form-admin" class="hidden mt-6 w-full">
                     <input type="password" id="senha-admin" placeholder="Senha Gestor" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-center text-white outline-none focus:ring-2 ring-amber-600 mb-4 font-bold">
-                    <button onclick="fazerLogin('admin')" class="w-full bg-amber-600 p-4 rounded-2xl font-bold uppercase text-xs">Entrar no Painel</button>
+                    <button onclick="fazerLogin('admin')" class="w-full bg-amber-600 p-4 rounded-2xl font-bold uppercase text-xs">Acessar Painel</button>
                 </div>
             </div>
         </div>
     </div>
     <script>
-        function abrirLogin(t) { 
-            document.getElementById('form-oper').classList.add('hidden'); 
-            document.getElementById('form-admin').classList.add('hidden'); 
-            document.getElementById('form-'+t).classList.remove('hidden'); 
-            document.getElementById('senha-'+t).focus();
-        }
+        function abrirLogin(t) { document.getElementById('form-oper').classList.add('hidden'); document.getElementById('form-admin').classList.add('hidden'); document.getElementById('form-'+t).classList.remove('hidden'); document.getElementById('senha-'+t).focus(); }
         async function fazerLogin(t) {
             const senha = document.getElementById('senha-'+t).value;
             const res = await fetch('/api/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ senha, tipo: t }) });
-            const data = await res.json();
-            if (res.ok) window.location.href = data.redirect; else alert("Senha Incorreta!");
+            if (res.ok) window.location.href = (await res.json()).redirect; else alert("Senha Incorreta!");
         }
         document.querySelectorAll('input').forEach(i => i.onclick = (e) => e.stopPropagation());
     </script>

@@ -47,7 +47,6 @@ app.get('/api/relatorio-ultimo', protegerAdmin, async (req, res) => {
         const formatter = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
         const dataHojeBR = formatter.format(agora).split('/').reverse().join('-');
         const dataUltimoBR = formatter.format(ultimoAcesso).split('/').reverse().join('-');
-
         let sql, params;
         if (dataHojeBR === dataUltimoBR) {
             sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'HH24:MI') as hora FROM historico WHERE data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo' >= $1::timestamp`;
@@ -63,6 +62,17 @@ app.get('/api/relatorio-ultimo', protegerAdmin, async (req, res) => {
     } catch (e) { res.status(500).json(e); }
 });
 
+app.get('/api/relatorio-periodo', protegerAdmin, async (req, res) => {
+    try {
+        const { inicio, fim, setor } = req.query;
+        let sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora FROM historico WHERE (data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo')::date >= $1 AND (data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo')::date <= $2`;
+        let params = [inicio, fim];
+        if (setor && setor !== 'Todos') { sql += ` AND setor = $3`; params.push(setor); }
+        const result = await pool.query(sql + ` ORDER BY data_hora DESC`, params);
+        res.json(result.rows);
+    } catch (e) { res.status(500).json(e); }
+});
+
 app.get('/api/viaturas', protegerOperacional, async (req, res) => {
     const result = await pool.query("SELECT * FROM viaturas ORDER BY setor ASC, prefixo ASC");
     res.json(result.rows);
@@ -73,17 +83,12 @@ app.put('/api/viaturas/:id', protegerOperacional, async (req, res) => {
         let { km, km_revisao, status, ultimo_usuario, motivo, setor } = req.body;
         const vtrOld = await pool.query("SELECT prefixo, km, setor, km_revisao FROM viaturas WHERE id = $1", [req.params.id]);
         const d = vtrOld.rows[0];
-        
-        // CORREÇÃO: Pega o KM Revisão enviado ou mantém o antigo se não enviado
-        const kmRevFinal = km_revisao !== undefined ? parseInt(km_revisao) : d.km_revisao;
-        const statusFinal = (status === 'Baixada') ? 'Baixada' : (parseInt(km) >= kmRevFinal ? 'Troca de Óleo' : 'Operante');
-        
-        await pool.query('UPDATE viaturas SET km=$1, km_revisao=$2, status=$3, ultimo_usuario=$4, motivo=$5, setor=$6 WHERE id=$7', 
-            [km, kmRevFinal, statusFinal, ultimo_usuario, (statusFinal === 'Baixada' ? motivo : ''), setor || d.setor, req.params.id]);
-        
-        await pool.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor) VALUES ($1,$2,$3,$4,$5,$6,$7)', 
-            [d.prefixo, d.km, km, statusFinal, (statusFinal === 'Baixada' ? motivo : ''), ultimo_usuario, setor || d.setor]);
-        
+        const kmNovo = km || d.km;
+        const revFinal = (km_revisao !== undefined && km_revisao !== null) ? parseInt(km_revisao) : d.km_revisao;
+        const setFinal = setor || d.setor;
+        const stFinal = (status === 'Baixada') ? 'Baixada' : (parseInt(kmNovo) >= revFinal ? 'Troca de Óleo' : 'Operante');
+        await pool.query('UPDATE viaturas SET km=$1, km_revisao=$2, status=$3, ultimo_usuario=$4, motivo=$5, setor=$6 WHERE id=$7', [kmNovo, revFinal, stFinal, ultimo_usuario, (stFinal === 'Baixada' ? motivo : ''), setFinal, req.params.id]);
+        await pool.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor) VALUES ($1,$2,$3,$4,$5,$6,$7)', [d.prefixo, d.km, kmNovo, stFinal, (stFinal === 'Baixada' ? motivo : ''), ultimo_usuario, setFinal]);
         res.json({ success: true });
     } catch (e) { res.status(500).json(e); }
 });
