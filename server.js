@@ -3,7 +3,6 @@ const path = require('path');
 const cookieParser = require('cookie-parser');
 const pool = require('./database');
 const app = express();
-
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname)));
@@ -39,57 +38,30 @@ app.post('/api/logout', (req, res) => {
     res.json({ success: true });
 });
 
-function definirStatus(km, revisao, statusEnviado) {
-    if (statusEnviado === 'Baixada') return 'Baixada';
-    return (parseInt(km) >= parseInt(revisao)) ? 'Troca de Óleo' : 'Operante';
-}
-
-// ==================================================
-// RELATÓRIO: ÚLTIMO ACESSO (CORREÇÃO DE FUSO 22:52)
-// ==================================================
+// RELATÓRIOS COM CORREÇÃO DE FUSO 22:52
 app.get('/api/relatorio-ultimo', protegerAdmin, async (req, res) => {
     try {
         const { setor } = req.query;
-
-        // 1. Pegar último acesso salvo
         const config = await pool.query("SELECT valor FROM configuracoes WHERE chave = 'ultimo_acesso_relatorio'");
         const ultimoAcesso = new Date(config.rows[0].valor);
-
-        // 2. Calcular Agora e Meia-Noite no Horário de Brasília (BRT)
-        const agora = new Date();
-        const formatterData = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
-        const [dia, mes, ano] = formatterData.format(agora).split('/');
         
-        const dataHojeBR = `${ano}-${mes}-${dia}`; // Formato YYYY-MM-DD em Brasília
-        const dataUltimoBR = formatterData.format(ultimoAcesso).split('/').reverse().join('-');
+        const agora = new Date();
+        const formatter = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
+        const dataHojeBR = formatter.format(agora).split('/').reverse().join('-');
+        const dataUltimoBR = formatter.format(ultimoAcesso).split('/').reverse().join('-');
 
         let sql, params;
-
-        // SE O ÚLTIMO ACESSO FOI NO MESMO DIA (BRT): Mostra das 00:00 até agora
         if (dataHojeBR === dataUltimoBR) {
-            sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'HH24:MI') as hora 
-                   FROM historico 
-                   WHERE data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo' >= $1::timestamp`;
+            sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'HH24:MI') as hora FROM historico WHERE data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo' >= $1::timestamp`;
             params = [dataHojeBR + ' 00:00:00'];
         } else {
-            // SE O ÚLTIMO ACESSO FOI OUTRO DIA: Mostra desde o último clique real
-            sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora 
-                   FROM historico 
-                   WHERE data_hora > $1`;
+            sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora FROM historico WHERE data_hora > $1`;
             params = [ultimoAcesso];
         }
 
-        // Filtro de Setor
-        if (setor && setor !== 'Todos') {
-            sql += ` AND setor = $${params.length + 1}`;
-            params.push(setor);
-        }
-
+        if (setor && setor !== 'Todos') { sql += ` AND setor = $${params.length + 1}`; params.push(setor); }
         const result = await pool.query(sql + ` ORDER BY data_hora DESC`, params);
-        
-        // Atualiza marcador de acesso para o momento atual (UTC padrão banco)
         await pool.query("UPDATE configuracoes SET valor = CURRENT_TIMESTAMP WHERE chave = 'ultimo_acesso_relatorio'");
-        
         res.json(result.rows);
     } catch (e) { res.status(500).json(e); }
 });

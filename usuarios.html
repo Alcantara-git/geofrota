@@ -30,7 +30,7 @@
         <div class="bg-slate-800 rounded-2xl overflow-x-auto shadow-2xl">
             <table class="w-full text-left text-sm min-w-[500px]">
                 <thead class="bg-slate-900 text-slate-400 text-[10px] uppercase font-black tracking-widest">
-                    <tr><th class="p-4">Identificação do Militar (Nome e RE)</th><th class="p-4 text-center">Ações</th></tr>
+                    <tr><th class="p-4 text-center">Identificação do Militar (Nome e RE)</th><th class="p-4 text-center">Ações</th></tr>
                 </thead>
                 <tbody id="listaU" class="divide-y divide-slate-900"></tbody>
             </table>
@@ -42,7 +42,15 @@
                 const res = await fetch('/api/usuarios?t='+Date.now());
                 if(res.status === 401) { window.location.href = 'login.html'; return; }
                 const data = await res.json();
-                document.getElementById('listaU').innerHTML = data.map(u => `<tr class="hover:bg-slate-900/50 transition border-b border-slate-900"><td class="p-4 uppercase font-bold text-slate-200">${u.nome} <span class="text-xs text-blue-400 ml-1">(${u.cargo || '---'})</span></td><td class="p-4 text-center"><button onclick="del(${u.id})" class="text-slate-500 hover:text-red-500 transition px-4"><i class="fas fa-trash"></i></button></td></tr>`).join('');
+                document.getElementById('listaU').innerHTML = data.map(u => `
+                    <tr class="hover:bg-slate-900/50 transition border-b border-slate-900">
+                        <td class="p-4 uppercase font-bold text-slate-200 text-center">
+                            ${u.nome} <span class="text-xs text-blue-400 ml-1">(${u.cargo || '---'})</span>
+                        </td>
+                        <td class="p-4 text-center">
+                            <button onclick="del(${u.id})" class="text-slate-500 hover:text-red-500 transition px-4"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>`).join('');
             } catch(e) {}
         }
         async function addU() {
