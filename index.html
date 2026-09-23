@@ -18,19 +18,34 @@
         #toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); transition: 0.5s ease; z-index: 9999; }
         #toast.show { bottom: 30px; }
 
+        /* CORREÇÃO DEFINITIVA DE IMPRESSÃO */
         @media print {
-            .no-print, aside, header, .grid, .search-container, #toast, button, .relative { display: none !important; }
+            /* Esconde tudo o que não é o conteúdo do relatório */
+            .no-print, aside, header, .grid, .search-container, #toast, button { display: none !important; }
+            
+            /* Reseta o fundo para economizar tinta e mostrar tudo */
             body, html { background: white !important; color: black !important; height: auto !important; overflow: visible !important; }
-            #modalRelatorio { position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; display: block !important; background: white !important; z-index: 9999 !important; padding: 0 !important; }
+            
+            /* Transforma o Modal em uma página comum */
+            #modalRelatorio { position: static !important; display: block !important; background: white !important; padding: 0 !important; overflow: visible !important; }
             #modalRelatorio .card { background: white !important; border: none !important; color: black !important; box-shadow: none !important; width: 100% !important; max-width: none !important; padding: 0 !important; }
-            table { width: 100% !important; border-collapse: collapse !important; border: 1px solid #333 !important; }
-            th, td { border: 1px solid #333 !important; color: black !important; padding: 8px !important; text-align: center !important; }
-            .text-blue-500, .text-blue-400 { color: black !important; }
+            
+            /* Ajuste da Tabela no Papel */
+            table { width: 100% !important; border-collapse: collapse !important; color: black !important; }
+            th, td { border: 1px solid #ccc !important; color: black !important; padding: 8px !important; }
+            tr { page-break-inside: avoid !important; } /* Evita cortar linha no meio da página */
+            .text-blue-500, .text-blue-400 { color: black !important; } /* Títulos em preto para leitura */
+            
+            /* Garante que o texto do cabeçalho do relatório apareça */
+            #conteudoRelatorio h2 { color: black !important; font-size: 18pt !important; margin-bottom: 10px !important; }
         }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body class="flex flex-col md:flex-row">
     <div id="toast" class="bg-blue-600 text-white px-8 py-4 rounded-2xl font-black shadow-2xl uppercase text-[10px] tracking-widest border border-blue-400 text-center">Viatura Atualizada!</div>
+
     <aside class="w-full md:w-64 sidebar p-6 flex flex-col md:min-h-screen no-print">
         <div class="text-2xl font-bold text-blue-500 mb-8 uppercase text-center italic tracking-tighter">Geo<span class="text-white">Frota</span></div>
         <nav class="space-y-2 flex-1">
@@ -41,9 +56,17 @@
             <button onclick="logout()" class="flex items-center p-3 text-red-500 mt-10 hover:bg-red-500/10 w-full text-left rounded-xl transition font-bold uppercase text-[10px]"><i class="fas fa-sign-out-alt mr-2"></i> Sair</button>
         </nav>
     </aside>
+
     <main class="flex-1 p-4 md:p-8 no-print">
         <header class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-            <div class="flex items-center gap-3"><h2 class="text-xl font-bold uppercase tracking-widest text-blue-400">Painel Gestor</h2><div class="flex items-center gap-1 bg-green-500/10 px-2 py-1 rounded-full border border-green-500/20"><div class="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div><span class="text-[8px] text-green-500 font-black uppercase">Live</span></div></div>
+            <div class="flex items-center gap-3">
+                <h2 class="text-xl font-bold uppercase tracking-widest text-blue-400">Painel Gestor</h2>
+                <div class="flex items-center gap-1 bg-green-500/10 px-2 py-1 rounded-full border border-green-500/20">
+                    <div class="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span class="text-[8px] text-green-500 font-black uppercase">Live</span>
+                </div>
+            </div>
+            
             <div class="flex overflow-x-auto gap-2 py-2 no-scrollbar px-2 border-x border-slate-800">
                 <button onclick="setSetor('Todos')" id="btn-Todos" class="btn-setor active px-4 py-2 rounded-lg uppercase">1° BPTRAN</button>
                 <button onclick="setSetor('EM')" id="btn-EM" class="btn-setor px-4 py-2 rounded-lg uppercase">EM</button>
@@ -53,50 +76,137 @@
                 <button onclick="setSetor('3° CIA')" id="btn-3CIA" class="btn-setor px-4 py-2 rounded-lg uppercase">3° CIA</button>
                 <button onclick="setSetor('4° CIA')" id="btn-4CIA" class="btn-setor px-4 py-2 rounded-lg uppercase">4° CIA</button>
             </div>
-            <button id="btnNovaVtr" onclick="abrirModal()" class="bg-blue-600 px-6 py-3 rounded-xl font-black hover:bg-blue-500 transition shadow-lg text-xs uppercase">+ Nova Viatura</button>
+
+            <button onclick="abrirModal()" class="bg-blue-600 px-6 py-3 rounded-xl font-black hover:bg-blue-500 transition shadow-lg text-xs uppercase">+ Nova Viatura</button>
         </header>
+
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-center text-[10px] font-black uppercase tracking-widest">
             <div id="card-total" onclick="setFiltroStatus('Todos')" class="card p-4 rounded-xl shadow-lg cursor-pointer card-active"><p class="text-slate-400">Total</p><h3 id="stat-total" class="text-2xl mt-1 text-white">0</h3></div>
             <div id="card-operante" onclick="setFiltroStatus('Operante')" class="card p-4 rounded-xl border-b-4 border-green-500 cursor-pointer"><p class="text-slate-400">Operantes</p><h3 id="stat-op" class="text-2xl text-green-500 mt-1">0</h3></div>
             <div id="card-oleo" onclick="setFiltroStatus('Troca de Óleo')" class="card p-4 rounded-xl border-b-4 border-amber-500 cursor-pointer"><p class="text-slate-400">Troca Óleo</p><h3 id="stat-ol" class="text-2xl text-amber-500 mt-1">0</h3></div>
             <div id="card-baixada" onclick="setFiltroStatus('Baixada')" class="card p-4 rounded-xl border-b-4 border-red-600 cursor-pointer"><p class="text-slate-400">Baixadas</p><h3 id="stat-bx" class="text-2xl text-red-600 mt-1">0</h3></div>
         </div>
-        <div class="relative mb-6"><i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i><input type="text" id="inputBusca" oninput="renderizarTabela()" placeholder="Pesquisar..." class="w-full bg-slate-800 border border-slate-700 p-4 pl-12 rounded-2xl text-white font-bold text-sm outline-none"></div>
-        <div class="card rounded-2xl overflow-x-auto shadow-2xl"><table class="w-full text-left min-w-[700px]"><thead class="bg-slate-800 text-slate-400 text-[10px] uppercase font-black tracking-widest"><tr><th class="p-4">Subunidade</th><th class="p-4">VTR</th><th class="p-4 text-center">KM / Revisão</th><th class="p-4 text-center">Último Condutor</th><th class="p-4 text-center">Status</th><th class="p-4 text-center">Ações</th></tr></thead><tbody id="corpo" class="divide-y divide-slate-800"></tbody></table></div>
+
+        <div class="relative mb-6">
+            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+            <input type="text" id="inputBusca" oninput="renderizarTabela()" placeholder="Pesquisar por prefixo, placa ou modelo..." class="w-full bg-slate-800 border border-slate-700 p-4 pl-12 rounded-2xl text-white font-bold text-sm outline-none focus:border-blue-500 transition">
+        </div>
+
+        <div class="card rounded-2xl overflow-x-auto shadow-2xl">
+            <table class="w-full text-left min-w-[700px]">
+                <thead class="bg-slate-800 text-slate-400 text-[10px] uppercase font-black tracking-widest">
+                    <tr><th class="p-4">Subunidade</th><th class="p-4">VTR / Placa</th><th class="p-4">KM / Revisão</th><th class="p-4">Último Condutor</th><th class="p-4">Status / Motivo</th><th class="p-4 text-center">Ações</th></tr>
+                </thead>
+                <tbody id="corpo" class="divide-y divide-slate-800"></tbody>
+            </table>
+        </div>
     </main>
 
-    <div id="modalExcluir" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[200]"><div class="card w-full max-w-sm p-8 rounded-3xl text-center border-t-4 border-red-600 shadow-2xl"><i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-4"></i><h3 class="text-xl font-black text-white mb-2 uppercase">Excluir?</h3><p class="text-slate-400 text-xs mb-8 uppercase tracking-widest">Deseja remover esta viatura?</p><div class="grid grid-cols-2 gap-4"><button onclick="fecharExcluir()" class="bg-slate-700 p-4 rounded-2xl font-bold uppercase text-xs text-white">Sair</button><button id="btnConfirmarExcluir" class="bg-red-600 p-4 rounded-2xl font-bold uppercase text-xs text-white">Excluir</button></div></div></div>
+    <div id="modalEscolhaRelatorio" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[130] no-print">
+        <div class="card w-full max-w-md p-8 rounded-[2.5rem] text-center border-t-4 border-blue-500 shadow-2xl">
+            <h3 class="text-xl font-black text-white mb-2 uppercase italic">Relatórios</h3>
+            <p id="labelSetorRelatorio" class="text-[10px] text-blue-400 font-bold mb-8 uppercase tracking-widest">Filtro: 1° BPTRAN</p>
+            <div class="grid gap-4">
+                <button onclick="gerarRelatorio('ultimo')" class="btn-art p-6 rounded-3xl flex flex-col items-center group">
+                    <i class="fas fa-history text-blue-500 text-2xl mb-2 group-hover:animate-bounce"></i>
+                    <span class="font-black text-sm uppercase">Último Acesso</span>
+                </button>
+                <button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden'); document.getElementById('modalFiltro').classList.remove('hidden')" class="btn-art p-6 rounded-3xl flex flex-col items-center">
+                    <i class="fas fa-calendar-alt text-amber-500 text-2xl mb-2"></i>
+                    <span class="font-black text-sm uppercase">Filtrar Período</span>
+                </button>
+                <button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden')" class="mt-4 text-slate-500 text-xs font-bold uppercase">Voltar</button>
+            </div>
+        </div>
+    </div>
 
-    <div id="modalEscolhaRelatorio" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[130] no-print"><div class="card w-full max-w-md p-8 rounded-[2.5rem] text-center border-t-4 border-blue-500 shadow-2xl"><h3 class="text-xl font-black text-white mb-2 uppercase italic">Relatórios</h3><p id="labelSetorRelatorio" class="text-[10px] text-blue-400 font-bold mb-8 uppercase tracking-widest">Filtro: 1° BPTRAN</p><div class="grid gap-4"><button onclick="gerarRelatorio('ultimo')" class="btn-art p-6 rounded-3xl flex flex-col items-center group"><i class="fas fa-history text-blue-500 text-2xl mb-2 group-hover:animate-bounce"></i><span class="font-black text-sm uppercase text-white">Último Acesso</span></button><button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden'); document.getElementById('modalFiltro').classList.remove('hidden')" class="btn-art p-6 rounded-3xl flex flex-col items-center group"><i class="fas fa-calendar-alt text-amber-500 text-2xl mb-2"></i><span class="font-black text-sm uppercase text-white">Filtrar Período</span></button><button onclick="document.getElementById('modalEscolhaRelatorio').classList.add('hidden')" class="mt-4 text-slate-500 text-xs font-bold uppercase">Voltar</button></div></div></div>
     <div id="modalFiltro" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[140] p-4 no-print"><div class="card p-8 rounded-3xl w-full max-w-sm text-center"><h3>FILTRAR PERÍODO</h3><input type="date" id="dataInicio" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-2 text-white"><input type="date" id="dataFim" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl mb-6 text-white"><button onclick="gerarRelatorio('periodo')" class="w-full bg-blue-600 p-3 rounded-xl font-bold mb-2 uppercase text-xs">Gerar</button><button onclick="document.getElementById('modalFiltro').classList.add('hidden'); document.getElementById('modalEscolhaRelatorio').classList.remove('hidden')" class="text-slate-500 text-xs font-bold uppercase">Voltar</button></div></div>
-    <div id="modalRelatorio" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[150] p-4 overflow-y-auto"><div class="card w-full max-w-5xl p-8 rounded-3xl my-auto text-sm"><div class="flex justify-between items-center mb-6 no-print"><h3 class="font-black uppercase text-blue-400 italic">Boletim GEOFROTA</h3><div><button onclick="window.print()" class="bg-blue-600 p-2 px-6 rounded-lg font-bold uppercase mr-2 text-xs text-white">Imprimir</button><button onclick="document.getElementById('modalRelatorio').classList.add('hidden')" class="bg-slate-700 p-2 px-6 rounded-lg font-bold uppercase text-xs text-white">Sair</button></div></div><div id="conteudoRelatorio"></div></div></div>
-    <div id="modalV" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-50 overflow-y-auto no-print"><div class="card w-full max-w-md p-8 rounded-3xl my-auto border-t-4 border-blue-500 shadow-2xl"><h3 id="modalTitulo" class="text-xl font-black mb-6 text-blue-400 text-center uppercase italic text-white text-center">Viatura</h3><form id="formV" class="space-y-4"><input type="hidden" id="editId"><div class="space-y-1"><label class="text-[10px] font-bold text-slate-500 ml-1 uppercase block">Subunidade</label><select id="setor" class="bg-slate-900 border border-slate-700 p-3 rounded-xl w-full text-white font-bold outline-none"><option value="EM">EM</option><option value="CTT">CTT</option><option value="1° CIA">1° CIA</option><option value="2° CIA">2° CIA</option><option value="3° CIA">3° CIA</option><option value="4° CIA">4° CIA</option></select></div><div class="grid grid-cols-2 gap-4"><div class="space-y-1"><label class="text-[10px] font-bold text-slate-500 ml-1 uppercase block">Prefixo</label><input type="text" id="pref" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white w-full"></div><div class="space-y-1"><label class="text-[10px] font-bold text-slate-500 ml-1 uppercase block">Placa</label><input type="text" id="plac" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white w-full"></div></div><div class="space-y-1"><label class="text-[10px] font-bold text-slate-500 ml-1 uppercase block">Modelo</label><input type="text" id="mod" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white w-full"></div><div class="grid grid-cols-2 gap-4"><div class="space-y-1"><label class="text-[10px] font-bold text-slate-500 ml-1 uppercase block">KM Atual</label><input type="number" id="km" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white w-full"></div><div class="space-y-1"><label class="text-[10px] font-bold text-slate-500 ml-1 uppercase block">KM Revisão</label><input type="number" id="kmr" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white w-full"></div></div><div class="space-y-1"><label class="text-[10px] font-bold text-slate-500 ml-1 uppercase block">Status</label><select id="st" class="bg-slate-900 border border-slate-700 p-3 rounded-xl w-full text-white font-bold outline-none"><option value="Operante">Operante</option><option value="Troca de Óleo">Troca de Óleo</option><option value="Baixada">Baixada</option></select></div><div class="grid grid-cols-2 gap-2 pt-4"><button type="button" onclick="fecharModal()" class="bg-slate-700 p-4 rounded-xl font-bold uppercase text-xs text-white text-center">Sair</button><button type="submit" class="bg-blue-600 p-4 rounded-xl font-bold uppercase text-xs text-white text-center">Salvar</button></div></form></div></div>
+
+    <div id="modalRelatorio" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[150] p-4 overflow-y-auto">
+        <div class="card w-full max-w-5xl p-8 rounded-3xl my-auto text-sm shadow-2xl">
+            <div class="flex justify-between items-center mb-6 no-print">
+                <h3 class="font-black uppercase text-blue-400 italic">Boletim GEOFROTA</h3>
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="bg-blue-600 p-2 px-6 rounded-lg font-bold uppercase text-xs">Imprimir</button>
+                    <button onclick="document.getElementById('modalRelatorio').classList.add('hidden')" class="bg-slate-700 p-2 px-6 rounded-lg font-bold uppercase text-xs">Fechar</button>
+                </div>
+            </div>
+            <div id="conteudoRelatorio"></div>
+        </div>
+    </div>
+
+    <div id="modalV" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-50 overflow-y-auto no-print">
+        <div class="card w-full max-w-md p-8 rounded-3xl my-auto border-t-4 border-blue-500 shadow-2xl">
+            <h3 id="modalTitulo" class="text-xl font-black mb-6 text-blue-400 text-center uppercase italic">Viatura</h3>
+            <form id="formV" class="space-y-4">
+                <input type="hidden" id="editId">
+                <div class="space-y-1"><label class="text-[10px] font-bold text-slate-500 ml-1 uppercase text-left block">Subunidade</label><select id="setor" class="bg-slate-900 border border-slate-700 p-3 rounded-xl w-full text-white font-bold outline-none"><option value="EM">EM</option><option value="CTT">CTT</option><option value="1° CIA">1° CIA</option><option value="2° CIA">2° CIA</option><option value="3° CIA">3° CIA</option><option value="4° CIA">4° CIA</option></select></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1"><label class="text-[10px] font-bold text-slate-500 ml-1 uppercase text-left block">Prefixo</label><input type="text" id="pref" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white w-full"></div>
+                    <div class="space-y-1"><label class="text-[10px] font-bold text-slate-500 ml-1 uppercase text-left block">Placa</label><input type="text" id="plac" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white w-full"></div>
+                </div>
+                <div class="space-y-1"><label class="text-[10px] font-bold text-slate-500 ml-1 uppercase text-left block">Modelo</label><input type="text" id="mod" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white w-full"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1"><label class="text-[10px] font-bold text-slate-500 ml-1 uppercase text-left block">KM Atual</label><input type="number" id="km" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white w-full"></div>
+                    <div class="space-y-1"><label class="text-[10px] font-bold text-slate-500 ml-1 uppercase text-left block">KM Revisão</label><input type="number" id="kmr" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl text-white w-full"></div>
+                </div>
+                <div class="space-y-1"><label class="text-[10px] font-bold text-slate-500 ml-1 uppercase text-left block">Status</label><select id="st" class="bg-slate-900 border border-slate-700 p-3 rounded-xl w-full text-white font-bold outline-none"><option value="Operante">Operante</option><option value="Troca de Óleo">Troca de Óleo</option><option value="Baixada">Baixada</option></select></div>
+                <div class="grid grid-cols-2 gap-2 pt-4"><button type="button" onclick="fecharModal()" class="bg-slate-700 p-4 rounded-xl font-bold uppercase text-xs text-white text-center">Sair</button><button type="submit" class="bg-blue-600 p-4 rounded-xl font-bold uppercase text-xs text-white text-center">Salvar</button></div>
+            </form>
+        </div>
+    </div>
+
     <script>
-        let viaturasLocal = []; let statusFiltro = 'Todos'; let setorFiltro = 'Todos'; const role = localStorage.getItem('role');
+        let viaturasLocal = []; let statusFiltro = 'Todos'; let setorFiltro = 'Todos';
         function showToast(msg) { const t = document.getElementById('toast'); t.innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
-        async function carregar() { try { const res = await fetch('/api/viaturas?t=' + Date.now()); if(res.status === 401) { window.location.href = 'login.html'; return; } const novas = await res.json(); if(JSON.stringify(novas) === JSON.stringify(viaturasLocal)) return; viaturasLocal = novas; renderizarTabela(); } catch(e) {} }
+        async function carregar() {
+            try {
+                const res = await fetch('/api/viaturas?t=' + Date.now());
+                if(res.status === 401) { window.location.href = 'login.html'; return; }
+                const novas = await res.json();
+                if(JSON.stringify(novas) === JSON.stringify(viaturasLocal)) return;
+                viaturasLocal = novas; renderizarTabela();
+            } catch(e) {}
+        }
         function renderizarTabela() {
             const corpo = document.getElementById('corpo'); const termo = document.getElementById('inputBusca').value.toLowerCase(); corpo.innerHTML = '';
             const filtradas = viaturasLocal.filter(v => (setorFiltro === 'Todos' || v.setor === setorFiltro) && (statusFiltro === 'Todos' || v.status === statusFiltro) && (v.prefixo.toLowerCase().includes(termo) || v.placa.toLowerCase().includes(termo) || v.modelo.toLowerCase().includes(termo)));
             const baseCards = setorFiltro === 'Todos' ? viaturasLocal : viaturasLocal.filter(v => v.setor === setorFiltro);
             document.getElementById('stat-total').innerText = baseCards.length; document.getElementById('stat-op').innerText = baseCards.filter(v => v.status === 'Operante').length; document.getElementById('stat-ol').innerText = baseCards.filter(v => v.status === 'Troca de Óleo').length; document.getElementById('stat-bx').innerText = baseCards.filter(v => v.status === 'Baixada').length;
-            if(role === 'oper') document.getElementById('btnNovaVtr').style.display = 'none';
             filtradas.forEach(v => {
                 let color = v.status==='Operante'?'text-green-500 border-green-500/20 bg-green-500/10':v.status==='Troca de Óleo'?'text-amber-500 border-amber-500/20 bg-amber-500/10':'text-red-500 border-red-500/20 bg-red-500/10';
-                corpo.innerHTML += `<tr class="hover:bg-slate-800/40 transition border-b border-slate-800"><td class="p-4 font-black text-[9px] text-slate-500 uppercase text-center">${v.setor}</td><td class="p-4 font-bold text-blue-400 uppercase text-sm">${v.prefixo}<br><span class="text-[10px] text-slate-500 font-mono">${v.placa}</span></td><td class="p-4 text-xs font-mono font-bold text-center"><span>${Number(v.km).toLocaleString()}</span> / ${Number(v.km_revisao).toLocaleString()}</td><td class="p-4 text-center text-[10px] text-slate-400 font-bold uppercase"><i class="fas fa-user-circle mr-1 opacity-50"></i> ${v.ultimo_usuario}</td><td class="p-4 text-center"><span class="px-3 py-1 rounded-full text-[9px] font-black uppercase border ${color}">${v.status}</span>${v.motivo ? `<div class="text-[9px] text-red-400 mt-1 italic font-bold">"${v.motivo}"</div>` : ''}</td><td class="p-4 text-center"><button onclick="editar(${v.id})" class="text-slate-500 hover:text-white mx-1 transition"><i class="fas fa-edit"></i></button>${role==='admin' ? `<button onclick="confirmarExcluir(${v.id})" class="text-slate-500 hover:text-red-500 mx-1 transition"><i class="fas fa-trash"></i></button>` : ''}</td></tr>`;
+                corpo.innerHTML += `<tr class="hover:bg-slate-800/40 transition border-b border-slate-800"><td class="p-4 font-black text-[9px] text-slate-500 uppercase">${v.setor}</td><td class="p-4 font-bold text-blue-400 uppercase text-sm">${v.prefixo}<br><span class="text-[10px] text-slate-500 font-mono">${v.placa}</span></td><td class="p-4 text-xs font-mono font-bold"><span>${Number(v.km).toLocaleString()}</span> / ${Number(v.km_revisao).toLocaleString()}</td><td class="p-4 text-[10px] text-slate-400 uppercase font-bold"><i class="fas fa-user-circle mr-1 opacity-50"></i> ${v.ultimo_usuario}</td><td class="p-4"><span class="px-3 py-1 rounded-full text-[9px] font-black uppercase border ${color}">${v.status}</span>${v.motivo ? `<div class="text-[9px] text-red-400 mt-1 italic font-bold">"${v.motivo}"</div>` : ''}</td><td class="p-4 text-center"><button onclick="editar(${v.id})" class="text-slate-500 hover:text-white mx-1 transition"><i class="fas fa-edit"></i></button><button onclick="deletar(${v.id})" class="text-slate-500 hover:text-red-500 mx-1 transition"><i class="fas fa-trash"></i></button></td></tr>`;
             });
             document.getElementById('labelSetorRelatorio').innerText = 'Filtro: ' + (setorFiltro === 'Todos' ? '1° BPTRAN' : setorFiltro);
         }
         function setSetor(s) { setorFiltro = s; document.querySelectorAll('.btn-setor').forEach(b => b.classList.remove('active')); const idBtn = s === '1° CIA' ? 'btn-1CIA' : s === '2° CIA' ? 'btn-2CIA' : s === '3° CIA' ? 'btn-3CIA' : s === '4° CIA' ? 'btn-4CIA' : 'btn-' + s; document.getElementById(idBtn).classList.add('active'); renderizarTabela(); }
         function setFiltroStatus(s) { statusFiltro = s; document.querySelectorAll('.card').forEach(c => c.classList.remove('card-active')); const idCard = s === 'Todos' ? 'card-total' : s === 'Operante' ? 'card-operante' : s === 'Troca de Óleo' ? 'card-oleo' : 'card-baixada'; document.getElementById(idCard).classList.add('card-active'); renderizarTabela(); }
-        function confirmarExcluir(id) { document.getElementById('modalExcluir').classList.remove('hidden'); document.getElementById('btnConfirmarExcluir').onclick = () => deletarVtr(id); }
-        function fecharExcluir() { document.getElementById('modalExcluir').classList.add('hidden'); }
-        async function deletarVtr(id) { await fetch(`/api/viaturas/${id}`, {method:'DELETE'}); fecharExcluir(); showToast("Viatura Removida!"); carregar(); }
-        async function gerarRelatorio(tipo) { document.getElementById('modalEscolhaRelatorio').classList.add('hidden'); let url = `/api/relatorio-ultimo?setor=${setorFiltro}`; if (tipo === 'periodo') { const i = document.getElementById('dataInicio').value, f = document.getElementById('dataFim').value; if (!i || !f) return; url = `/api/relatorio-periodo?inicio=${i}&fim=${f}&setor=${setorFiltro}`; } const res = await fetch(url); const data = await res.json(); const div = document.getElementById('conteudoRelatorio'); const unit = setorFiltro === 'Todos' ? '1° BPTRAN' : setorFiltro; if(data.length === 0) div.innerHTML = `<p class="text-center p-10 uppercase font-black text-slate-500 tracking-widest text-center">Sem registros para ${unit}.</p>`; else { let h = `<div class="text-center mb-8 text-center"><h2 class="text-2xl font-black uppercase text-blue-500 italic text-center">Boletim GEOFROTA</h2><p class="text-xs uppercase font-bold text-center">${unit}</p></div><table class="w-full border border-slate-700 text-left"><thead><tr class="bg-slate-800 text-[10px] uppercase text-white"><th class="p-2 border border-slate-700 text-center">Data/Hora</th><th class="p-2 border border-slate-700 text-center">VTR</th><th class="p-2 border border-slate-700 text-center text-blue-400">Novo KM</th><th class="p-2 border border-slate-700 text-center uppercase text-[10px]">Status</th><th class="p-2 border border-slate-700 text-center">Responsável</th></tr></thead><tbody>`; data.forEach(d => h += `<tr class="border border-slate-700 text-[11px] text-center"><td class="p-2 border border-slate-700 font-mono text-center">${d.hora}</td><td class="p-2 border border-slate-700 font-bold text-center">${d.prefixo}</td><td class="p-2 border border-slate-700 text-center font-bold text-blue-400 text-center">${d.km_novo.toLocaleString()}</td><td class="p-2 border border-slate-700 font-bold uppercase text-[10px] text-center">${d.status}</td><td class="p-2 border border-slate-700 uppercase text-center">${d.usuario}</td></tr>`); div.innerHTML = h + `</tbody></table>`; } document.getElementById('modalRelatorio').classList.remove('hidden'); }
+        
+        async function gerarRelatorio(tipo) {
+            document.getElementById('modalEscolhaRelatorio').classList.add('hidden');
+            let url = `/api/relatorio-ultimo?setor=${setorFiltro}`;
+            if (tipo === 'periodo') {
+                const i = document.getElementById('dataInicio').value, f = document.getElementById('dataFim').value;
+                if (!i || !f) return;
+                url = `/api/relatorio-periodo?inicio=${i}&fim=${f}&setor=${setorFiltro}`;
+                document.getElementById('modalFiltro').classList.add('hidden');
+            }
+            const res = await fetch(url); const data = await res.json();
+            const div = document.getElementById('conteudoRelatorio'); const unit = setorFiltro === 'Todos' ? '1° BPTRAN' : setorFiltro;
+            if(data.length === 0) div.innerHTML = `<p class="text-center p-10 uppercase font-black text-slate-500 tracking-widest">Sem registros para ${unit}.</p>`;
+            else {
+                let h = `<div class="text-center mb-8"><h2 class="text-2xl font-black uppercase text-blue-500 italic">Boletim GEOFROTA</h2><p class="text-xs uppercase font-bold text-slate-500">${unit}</p></div><table class="w-full border border-slate-700 text-left"><thead><tr class="bg-slate-800 text-[10px] uppercase text-white"><th class="p-2 border border-slate-700 text-center">Data/Hora</th><th class="p-2 border border-slate-700 text-center">VTR</th><th class="p-2 border border-slate-700 text-center text-blue-400">Novo KM</th><th class="p-2 border border-slate-700 text-center uppercase text-[10px]">Status</th><th class="p-2 border border-slate-700 text-center">Responsável</th></tr></thead><tbody>`;
+                data.forEach(d => h += `<tr class="border border-slate-700 text-[11px]"><td class="p-2 border border-slate-700 font-mono text-center">${d.hora}</td><td class="p-2 border border-slate-700 font-bold text-center">${d.prefixo}</td><td class="p-2 border border-slate-700 text-center font-bold text-blue-400 text-center">${d.km_novo.toLocaleString()}</td><td class="p-2 border border-slate-700 font-bold uppercase text-[10px] text-center">${d.status}</td><td class="p-2 border border-slate-700 uppercase text-center">${d.usuario}</td></tr>`);
+                div.innerHTML = h + `</tbody></table>`;
+            }
+            document.getElementById('modalRelatorio').classList.remove('hidden');
+        }
+        
         function abrirModal() { document.getElementById('modalTitulo').innerText = "Nova Viatura"; document.getElementById('formV').reset(); document.getElementById('editId').value = ""; if(setorFiltro !== 'Todos') document.getElementById('setor').value = setorFiltro; document.getElementById('modalV').classList.remove('hidden'); }
         function fecharModal() { document.getElementById('modalV').classList.add('hidden'); }
-        function editar(id) { const v = viaturasLocal.find(x => x.id === id); document.getElementById('modalTitulo').innerText = "Viatura"; document.getElementById('editId').value = v.id; document.getElementById('pref').value = v.prefixo; document.getElementById('plac').value = v.placa; document.getElementById('mod').value = v.modelo; document.getElementById('km').value = v.km; document.getElementById('kmr').value = v.km_revisao; document.getElementById('st').value = v.status; document.getElementById('setor').value = v.setor; if(role==='oper') { document.getElementById('pref').disabled = true; document.getElementById('plac').disabled = true; document.getElementById('mod').disabled = true; document.getElementById('setor').disabled = true; document.getElementById('km').disabled = true; document.getElementById('st').disabled = true; } document.getElementById('modalV').classList.remove('hidden'); }
+        function editar(id) { const v = viaturasLocal.find(x => x.id === id); document.getElementById('modalTitulo').innerText = "Editar Viatura"; document.getElementById('editId').value = v.id; document.getElementById('pref').value = v.prefixo; document.getElementById('plac').value = v.placa; document.getElementById('mod').value = v.modelo; document.getElementById('km').value = v.km; document.getElementById('kmr').value = v.km_revisao; document.getElementById('st').value = v.status; document.getElementById('setor').value = v.setor; document.getElementById('modalV').classList.remove('hidden'); }
         document.getElementById('formV').onsubmit = async (e) => { e.preventDefault(); const id = document.getElementById('editId').value; const dados = { prefixo: document.getElementById('pref').value, placa: document.getElementById('plac').value, modelo: document.getElementById('mod').value, km: document.getElementById('km').value, km_revisao: document.getElementById('kmr').value, status: document.getElementById('st').value, setor: document.getElementById('setor').value, ultimo_usuario: 'Gestor' }; await fetch(id ? `/api/viaturas/${id}` : '/api/viaturas', { method: id ? 'PUT' : 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(dados) }); fecharModal(); showToast("Viatura Salva!"); carregar(); };
+        async function deletar(id) { if(confirm("Excluir?")) { await fetch(`/api/viaturas/${id}`, {method:'DELETE'}); carregar(); } }
         async function logout() { await fetch('/api/logout', {method:'POST'}); window.location.href = 'login.html'; }
         setInterval(carregar, 5000); carregar();
     </script>
