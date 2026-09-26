@@ -63,17 +63,18 @@ app.get('/api/relatorio-ultimo', protegerAdmin, async (req, res) => {
         let sql, params;
 
         if (dataHojeBR === dataUltimoBR) {
-            // CENÁRIO A: Mesmo dia. Ignora o horário e busca tudo de Hoje (00:00 até Agora) no Brasil.
-            // A comparação "::date = CURRENT_DATE AT TIME ZONE..." mata o erro das 21h00.
+            // CENÁRIO A: Mesmo dia.
+            // AJUSTE: DD/MM/YY HH24:MI
             sql = `SELECT *, 
-                   TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'HH24:MI') as hora 
+                   TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YY HH24:MI') as hora 
                    FROM historico 
                    WHERE (data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo')::date`;
             params = [];
         } else {
-            // CENÁRIO B: Dia diferente. Busca rastro desde o horário exato do último acesso (UTC).
+            // CENÁRIO B: Dia diferente. 
+            // AJUSTE: DD/MM/YY HH24:MI
             sql = `SELECT *, 
-                   TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora 
+                   TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YY HH24:MI') as hora 
                    FROM historico 
                    WHERE data_hora > $1`;
             params = [ultimoAcesso];
@@ -97,8 +98,8 @@ app.get('/api/relatorio-ultimo', protegerAdmin, async (req, res) => {
 app.get('/api/relatorio-periodo', protegerAdmin, async (req, res) => {
     try {
         const { inicio, fim, setor } = req.query;
-        // Compara o dia no Brasil
-        let sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM HH24:MI') as hora FROM historico WHERE (data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo')::date >= $1 AND (data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo')::date <= $2`;
+        // AJUSTE: DD/MM/YY HH24:MI
+        let sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YY HH24:MI') as hora FROM historico WHERE (data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo')::date >= $1 AND (data_hora AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo')::date <= $2`;
         let params = [inicio, fim];
         if (setor && setor !== 'Todos') { sql += ` AND setor = $3`; params.push(setor); }
         const result = await pool.query(sql + ` ORDER BY data_hora DESC`, params);
