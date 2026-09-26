@@ -73,7 +73,16 @@
                 </div>
             </form>
         </div>
-        <a href="index.html" class="block text-center mt-8 text-slate-600 uppercase text-[10px] font-black hover:text-white transition tracking-widest italic decoration-blue-500 underline decoration-2 underline-offset-4 text-center">Acesso Gestão</a>
+
+        <!-- Novo Rodapé Operacional -->
+        <div class="flex flex-col items-center mt-8 space-y-4">
+            <a href="index.html" class="bg-blue-600/20 text-blue-400 border border-blue-500/30 px-6 py-2 rounded-xl uppercase text-[10px] font-black hover:bg-blue-600/40 transition tracking-widest italic flex items-center gap-2 shadow-lg">
+                <i class="fas fa-chart-line"></i> Ver Dashboard (Leitura)
+            </a>
+            <button type="button" onclick="logout()" class="text-red-500/70 hover:text-red-500 uppercase text-[10px] font-black transition tracking-widest flex items-center gap-1">
+                <i class="fas fa-sign-out-alt"></i> Sair
+            </button>
+        </div>
     </div>
 
     <!-- Modal de Busca -->
@@ -85,6 +94,12 @@
 
     <script>
         let viaturas = [], usuarios = [], estaB = false, tBusca = '', sV = null, sU = null;
+
+        async function logout() { 
+            await fetch('/api/logout', {method:'POST'}); 
+            localStorage.removeItem('role');
+            window.location.href = 'login.html'; 
+        }
 
         function showToast() { 
             const t = document.getElementById('toast'); 
@@ -133,12 +148,10 @@
                 
                 const v = viaturas.find(x => x.id == id); 
                 
-                // Atualiza o Display de KM
                 document.getElementById('info').classList.remove('hidden'); 
                 document.getElementById('kmD').innerText = Number(v.km).toLocaleString(); 
                 document.getElementById('nKM').value = v.km;
 
-                // ATUALIZA O ALERTA DE STATUS
                 const statusContainer = document.getElementById('statusVtrContainer');
                 const statusTexto = document.getElementById('statusVtrTexto');
                 const motivoTexto = document.getElementById('motivoVtrTexto');

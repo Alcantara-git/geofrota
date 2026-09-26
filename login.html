@@ -53,7 +53,12 @@
             const senha = document.getElementById('senha-'+t).value;
             const res = await fetch('/api/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ senha, tipo: t }) });
             const data = await res.json();
-            if (res.ok) window.location.href = data.redirect; else alert("Senha Incorreta!");
+            if (res.ok) {
+                localStorage.setItem('role', t); // Grava a função do usuário (admin ou oper)
+                window.location.href = data.redirect; 
+            } else {
+                alert("Senha Incorreta!");
+            }
         }
         document.querySelectorAll('input').forEach(i => i.onclick = (e) => e.stopPropagation());
     </script>
