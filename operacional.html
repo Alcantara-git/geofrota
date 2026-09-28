@@ -129,8 +129,10 @@
 
         function renderLista(termo) {
             const l = document.getElementById('lRes'); l.innerHTML = ''; termo = termo.toLowerCase();
+            
             if (tBusca === 'usuarios') { 
-                usuarios.filter(u => u.nome.toLowerCase().includes(termo)).forEach(u => l.innerHTML += `<div class="list-item" onclick="sel('${u.nome} (${u.cargo})', '${u.nome} (${u.cargo})')"><span class="font-bold uppercase">${u.nome}</span> <span class="text-xs text-slate-500 ml-1">(${u.cargo})</span></div>`); 
+                // NOVO: Adicionada a busca pelo 'cargo' (onde possivelmente está o RE) além do 'nome'
+                usuarios.filter(u => u.nome.toLowerCase().includes(termo) || (u.cargo && u.cargo.toLowerCase().includes(termo))).forEach(u => l.innerHTML += `<div class="list-item" onclick="sel('${u.nome} (${u.cargo})', '${u.nome} (${u.cargo})')"><span class="font-bold uppercase">${u.nome}</span> <span class="text-xs text-slate-500 ml-1">(${u.cargo})</span></div>`); 
             } else { 
                 viaturas.filter(v => v.prefixo.toLowerCase().includes(termo) || v.placa.toLowerCase().includes(termo)).forEach(v => l.innerHTML += `<div class="list-item" onclick="sel(${v.id}, '${v.prefixo} (${v.placa})')"><div class="font-bold">${v.prefixo}</div><div class="text-xs text-slate-500">${v.placa} - ${v.modelo}</div></div>`); 
             }
