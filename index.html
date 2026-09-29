@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        [data-admin-only][hidden] { display: none !important; }
         body { background-color: #0f172a; color: #f8fafc; min-height: 100vh; overflow-y: auto; }
         .card { background-color: #1e293b; border: 1px solid #334155; transition: 0.3s; }
         .sidebar { background-color: #0f172a; border-right: 1px solid #1e293b; }
@@ -46,13 +47,13 @@
         <div class="text-2xl font-bold text-blue-500 mb-8 uppercase text-center italic tracking-tighter">Geo<span class="text-white">Frota</span></div>
         <nav class="space-y-2 flex-1">
             <a href="index.html" class="flex items-center p-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg"><i class="fas fa-chart-line mr-3"></i> Dashboard</a>
-            <button onclick="document.getElementById('modalEscolhaRelatorio').classList.remove('hidden')" class="w-full flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition font-medium text-left">
+            <button data-admin-only hidden onclick="document.getElementById('modalEscolhaRelatorio').classList.remove('hidden')" class="w-full flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition font-medium text-left">
                 <i class="fas fa-file-alt mr-3"></i> Relatório
             </button>
             <a href="operacional.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition font-medium">
                 <i class="fas fa-mobile-alt mr-3"></i> Operacional
             </a>
-            <a href="usuarios.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition font-medium">
+            <a data-admin-only hidden href="usuarios.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition font-medium">
                 <i class="fas fa-users mr-3"></i> Usuários
             </a>
             <button onclick="logout()" class="flex items-center p-3 text-red-500 mt-10 hover:bg-red-500/10 w-full text-left rounded-xl transition font-bold uppercase text-[10px]"><i class="fas fa-sign-out-alt mr-2"></i> Sair</button>
@@ -62,7 +63,7 @@
     <main class="flex-1 p-4 md:p-8 no-print">
         <header class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
             <div class="flex items-center gap-3">
-                <h2 class="text-xl font-bold uppercase tracking-widest text-blue-400">Painel Gestor</h2>
+                <h2 id="tituloPainel" class="text-xl font-bold uppercase tracking-widest text-blue-400">Dashboard</h2>
                 <div class="flex items-center gap-1 bg-green-500/10 px-2 py-1 rounded-full border border-green-500/20">
                     <div class="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
                     <span class="text-[8px] text-green-500 font-black uppercase">Live</span>
@@ -79,7 +80,7 @@
                 <button onclick="setSetor('4° CIA')" id="btn-4CIA" class="btn-setor px-4 py-2 rounded-lg uppercase">4° CIA</button>
             </div>
 
-            <button id="btnNovaVtr" onclick="abrirModal()" class="bg-blue-600 px-6 py-3 rounded-xl font-black hover:bg-blue-500 transition shadow-lg text-xs uppercase">+ Nova Viatura</button>
+            <button data-admin-only hidden id="btnNovaVtr" onclick="abrirModal()" class="bg-blue-600 px-6 py-3 rounded-xl font-black hover:bg-blue-500 transition shadow-lg text-xs uppercase">+ Nova Viatura</button>
         </header>
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-center text-[10px] font-black uppercase tracking-widest">
@@ -180,7 +181,7 @@
     </div>
 
     <script>
-        let viaturasLocal = []; let statusFiltro = 'Todos'; let setorFiltro = 'Todos'; const role = 'admin';
+        let viaturasLocal = []; let statusFiltro = 'Todos'; let setorFiltro = 'Todos'; let role = null;
         const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         function showToast(msg) { const t = document.getElementById('toast'); t.innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
         async function carregar() {
@@ -198,16 +199,6 @@
             const baseCards = setorFiltro === 'Todos' ? viaturasLocal : viaturasLocal.filter(v => v.setor === setorFiltro);
             document.getElementById('stat-total').innerText = baseCards.length; document.getElementById('stat-op').innerText = baseCards.filter(v => v.status === 'Operante').length; document.getElementById('stat-ol').innerText = baseCards.filter(v => v.status === 'Troca de Óleo').length; document.getElementById('stat-bx').innerText = baseCards.filter(v => v.status === 'Baixada').length;
             
-            // Restrições do perfil Operacional
-            if(role === 'oper') {
-                document.getElementById('btnNovaVtr').style.display = 'none';
-                document.querySelectorAll('.sidebar nav button, .sidebar nav a').forEach(item => {
-                    if (item.innerText.includes('Relatório') || item.innerText.includes('Usuários')) {
-                        item.style.display = 'none'; // Esconde menus sensíveis
-                    }
-                });
-            }
-
             filtradas.forEach(v => {
                 let color = v.status==='Operante'?'text-green-500 border-green-500/20 bg-green-500/10':v.status==='Troca de Óleo'?'text-amber-500 border-amber-500/20 bg-amber-500/10':'text-red-500 border-red-500/20 bg-red-500/10';
                 
@@ -224,15 +215,15 @@
         function setSetor(s) { setorFiltro = s; document.querySelectorAll('.btn-setor').forEach(b => b.classList.remove('active')); const idBtn = s === '1° CIA' ? 'btn-1CIA' : s === '2° CIA' ? 'btn-2CIA' : s === '3° CIA' ? 'btn-3CIA' : s === '4° CIA' ? 'btn-4CIA' : 'btn-' + s; document.getElementById(idBtn).classList.add('active'); renderizarTabela(); }
         function setFiltroStatus(s) { statusFiltro = s; document.querySelectorAll('.card').forEach(c => c.classList.remove('card-active')); const idCard = s === 'Todos' ? 'card-total' : s === 'Operante' ? 'card-operante' : s === 'Troca de Óleo' ? 'card-oleo' : 'card-baixada'; document.getElementById(idCard).classList.add('card-active'); renderizarTabela(); }
         
-        function confirmarExcluir(id) { document.getElementById('modalExcluir').classList.remove('hidden'); document.getElementById('btnConfirmarExcluir').onclick = () => deletarVtr(id); }
+        function confirmarExcluir(id) { if (role !== 'admin') return; document.getElementById('modalExcluir').classList.remove('hidden'); document.getElementById('btnConfirmarExcluir').onclick = () => deletarVtr(id); }
         function fecharExcluir() { document.getElementById('modalExcluir').classList.add('hidden'); }
-        async function deletarVtr(id) { const res = await fetch(`/api/viaturas/${id}`, {method:'DELETE'}); if (!res.ok) return alert("Erro ao remover viatura"); fecharExcluir(); showToast("Viatura Removida!"); carregar(); }
+        async function deletarVtr(id) { if (role !== 'admin') return; const res = await fetch(`/api/viaturas/${id}`, {method:'DELETE'}); if (!res.ok) return alert("Erro ao remover viatura"); fecharExcluir(); showToast("Viatura Removida!"); carregar(); }
 
-        async function gerarRelatorio(tipo) { document.getElementById('modalEscolhaRelatorio').classList.add('hidden'); let url = `/api/relatorio-ultimo?setor=${setorFiltro}`; if (tipo === 'periodo') { const i = document.getElementById('dataInicio').value, f = document.getElementById('dataFim').value; if (!i || !f) return; url = `/api/relatorio-periodo?inicio=${i}&fim=${f}&setor=${setorFiltro}`; } const res = await fetch(url); const data = await res.json(); const div = document.getElementById('conteudoRelatorio'); const unit = setorFiltro === 'Todos' ? '1° BPTRAN' : setorFiltro; if(data.length === 0) div.innerHTML = `<p class="text-center p-10 uppercase font-black text-slate-500 tracking-widest text-center">Sem registros para ${escapeHTML(unit)}.</p>`; else { let h = `<div class="text-center mb-8 text-center text-center"><h2 class="text-2xl font-black uppercase text-blue-500 italic text-center">Boletim GEOFROTA</h2><p class="text-xs uppercase font-bold text-center">${escapeHTML(unit)}</p></div><table class="w-full border border-slate-700 text-left"><thead><tr class="bg-slate-800 text-[10px] uppercase text-white"><th class="p-2 border border-slate-700 text-center">Data/Hora</th><th class="p-2 border border-slate-700 text-center">VTR</th><th class="p-2 border border-slate-700 text-center text-blue-400">Novo KM</th><th class="p-2 border border-slate-700 font-bold uppercase text-[10px] text-center">Status</th><th class="p-2 border border-slate-700 uppercase text-center">Responsável</th></tr></thead><tbody>`; data.forEach(d => h += `<tr class="border border-slate-700 text-[11px] text-center"><td class="p-2 border border-slate-700 font-mono text-center text-center">${escapeHTML(d.hora)}</td><td class="p-2 border border-slate-700 font-bold text-center text-center">${escapeHTML(d.prefixo)}</td><td class="p-2 border border-slate-700 text-center font-bold text-blue-400 text-center">${d.km_novo.toLocaleString()}</td><td class="p-2 border border-slate-700 font-bold uppercase text-[10px] text-center text-center">${escapeHTML(d.status)}</td><td class="p-2 border border-slate-700 uppercase text-center text-center">${escapeHTML(d.usuario)}</td></tr>`); div.innerHTML = h + `</tbody></table>`; } document.getElementById('modalRelatorio').classList.remove('hidden'); }
-        function abrirModal() { document.getElementById('modalTitulo').innerText = "Nova Viatura"; document.getElementById('formV').reset(); document.getElementById('editId').value = ""; if(setorFiltro !== 'Todos') document.getElementById('setor').value = setorFiltro; document.getElementById('modalV').classList.remove('hidden'); }
+        async function gerarRelatorio(tipo) { if (role !== 'admin') return; document.getElementById('modalEscolhaRelatorio').classList.add('hidden'); let url = `/api/relatorio-ultimo?setor=${setorFiltro}`; if (tipo === 'periodo') { const i = document.getElementById('dataInicio').value, f = document.getElementById('dataFim').value; if (!i || !f) return; url = `/api/relatorio-periodo?inicio=${i}&fim=${f}&setor=${setorFiltro}`; } const res = await fetch(url); const data = await res.json(); const div = document.getElementById('conteudoRelatorio'); const unit = setorFiltro === 'Todos' ? '1° BPTRAN' : setorFiltro; if(data.length === 0) div.innerHTML = `<p class="text-center p-10 uppercase font-black text-slate-500 tracking-widest text-center">Sem registros para ${escapeHTML(unit)}.</p>`; else { let h = `<div class="text-center mb-8 text-center text-center"><h2 class="text-2xl font-black uppercase text-blue-500 italic text-center">Boletim GEOFROTA</h2><p class="text-xs uppercase font-bold text-center">${escapeHTML(unit)}</p></div><table class="w-full border border-slate-700 text-left"><thead><tr class="bg-slate-800 text-[10px] uppercase text-white"><th class="p-2 border border-slate-700 text-center">Data/Hora</th><th class="p-2 border border-slate-700 text-center">VTR</th><th class="p-2 border border-slate-700 text-center text-blue-400">Novo KM</th><th class="p-2 border border-slate-700 font-bold uppercase text-[10px] text-center">Status</th><th class="p-2 border border-slate-700 uppercase text-center">Responsável</th></tr></thead><tbody>`; data.forEach(d => h += `<tr class="border border-slate-700 text-[11px] text-center"><td class="p-2 border border-slate-700 font-mono text-center text-center">${escapeHTML(d.hora)}</td><td class="p-2 border border-slate-700 font-bold text-center text-center">${escapeHTML(d.prefixo)}</td><td class="p-2 border border-slate-700 text-center font-bold text-blue-400 text-center">${d.km_novo.toLocaleString()}</td><td class="p-2 border border-slate-700 font-bold uppercase text-[10px] text-center text-center">${escapeHTML(d.status)}</td><td class="p-2 border border-slate-700 uppercase text-center text-center">${escapeHTML(d.usuario)}</td></tr>`); div.innerHTML = h + `</tbody></table>`; } document.getElementById('modalRelatorio').classList.remove('hidden'); }
+        function abrirModal() { if (role !== 'admin') return; document.getElementById('modalTitulo').innerText = "Nova Viatura"; document.getElementById('formV').reset(); document.getElementById('editId').value = ""; if(setorFiltro !== 'Todos') document.getElementById('setor').value = setorFiltro; document.getElementById('modalV').classList.remove('hidden'); }
         function fecharModal() { document.getElementById('modalV').classList.add('hidden'); }
-        function editar(id) { const v = viaturasLocal.find(x => x.id === id); document.getElementById('modalTitulo').innerText = "Viatura"; document.getElementById('editId').value = v.id; document.getElementById('pref').value = v.prefixo; document.getElementById('plac').value = v.placa; document.getElementById('mod').value = v.modelo; document.getElementById('km').value = v.km; document.getElementById('kmr').value = v.km_revisao; document.getElementById('st').value = v.status; document.getElementById('setor').value = v.setor; if(role==='oper') { document.querySelectorAll('#formV input, #formV select').forEach(el => { if(el.id !== 'kmr') el.disabled = true; }); } else { document.querySelectorAll('#formV input, #formV select').forEach(el => el.disabled = false); } document.getElementById('modalV').classList.remove('hidden'); }
-        document.getElementById('formV').onsubmit = async (e) => { e.preventDefault(); const id = document.getElementById('editId').value; const dados = { prefixo: document.getElementById('pref').value, placa: document.getElementById('plac').value, modelo: document.getElementById('mod').value, km: document.getElementById('km').value, km_revisao: document.getElementById('kmr').value, status: document.getElementById('st').value, setor: document.getElementById('setor').value, ultimo_usuario: 'Gestor' }; const res = await fetch(id ? `/api/viaturas/${id}` : '/api/viaturas', { method: id ? 'PUT' : 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(dados) }); if (!res.ok) return alert((await res.json()).error || "Erro ao salvar viatura"); fecharModal(); showToast("Viatura Salva!"); carregar(); };
+        function editar(id) { if (role !== 'admin') return; const v = viaturasLocal.find(x => x.id === id); document.getElementById('modalTitulo').innerText = "Viatura"; document.getElementById('editId').value = v.id; document.getElementById('pref').value = v.prefixo; document.getElementById('plac').value = v.placa; document.getElementById('mod').value = v.modelo; document.getElementById('km').value = v.km; document.getElementById('kmr').value = v.km_revisao; document.getElementById('st').value = v.status; document.getElementById('setor').value = v.setor; if(role==='oper') { document.querySelectorAll('#formV input, #formV select').forEach(el => { if(el.id !== 'kmr') el.disabled = true; }); } else { document.querySelectorAll('#formV input, #formV select').forEach(el => el.disabled = false); } document.getElementById('modalV').classList.remove('hidden'); }
+        document.getElementById('formV').onsubmit = async (e) => { e.preventDefault(); if (role !== 'admin') return; const id = document.getElementById('editId').value; const dados = { prefixo: document.getElementById('pref').value, placa: document.getElementById('plac').value, modelo: document.getElementById('mod').value, km: document.getElementById('km').value, km_revisao: document.getElementById('kmr').value, status: document.getElementById('st').value, setor: document.getElementById('setor').value, ultimo_usuario: 'Gestor' }; const res = await fetch(id ? `/api/viaturas/${id}` : '/api/viaturas', { method: id ? 'PUT' : 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(dados) }); if (!res.ok) return alert((await res.json()).error || "Erro ao salvar viatura"); fecharModal(); showToast("Viatura Salva!"); carregar(); };
         
         async function logout() { 
             await fetch('/api/logout', {method:'POST'}); 
@@ -240,7 +231,22 @@
             window.location.href = 'login.html'; 
         }
         
-        setInterval(carregar, 5000); carregar();
+        async function iniciarDashboard() {
+            try {
+                const res = await fetch('/api/session');
+                if (!res.ok) { window.location.href = 'login.html'; return; }
+                const sessao = await res.json();
+                if (!['admin', 'oper'].includes(sessao.role)) { window.location.href = 'login.html'; return; }
+                role = sessao.role;
+                document.getElementById('tituloPainel').innerText = role === 'admin' ? 'Painel Gestor' : 'Dashboard — Somente visualização';
+                document.querySelectorAll('[data-admin-only]').forEach(item => { item.hidden = role !== 'admin'; });
+                await carregar();
+                setInterval(carregar, 5000);
+            } catch (e) {
+                showToast('Não foi possível verificar o acesso. Atualize a página.');
+            }
+        }
+        iniciarDashboard();
     </script>
 </body>
 </html>

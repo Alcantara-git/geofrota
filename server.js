@@ -92,7 +92,7 @@ app.get('/api/session', (req, res) => {
 });
 // Lista explícita: código, banco, documentos e configuração não são arquivos públicos.
 app.get(['/', '/login.html'], (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
-app.get('/index.html', protegerAdmin, (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/index.html', protegerOperacional, (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/usuarios.html', protegerAdmin, (req, res) => res.sendFile(path.join(__dirname, 'usuarios.html')));
 app.get('/operacional.html', protegerOperacional, (req, res) => res.sendFile(path.join(__dirname, 'operacional.html')));
 app.get(['/BRASAO%201BPTRAN.png', '/BRASAO 1BPTRAN.png'], (req, res) => res.sendFile(path.join(__dirname, 'BRASAO 1BPTRAN.png')));
