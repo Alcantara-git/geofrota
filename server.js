@@ -95,7 +95,7 @@ app.get(['/', '/login.html'], (req, res) => res.sendFile(path.join(__dirname, 'l
 app.get('/index.html', protegerAdmin, (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/usuarios.html', protegerAdmin, (req, res) => res.sendFile(path.join(__dirname, 'usuarios.html')));
 app.get('/operacional.html', protegerOperacional, (req, res) => res.sendFile(path.join(__dirname, 'operacional.html')));
-app.get('/BRASAO 1BPTRAN.png', (req, res) => res.sendFile(path.join(__dirname, 'BRASAO 1BPTRAN.png')));
+app.get(['/BRASAO%201BPTRAN.png', '/BRASAO 1BPTRAN.png'], (req, res) => res.sendFile(path.join(__dirname, 'BRASAO 1BPTRAN.png')));
 const inteiro = (v, min = 0) => { if (typeof v !== 'number' && (typeof v !== 'string' || !/^\d+$/.test(v))) return null; const n = Number(v); return Number.isSafeInteger(n) && n >= min ? n : null; };
 const texto = (v, max = 150) => typeof v === 'string' && v.trim() && v.length <= max ? v.trim() : null;
 const erro = (res, e) => { console.error(e); res.status(500).json({ error: 'Erro interno' }); };
