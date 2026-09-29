@@ -4,7 +4,8 @@
   "description": "Sistema de Gestão de Frota",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "start:local": "node --env-file=.env.local server.js"
   },
   "dependencies": {
     "express": "^4.18.2",

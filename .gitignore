@@ -1,0 +1,6 @@
+node_modules/
+.env
+*.db
+LINKS DO PROJETO GEOFROTA.docx
+.env.local
+supabase-ca.crt

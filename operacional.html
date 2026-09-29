@@ -13,7 +13,7 @@
         .list-item:hover { background-color: #1e293b; color: #3b82f6; }
         #toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); transition: 0.5s ease; z-index: 9999; }
         #toast.show { bottom: 30px; }
-        
+
         /* Cores de Alerta de Status */
         .status-operante { border: 1px solid #22c55e; background: rgba(34, 197, 94, 0.1); color: #4ade80; }
         .status-oleo { border: 1px solid #eab308; background: rgba(234, 179, 8, 0.1); color: #facc15; }
@@ -22,7 +22,7 @@
 </head>
 <body class="p-4">
     <div id="toast" class="bg-green-600 text-white px-8 py-4 rounded-2xl font-black shadow-2xl uppercase text-[10px] tracking-widest border border-green-400 text-center">✅ Hodômetro Atualizado!</div>
-    
+
     <div class="w-full max-w-md">
         <div class="text-center mb-6">
             <h1 class="text-3xl font-black text-blue-500 uppercase tracking-tighter italic">Geo<span class="text-white">Frota</span></h1>
@@ -93,65 +93,78 @@
     </div>
 
     <script>
+        const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         let viaturas = [], usuarios = [], estaB = false, tBusca = '', sV = null, sU = null;
 
-        async function logout() { 
-            await fetch('/api/logout', {method:'POST'}); 
+        async function logout() {
+            await fetch('/api/logout', {method:'POST'});
             localStorage.removeItem('role');
-            window.location.href = 'login.html'; 
+            window.location.href = 'login.html';
         }
 
-        function showToast() { 
-            const t = document.getElementById('toast'); 
-            t.classList.add('show'); 
-            setTimeout(() => { t.classList.remove('show'); setTimeout(() => location.reload(), 200); }, 2500); 
+        function showToast() {
+            const t = document.getElementById('toast');
+            t.classList.add('show');
+            setTimeout(() => { t.classList.remove('show'); setTimeout(() => location.reload(), 200); }, 2500);
         }
 
-        function toggleB() { 
-            estaB = !estaB; 
-            document.getElementById('pBaixa').classList.toggle('hidden', !estaB); 
-            const btn = document.getElementById('btnBaixa'); 
-            btn.innerText = estaB ? "🚩 CANCELAR" : "❌ BAIXAR VTR"; 
-            btn.classList.toggle('bg-red-600', estaB); 
-            if(!estaB) document.getElementById('motivo').value = ''; 
+        function toggleB() {
+            estaB = !estaB;
+            document.getElementById('pBaixa').classList.toggle('hidden', !estaB);
+            const btn = document.getElementById('btnBaixa');
+            btn.innerText = estaB ? "🚩 CANCELAR" : "❌ BAIXAR VTR";
+            btn.classList.toggle('bg-red-600', estaB);
+            if(!estaB) document.getElementById('motivo').value = '';
         }
 
-        function abrirBusca(t) { 
-            tBusca = t; 
-            document.getElementById('mTit').innerText = t === 'usuarios' ? 'Selecionar Responsável' : 'Selecionar Viatura'; 
-            document.getElementById('iBusca').value = ''; 
-            document.getElementById('mBusca').classList.remove('hidden'); 
-            document.getElementById('iBusca').focus(); 
-            renderLista(''); 
+        function abrirBusca(t) {
+            tBusca = t;
+            document.getElementById('mTit').innerText = t === 'usuarios' ? 'Selecionar Responsável' : 'Selecionar Viatura';
+            document.getElementById('iBusca').value = '';
+            document.getElementById('mBusca').classList.remove('hidden');
+            document.getElementById('iBusca').focus();
+            renderLista('');
         }
 
         function fecharB() { document.getElementById('mBusca').classList.add('hidden'); }
 
         function renderLista(termo) {
-            const l = document.getElementById('lRes'); l.innerHTML = ''; termo = termo.toLowerCase();
-            
-            if (tBusca === 'usuarios') { 
-                // NOVO: Adicionada a busca pelo 'cargo' (onde possivelmente está o RE) além do 'nome'
-                usuarios.filter(u => u.nome.toLowerCase().includes(termo) || (u.cargo && u.cargo.toLowerCase().includes(termo))).forEach(u => l.innerHTML += `<div class="list-item" onclick="sel('${u.nome} (${u.cargo})', '${u.nome} (${u.cargo})')"><span class="font-bold uppercase">${u.nome}</span> <span class="text-xs text-slate-500 ml-1">(${u.cargo})</span></div>`); 
-            } else { 
-                viaturas.filter(v => v.prefixo.toLowerCase().includes(termo) || v.placa.toLowerCase().includes(termo)).forEach(v => l.innerHTML += `<div class="list-item" onclick="sel(${v.id}, '${v.prefixo} (${v.placa})')"><div class="font-bold">${v.prefixo}</div><div class="text-xs text-slate-500">${v.placa} - ${v.modelo}</div></div>`); 
-            }
+            const l = document.getElementById('lRes');
+            l.replaceChildren();
+            termo = termo.toLowerCase();
+            const items = tBusca === 'usuarios'
+                ? usuarios.filter(u => u.nome.toLowerCase().includes(termo) || (u.cargo && u.cargo.toLowerCase().includes(termo)))
+                : viaturas.filter(v => v.prefixo.toLowerCase().includes(termo) || v.placa.toLowerCase().includes(termo));
+            items.forEach(item => {
+                const entry = document.createElement('div');
+                entry.className = 'list-item';
+                if (tBusca === 'usuarios') {
+                    const label = `${item.nome} (${item.cargo || ''})`;
+                    entry.innerHTML = `<span class="font-bold uppercase">${escapeHTML(item.nome)}</span> <span class="text-xs text-slate-500 ml-1">(${escapeHTML(item.cargo)})</span>`;
+                    entry.addEventListener('click', () => sel(label, label));
+                } else {
+                    const label = `${item.prefixo} (${item.placa})`;
+                    entry.innerHTML = `<div class="font-bold">${escapeHTML(item.prefixo)}</div><div class="text-xs text-slate-500">${escapeHTML(item.placa)} - ${escapeHTML(item.modelo)}</div>`;
+                    entry.addEventListener('click', () => sel(item.id, label));
+                }
+                l.appendChild(entry);
+            });
         }
 
         function sel(id, display) {
-            if (tBusca === 'usuarios') { 
-                sU = id; 
-                document.getElementById('labelU').innerText = display; 
-                document.getElementById('labelU').classList.add('text-blue-400'); 
-            } else { 
-                sV = id; 
-                document.getElementById('labelV').innerText = display; 
-                document.getElementById('labelV').classList.add('text-blue-400'); 
-                
-                const v = viaturas.find(x => x.id == id); 
-                
-                document.getElementById('info').classList.remove('hidden'); 
-                document.getElementById('kmD').innerText = Number(v.km).toLocaleString(); 
+            if (tBusca === 'usuarios') {
+                sU = id;
+                document.getElementById('labelU').innerText = display;
+                document.getElementById('labelU').classList.add('text-blue-400');
+            } else {
+                sV = id;
+                document.getElementById('labelV').innerText = display;
+                document.getElementById('labelV').classList.add('text-blue-400');
+
+                const v = viaturas.find(x => x.id == id);
+
+                document.getElementById('info').classList.remove('hidden');
+                document.getElementById('kmD').innerText = Number(v.km).toLocaleString();
                 document.getElementById('nKM').value = v.km;
 
                 const statusContainer = document.getElementById('statusVtrContainer');
@@ -184,27 +197,28 @@
             const ru = await fetch('/api/usuarios?t='+Date.now());
             if(rv.status === 401 || ru.status === 401) { window.location.href = 'login.html'; return; }
             viaturas = await rv.json(); usuarios = await ru.json();
-            if (sV) { 
-                const v = viaturas.find(x => x.id == sV); 
-                if (v) document.getElementById('kmD').innerText = Number(v.km).toLocaleString(); 
+            if (sV) {
+                const v = viaturas.find(x => x.id == sV);
+                if (v) document.getElementById('kmD').innerText = Number(v.km).toLocaleString();
             }
         }
 
         document.getElementById('formKM').onsubmit = async (e) => {
             e.preventDefault(); if(!sU || !sV) return alert("Por favor, selecione os dados!");
             const nKM = parseInt(document.getElementById('nKM').value), mot = document.getElementById('motivo').value, v = viaturas.find(x => x.id == sV);
-            if(nKM < v.km) return alert("ERRO: O KM digitado não pode ser menor que o atual!"); 
+            if(nKM < v.km) return alert("ERRO: O KM digitado não pode ser menor que o atual!");
             if(estaB && !mot) return alert("Por favor, descreva o problema da viatura!");
-            
-            await fetch(`/api/viaturas/${sV}`, { 
-                method: 'PUT', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify({...v, km: nKM, ultimo_usuario: sU, status: estaB ? 'Baixada' : v.status, motivo: estaB ? mot : (v.status === 'Baixada' ? v.motivo : ''), setor: v.setor}) 
+
+            const response = await fetch(`/api/operacional/viaturas/${sV}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({km: nKM, ultimo_usuario: sU, baixa: estaB, motivo: mot})
             });
+            if (!response.ok) return alert((await response.json()).error || "Erro ao salvar KM");
             showToast();
         };
 
-        setInterval(sincronizar, 5000); 
+        setInterval(sincronizar, 5000);
         sincronizar();
     </script>
 </body>
