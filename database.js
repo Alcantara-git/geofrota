@@ -20,5 +20,5 @@ async function inicializarBanco() {
         console.log("✅ Banco de Dados Sincronizado.");
     } catch (err) { console.error("Falha ao inicializar banco:", err); }
 }
-inicializarBanco();
+if (process.env.INIT_DB === 'true') inicializarBanco();
 module.exports = pool;
