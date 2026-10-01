@@ -99,6 +99,63 @@ app.get(['/BRASAO%201BPTRAN.png', '/BRASAO 1BPTRAN.png'], (req, res) => res.send
 const inteiro = (v, min = 0) => { if (typeof v !== 'number' && (typeof v !== 'string' || !/^\d+$/.test(v))) return null; const n = Number(v); return Number.isSafeInteger(n) && n >= min ? n : null; };
 const texto = (v, max = 150) => typeof v === 'string' && v.trim() && v.length <= max ? v.trim() : null;
 const erro = (res, e) => { console.error(e); res.status(500).json({ error: 'Erro interno' }); };
+// historico.data_hora é timestamp sem fuso e armazena UTC no banco existente.
+// Primeiro interpreta UTC, depois converte para São Paulo, sem mudar os registros.
+// Consulta independente: não altera o marcador usado pelos relatórios existentes.
+app.get('/api/alteracoes-recentes', protegerOperacional, async (req, res) => {
+    const setor = req.query.setor;
+    if (setor !== undefined && (typeof setor !== 'string' || !texto(setor, 50)))
+        return res.status(400).json({ error: 'Subunidade inválida' });
+    try {
+        const params = [];
+        let where = '';
+        if (setor && setor !== 'Todos') { where = 'WHERE setor = $1'; params.push(setor); }
+        const result = await pool.query(`SELECT id, prefixo, km_anterior, km_novo, status,
+            motivo, usuario, setor, data_hora,
+            TO_CHAR((data_hora AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI') AS hora
+            FROM historico ${where} ORDER BY data_hora DESC, id DESC LIMIT 10`, params);
+        res.json(result.rows);
+    } catch (e) { erro(res, e); }
+});
+
+// Confirmação de manutenção: somente administrador, com histórico e bloqueio de concorrência.
+app.post('/api/viaturas/:id/troca-oleo', protegerAdmin, async (req, res) => {
+    const id = inteiro(req.params.id, 1);
+    const kmEsperado = inteiro(req.body.km_atual);
+    const revisaoEsperada = inteiro(req.body.km_revisao);
+    if (!id || kmEsperado === null || revisaoEsperada === null)
+        return res.status(400).json({ error: 'Dados da troca inválidos' });
+    let client;
+    try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+        const old = (await client.query('SELECT id, prefixo, km, km_revisao, status, setor FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
+        if (!old) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Viatura não encontrada' }); }
+        if (Number(old.km) !== kmEsperado || Number(old.km_revisao) !== revisaoEsperada) {
+            await client.query('ROLLBACK');
+            return res.status(409).json({ error: 'Os dados da viatura mudaram. Atualize e confirme a troca novamente.' });
+        }
+        if (old.status === 'Baixada') {
+            await client.query('ROLLBACK');
+            return res.status(409).json({ error: 'A viatura está baixada. Regularize a baixa antes de registrar a troca.' });
+        }
+        const novaRevisao = kmEsperado + 5000;
+        if (novaRevisao === revisaoEsperada) {
+            await client.query('ROLLBACK');
+            return res.status(409).json({ error: 'A próxima revisão já está definida para este KM + 5.000. Nenhuma alteração foi feita.' });
+        }
+        if (novaRevisao > 2147483647) {
+            await client.query('ROLLBACK'); return res.status(400).json({ error: 'Quilometragem fora do limite' });
+        }
+        await client.query("UPDATE viaturas SET km_revisao=$1, status='Operante', motivo='' WHERE id=$2", [novaRevisao, id]);
+        const registro = `Troca de óleo realizada. Revisão anterior: ${revisaoEsperada} km. Próxima revisão: ${novaRevisao} km.`;
+        await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+            [old.prefixo, kmEsperado, kmEsperado, 'Operante', registro, 'Gestor', old.setor]);
+        await client.query('COMMIT');
+        res.json({ success: true, km_revisao: novaRevisao, status: 'Operante' });
+    } catch (e) { if (client) await client.query('ROLLBACK').catch(() => {}); erro(res, e); }
+    finally { if (client) client.release(); }
+});
 // ==========================================
 // ROTA DO RELATÓRIO: ÚLTIMO ACESSO (CORREÇÃO FUSO)
 // ==========================================
@@ -121,17 +178,17 @@ app.get('/api/relatorio-ultimo', protegerAdmin, async (req, res) => {
             // CENÁRIO A: Mesmo dia.
             // AJUSTE: DD/MM/YY HH24:MI
             sql = `SELECT *,
-                   TO_CHAR(data_hora AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YY HH24:MI') as hora
+                   TO_CHAR((data_hora AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YY HH24:MI') as hora
                    FROM historico
-                   WHERE (data_hora AT TIME ZONE 'America/Sao_Paulo')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo')::date`;
+                   WHERE ((data_hora AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'America/Sao_Paulo')::date`;
             params = [];
         } else {
             // CENÁRIO B: Dia diferente.
             // AJUSTE: DD/MM/YY HH24:MI
             sql = `SELECT *,
-                   TO_CHAR(data_hora AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YY HH24:MI') as hora
+                   TO_CHAR((data_hora AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YY HH24:MI') as hora
                    FROM historico
-                   WHERE data_hora > $1`;
+                   WHERE (data_hora AT TIME ZONE 'UTC') > $1::timestamptz`;
             params = [ultimoAcesso];
         }
 
@@ -154,7 +211,7 @@ app.get('/api/relatorio-periodo', protegerAdmin, async (req, res) => {
     try {
         const { inicio, fim, setor } = req.query;
         if (![inicio, fim].every(d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) || inicio > fim) return res.status(400).json({ error: 'Período inválido' });
-        let sql = `SELECT *, TO_CHAR(data_hora AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YY HH24:MI') as hora FROM historico WHERE (data_hora AT TIME ZONE 'America/Sao_Paulo')::date >= $1 AND (data_hora AT TIME ZONE 'America/Sao_Paulo')::date <= $2`;
+        let sql = `SELECT *, TO_CHAR((data_hora AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YY HH24:MI') as hora FROM historico WHERE ((data_hora AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo')::date >= $1 AND ((data_hora AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo')::date <= $2`;
         let params = [inicio, fim];
         if (setor && setor !== 'Todos') { sql += ` AND setor = $3`; params.push(setor); }
         const result = await pool.query(sql + ` ORDER BY data_hora DESC`, params);
