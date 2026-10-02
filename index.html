@@ -57,6 +57,19 @@
         .empty-state { text-align: center; padding: 32px; color: #94a3b8; font-size: 13px; }
         .recent-scroll { max-height: 340px; overflow: auto; }
         #toast { max-width: calc(100vw - 32px); width: max-content; }
+        /* Subunidades na mesma linha, centralizadas entre atualização e nova viatura. */
+        .dashboard-header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
+        .dashboard-heading { min-width: 0; }
+        .dashboard-presence { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+        .dashboard-sectors { grid-column: 2; grid-row: 1; min-width: 0; overflow-x: auto; justify-content: safe center; }
+        .dashboard-sectors .btn-setor { flex: 0 0 auto; }
+        .dashboard-new { grid-column: 3; grid-row: 1; }
+        @media(max-width:767px) {
+            .dashboard-header { grid-template-columns: minmax(0, 1fr); }
+            .dashboard-heading { flex-wrap: wrap; }
+            .dashboard-sectors { grid-column: 1; grid-row: 2; }
+            .dashboard-new { grid-column: 1; grid-row: 3; justify-self: start; }
+        }
         @media(max-width:767px) {
             .sidebar { border-bottom: 1px solid #1e293b; }
             .sidebar nav { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -109,17 +122,19 @@
     </aside>
 
     <main class="flex-1 p-4 md:p-8 no-print">
-        <header class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-            <div class="flex items-center gap-3">
+        <header class="dashboard-header mb-6 gap-4">
+            <div class="dashboard-heading flex items-center gap-3">
                 <h2 id="tituloPainel" class="text-xl font-bold uppercase tracking-widest text-blue-400">Dashboard</h2>
-                <span id="modoPerfil" class="text-[10px] font-bold text-slate-300 border border-slate-700 px-3 py-1 rounded-full"></span>
-                <div class="flex items-center gap-1 bg-green-500/10 px-2 py-1 rounded-full border border-green-500/20">
-                    <div class="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span id="estadoAtualizacao" class="text-[10px] text-green-500 font-bold">Carregando...</span>
+                <div class="dashboard-presence">
+                    <span id="modoPerfil" class="text-[10px] font-bold text-slate-300 border border-slate-700 px-3 py-1 rounded-full"></span>
+                    <div class="flex items-center gap-1 bg-green-500/10 px-2 py-1 rounded-full border border-green-500/20">
+                        <div class="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span id="estadoAtualizacao" class="text-[10px] text-green-500 font-bold">Carregando...</span>
+                    </div>
                 </div>
             </div>
             
-            <div class="flex overflow-x-auto gap-2 py-2 no-scrollbar px-2 border-x border-slate-800">
+            <div class="dashboard-sectors flex gap-2 py-2 no-scrollbar px-2 border-x border-slate-800">
                 <button onclick="setSetor('Todos')" id="btn-Todos" class="btn-setor active px-4 py-2 rounded-lg uppercase">1° BPTRAN</button>
                 <button onclick="setSetor('EM')" id="btn-EM" class="btn-setor px-4 py-2 rounded-lg uppercase">EM</button>
                 <button onclick="setSetor('CTT')" id="btn-CTT" class="btn-setor px-4 py-2 rounded-lg uppercase">CTT</button>
@@ -129,7 +144,7 @@
                 <button onclick="setSetor('4° CIA')" id="btn-4CIA" class="btn-setor px-4 py-2 rounded-lg uppercase">4° CIA</button>
             </div>
 
-            <button data-admin-only hidden id="btnNovaVtr" onclick="abrirModal()" class="bg-blue-600 px-6 py-3 rounded-xl font-black hover:bg-blue-500 transition shadow-lg text-xs uppercase">+ Nova Viatura</button>
+            <button data-admin-only hidden id="btnNovaVtr" onclick="abrirModal()" class="dashboard-new bg-blue-600 px-6 py-3 rounded-xl font-black hover:bg-blue-500 transition shadow-lg text-xs uppercase">+ Nova Viatura</button>
         </header>
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-[10px] font-black uppercase tracking-widest" aria-label="Filtrar por situação">
