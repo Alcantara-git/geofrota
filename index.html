@@ -148,10 +148,6 @@
             <span id="resumoFiltros">Todas as subunidades · Todas as situações</span>
             <div class="flex gap-4 items-center"><span id="contagemResultados" aria-live="polite">Carregando viaturas...</span><button type="button" onclick="limparFiltros()" class="text-blue-400 hover:text-white font-bold">Limpar filtros</button></div>
         </div>
-        <section id="painelHistorico" class="card rounded-2xl mb-6 overflow-hidden" aria-labelledby="tituloHistorico">
-            <div class="p-5 border-b border-slate-700 flex flex-wrap justify-between gap-2"><div><h3 id="tituloHistorico" class="font-bold text-white">10 últimas alterações</h3><p id="escopoHistorico" class="text-xs text-slate-400 mt-1">Todas as subunidades</p></div><span class="text-xs text-slate-400">Atualização automática</span></div>
-            <div class="recent-scroll"><table class="w-full text-left min-w-[800px]"><thead class="bg-slate-800 text-[10px] uppercase text-slate-300"><tr><th class="p-4">Data e hora</th><th class="p-4">Subunidade / VTR</th><th class="p-4">KM anterior → novo</th><th class="p-4">Situação / registro</th><th class="p-4">Responsável</th></tr></thead><tbody id="corpoHistorico"><tr><td colspan="5" class="empty-state">Carregando histórico...</td></tr></tbody></table></div>
-        </section>
         <div class="card rounded-2xl overflow-x-auto shadow-2xl">
             <table class="fleet-table w-full text-left">
                 <thead class="bg-slate-800 text-slate-400 text-[10px] uppercase font-black tracking-widest">
@@ -160,7 +156,12 @@
                 <tbody id="corpo" class="divide-y divide-slate-800"><tr><td colspan="7" class="empty-state">Carregando viaturas...</td></tr></tbody>
             </table>
         </div>
-        <p class="text-[11px] text-slate-400 mt-3 leading-relaxed">Ciclo de 5.000 km: verde até 70% · amarelo de 71% a 90% · vermelho de 91% a 100% · vermelho listrado acima de 100%.</p>
+        <p class="text-[11px] text-slate-400 mt-3 leading-relaxed">Ciclo de 3.000 km para BMW GS 850 e de 5.000 km para os demais modelos: verde até 70% · amarelo de 71% a 90% · vermelho de 91% a 100% · vermelho listrado acima de 100%.</p>
+
+        <section id="painelHistorico" class="card rounded-2xl mt-6 overflow-hidden" aria-labelledby="tituloHistorico">
+            <div class="p-5 border-b border-slate-700 flex flex-wrap justify-between gap-2"><div><h3 id="tituloHistorico" class="font-bold text-white">10 últimas alterações</h3><p id="escopoHistorico" class="text-xs text-slate-400 mt-1">Todas as subunidades</p></div><span class="text-xs text-slate-400">Atualização automática</span></div>
+            <div class="recent-scroll"><table class="w-full text-left min-w-[800px]"><thead class="bg-slate-800 text-[10px] uppercase text-slate-300"><tr><th class="p-4">Data e hora</th><th class="p-4">Subunidade / VTR</th><th class="p-4">KM anterior → novo</th><th class="p-4">Situação / registro</th><th class="p-4">Responsável</th></tr></thead><tbody id="corpoHistorico"><tr><td colspan="5" class="empty-state">Carregando histórico...</td></tr></tbody></table></div>
+        </section>
 
     </main>
 
@@ -246,15 +247,21 @@
         const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         function showToast(msg) { const t = document.getElementById('toast'); t.innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
         const formatarKM = valor => Number(valor).toLocaleString('pt-BR');
-        function percentualRevisao(km, revisao) {
+        function cicloRevisao(modelo) {
+            const nome = String(modelo ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').replace(/([A-Z])([0-9])/g, '$1 $2').replace(/([0-9])([A-Z])/g, '$1 $2');
+            const bmw850 = /\bBMW\b/.test(nome) && /\b(?:F\s*)?850\b/.test(nome) && /\bGS\b/.test(nome);
+            return bmw850 ? 3000 : 5000;
+        }
+        function percentualRevisao(km, revisao, ciclo = 5000) {
             if (!Number.isFinite(Number(km)) || !Number.isFinite(Number(revisao))) return null;
-            return Math.max(0, Math.round((Number(km) - (Number(revisao) - 5000)) / 5000 * 100));
+            return Math.max(0, Math.round((Number(km) - (Number(revisao) - ciclo)) / ciclo * 100));
         }
         function barraRevisao(v) {
-            const p = percentualRevisao(v.km, v.km_revisao);
+            const ciclo = cicloRevisao(v.modelo);
+            const p = percentualRevisao(v.km, v.km_revisao, ciclo);
             if (p === null) return '<span class="text-slate-400">Dados indisponíveis</span>';
             const cor = p > 100 ? 'maintenance-overdue' : p > 90 ? 'maintenance-red' : p > 70 ? 'maintenance-yellow' : 'maintenance-green';
-            const legenda = p > 100 ? 'Vencida' : p === 100 ? 'Limite atingido' : 'Ciclo de 5.000 km';
+            const legenda = p > 100 ? 'Vencida' : p === 100 ? 'Limite atingido' : `Ciclo de ${formatarKM(ciclo)} km`;
             return `<div class="maintenance" role="img" aria-label="${p}% do ciclo de revisão${p > 100 ? ', revisão vencida' : ''}"><div class="maintenance-label"><span>${legenda}</span><strong>${p}%</strong></div><div class="maintenance-track"><div class="maintenance-fill ${cor}" style="width:${Math.min(100,p)}%"></div></div></div>`;
         }
         async function carregar() {
@@ -352,7 +359,7 @@
             const v = viaturasLocal.find(x => Number(x.id) === id);
             if (!v || v.status === 'Baixada') return;
             const kmAtual = Number(v.km), revisaoAtual = Number(v.km_revisao);
-            if (!window.confirm(`Confirma que a troca de óleo da viatura ${v.prefixo} foi realizada em ${formatarKM(kmAtual)} km?\nPróxima revisão: ${formatarKM(kmAtual + 5000)} km.\nA confirmação será registrada no histórico.`)) return;
+            if (!window.confirm(`Confirma que a troca de óleo da viatura ${v.prefixo} foi realizada em ${formatarKM(kmAtual)} km?\nPróxima revisão: ${formatarKM(kmAtual + cicloRevisao(v.modelo))} km.\nA confirmação será registrada no histórico.`)) return;
             trocasEmAndamento.add(id); renderizarTabela();
             try {
                 const res = await fetch(`/api/viaturas/${id}/troca-oleo`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({km_atual:kmAtual, km_revisao:revisaoAtual}) });

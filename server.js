@@ -118,6 +118,12 @@ app.get('/api/alteracoes-recentes', protegerOperacional, async (req, res) => {
     } catch (e) { erro(res, e); }
 });
 
+function cicloRevisao(modelo) {
+    const nome = String(modelo ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').replace(/([A-Z])([0-9])/g, '$1 $2').replace(/([0-9])([A-Z])/g, '$1 $2');
+    const bmw850 = /\bBMW\b/.test(nome) && /\b(?:F\s*)?850\b/.test(nome) && /\bGS\b/.test(nome);
+    return bmw850 ? 3000 : 5000;
+}
+
 // Confirmação de manutenção: somente administrador, com histórico e bloqueio de concorrência.
 app.post('/api/viaturas/:id/troca-oleo', protegerAdmin, async (req, res) => {
     const id = inteiro(req.params.id, 1);
@@ -129,7 +135,7 @@ app.post('/api/viaturas/:id/troca-oleo', protegerAdmin, async (req, res) => {
     try {
         client = await pool.connect();
         await client.query('BEGIN');
-        const old = (await client.query('SELECT id, prefixo, km, km_revisao, status, setor FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
+        const old = (await client.query('SELECT id, prefixo, modelo, km, km_revisao, status, setor FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
         if (!old) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Viatura não encontrada' }); }
         if (Number(old.km) !== kmEsperado || Number(old.km_revisao) !== revisaoEsperada) {
             await client.query('ROLLBACK');
@@ -139,10 +145,11 @@ app.post('/api/viaturas/:id/troca-oleo', protegerAdmin, async (req, res) => {
             await client.query('ROLLBACK');
             return res.status(409).json({ error: 'A viatura está baixada. Regularize a baixa antes de registrar a troca.' });
         }
-        const novaRevisao = kmEsperado + 5000;
+        const ciclo = cicloRevisao(old.modelo);
+        const novaRevisao = kmEsperado + ciclo;
         if (novaRevisao === revisaoEsperada) {
             await client.query('ROLLBACK');
-            return res.status(409).json({ error: 'A próxima revisão já está definida para este KM + 5.000. Nenhuma alteração foi feita.' });
+            return res.status(409).json({ error: `A próxima revisão já está definida para este KM + ${ciclo.toLocaleString('pt-BR')}. Nenhuma alteração foi feita.` });
         }
         if (novaRevisao > 2147483647) {
             await client.query('ROLLBACK'); return res.status(400).json({ error: 'Quilometragem fora do limite' });
