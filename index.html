@@ -160,7 +160,24 @@
         </div>
 
         <div class="filter-summary mb-3">
-            <span id="resumoFiltros">Todas as subunidades · Todas as situações</span>
+            <div class="flex flex-wrap items-center gap-3">
+                <span id="resumoFiltros">Todas as subunidades · Todas as situações</span>
+                <div class="flex flex-wrap items-center gap-2">
+                    <label for="ordenarCampo" class="text-xs text-slate-400">Ordenar por</label>
+                    <select id="ordenarCampo" onchange="alterarOrdenacao()" class="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-2 py-1 text-xs outline-none focus:border-blue-500">
+                        <option value="">Ordem atual</option>
+                        <option value="prefixo">Prefixo da viatura</option>
+                        <option value="placa">Placa</option>
+                        <option value="modelo">Modelo</option>
+                        <option value="km">KM atual</option>
+                        <option value="percentual">% da revisão</option>
+                    </select>
+                    <select id="ordenarDirecao" aria-label="Sentido da ordenação" onchange="alterarOrdenacao()" disabled class="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-2 py-1 text-xs outline-none focus:border-blue-500 disabled:opacity-50">
+                        <option value="crescente">Crescente</option>
+                        <option value="decrescente">Decrescente</option>
+                    </select>
+                </div>
+            </div>
             <div class="flex gap-4 items-center"><span id="contagemResultados" aria-live="polite">Carregando viaturas...</span><button type="button" onclick="limparFiltros()" class="text-blue-400 hover:text-white font-bold">Limpar filtros</button></div>
         </div>
         <div class="card rounded-2xl overflow-x-auto shadow-2xl">
@@ -258,6 +275,8 @@
     <script>
         let viaturasLocal = []; let statusFiltro = 'Todos'; let setorFiltro = 'Todos'; let role = null;
         let listaCarregada = false, pedidoLista = 0, pedidoHistorico = 0;
+        let campoOrdenacao = '', direcaoOrdenacao = 'crescente';
+        const comparadorOrdenacao = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' });
         const trocasEmAndamento = new Set();
         const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         function showToast(msg) { const t = document.getElementById('toast'); t.innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
@@ -300,9 +319,34 @@
                 if (!listaCarregada) document.getElementById('corpo').innerHTML = '<tr><td colspan="7" class="empty-state">Não foi possível carregar a frota. Uma nova tentativa será feita automaticamente.</td></tr>';
             }
         }
+        function alterarOrdenacao() {
+            campoOrdenacao = document.getElementById('ordenarCampo').value;
+            direcaoOrdenacao = document.getElementById('ordenarDirecao').value;
+            document.getElementById('ordenarDirecao').disabled = campoOrdenacao === '';
+            renderizarTabela();
+        }
+        function ordenarViaturas(lista) {
+            if (!['prefixo', 'placa', 'modelo', 'km', 'percentual'].includes(campoOrdenacao)) return lista;
+            const sentido = direcaoOrdenacao === 'decrescente' ? -1 : 1;
+            const valor = v => {
+                if (campoOrdenacao === 'percentual') return percentualRevisao(v.km, v.km_revisao, cicloRevisao(v.modelo));
+                const dado = v[campoOrdenacao];
+                if (dado === null || dado === undefined || String(dado).trim() === '') return null;
+                if (campoOrdenacao === 'km') return Number.isFinite(Number(dado)) ? Number(dado) : null;
+                return String(dado);
+            };
+            return lista.slice().sort((a, b) => {
+                const va = valor(a), vb = valor(b);
+                if (va === null && vb === null) return 0;
+                if (va === null) return 1;
+                if (vb === null) return -1;
+                return sentido * (typeof va === 'number' ? va - vb : comparadorOrdenacao.compare(va, vb));
+            });
+        }
         function renderizarTabela() {
             const termo = document.getElementById('inputBusca').value.trim().toLowerCase();
             const filtradas = viaturasLocal.filter(v => (setorFiltro === 'Todos' || v.setor === setorFiltro) && (statusFiltro === 'Todos' || v.status === statusFiltro) && [v.prefixo, v.placa, v.modelo].some(c => String(c ?? '').toLowerCase().includes(termo)));
+            const ordenadas = ordenarViaturas(filtradas);
             const baseCards = setorFiltro === 'Todos' ? viaturasLocal : viaturasLocal.filter(v => v.setor === setorFiltro);
             document.getElementById('stat-total').innerText = baseCards.length;
             document.getElementById('stat-op').innerText = baseCards.filter(v => v.status === 'Operante').length;
@@ -310,7 +354,7 @@
             document.getElementById('stat-bx').innerText = baseCards.filter(v => v.status === 'Baixada').length;
             document.getElementById('resumoFiltros').innerText = (setorFiltro === 'Todos' ? 'Todas as subunidades' : setorFiltro) + ' · ' + (statusFiltro === 'Todos' ? 'Todas as situações' : statusFiltro) + (termo ? ' · Busca: ' + document.getElementById('inputBusca').value : '');
             document.getElementById('contagemResultados').innerText = filtradas.length + ' de ' + baseCards.length + ' viaturas';
-            document.getElementById('corpo').innerHTML = filtradas.map(v => {
+            document.getElementById('corpo').innerHTML = ordenadas.map(v => {
                 const id = Number(v.id);
                 const idValido = Number.isSafeInteger(id) && id > 0;
                 const color = v.status === 'Operante' ? 'text-green-500 border-green-500/20 bg-green-500/10' : v.status === 'Troca de Óleo' ? 'text-amber-500 border-amber-500/20 bg-amber-500/10' : 'text-red-500 border-red-500/20 bg-red-500/10';
