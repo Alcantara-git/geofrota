@@ -80,6 +80,17 @@
             .stat-top { gap: 6px; }
         }
 
+        .fleet-chart { width: 100%; min-width: 0; color: #cbd5e1; }
+        .fleet-chart-svg { display: block; width: 100%; max-width: 180px; height: auto; margin: 10px auto; }
+        .fleet-chart-slice { cursor: pointer; transition: opacity .2s; }
+        .fleet-chart-slice:hover, .fleet-chart-slice:focus-visible { opacity: .75; outline: none; stroke: #f8fafc; stroke-width: 3px; }
+        .fleet-chart .fleet-legend-button { display: flex; align-items: center; gap: 6px; width: 100%; padding: 7px 4px; margin: 0; border-radius: 8px; font-size: 11px; text-align: left; }
+        .fleet-legend-button:hover, .fleet-legend-button[aria-pressed="true"] { background: #1e293b; }
+        .fleet-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .fleet-reason-row { display: flex; justify-content: space-between; align-items: start; gap: 8px; padding: 7px 0; border-bottom: 1px solid #1e293b; font-size: 11px; }
+        .fleet-reason-row span { overflow-wrap: anywhere; }
+        .fleet-reason-row strong { white-space: nowrap; color: #f87171; }
+
         @media print {
             .no-print, aside, header, .grid, .search-container, #toast, button, .relative, #modalExcluir, #modalEscolhaRelatorio, #modalFiltro, #modalV { display: none !important; }
             body, html { background: white !important; color: black !important; height: auto !important; min-height: 0 !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; }
@@ -114,7 +125,18 @@
             </a>
             <button onclick="logout()" class="flex items-center p-3 text-red-500 mt-10 hover:bg-red-500/10 w-full text-left rounded-xl transition font-bold uppercase text-[10px]"><i class="fas fa-sign-out-alt mr-2"></i> Sair</button>
         <div class="mt-6 pt-6 border-t border-slate-800 flex flex-col items-center gap-3">
-            <img src="https://raw.githubusercontent.com/Alcantara-git/geofrota/main/BRASAO%201BPTRAN.png" alt="Brasão do 1º Batalhão de Polícia de Trânsito" width="150" height="150" class="w-36 h-auto object-contain" loading="eager">
+            <section class="fleet-chart" aria-labelledby="tituloGrafico">
+                <h3 id="tituloGrafico" class="text-xs font-bold uppercase text-slate-300 text-center">Situação da frota</h3>
+                <p id="escopoGrafico" class="text-[10px] text-slate-400 text-center mt-1">1º BPTRAN · Todas as subunidades</p>
+                <div id="graficoFrota"><p class="text-xs text-slate-400 text-center py-6">Carregando gráfico...</p></div>
+                <p id="totalGrafico" class="text-[10px] text-slate-400 text-center mb-2" aria-live="polite"></p>
+                <div id="legendaGrafico" aria-label="Filtrar situação da frota"></div>
+                <div id="motivosBaixaGrafico" hidden class="mt-4 pt-3 border-t border-slate-800">
+                    <h4 class="text-xs font-bold text-red-400">Motivos da baixa</h4>
+                    <p class="text-[10px] text-slate-400 mt-1">Percentual entre as baixadas</p>
+                    <div id="listaMotivosBaixa" class="mt-2" aria-live="polite"></div>
+                </div>
+            </section>
             <p class="text-[10px] text-slate-400 text-center uppercase tracking-widest">1º Batalhão de Polícia de Trânsito</p>
         </div>
         </nav>
@@ -278,6 +300,7 @@
         let campoOrdenacao = '', direcaoOrdenacao = 'crescente';
         const comparadorOrdenacao = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' });
         const trocasEmAndamento = new Set();
+        const categoriasBaixa = ["Mecânico", "Pneu", "Troca de óleo", "Iluminação e/ou sonoro", "Sindicância", "Avaria", "Elétrica", "Outros"];
         const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         function showToast(msg) { const t = document.getElementById('toast'); t.innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
         const formatarKM = valor => Number(valor).toLocaleString('pt-BR');
@@ -343,6 +366,55 @@
                 return sentido * (typeof va === 'number' ? va - vb : comparadorOrdenacao.compare(va, vb));
             });
         }
+        function resumoGrafico(base) {
+            const situacoes = [
+                { status: 'Operante', rotulo: 'Operantes', cor: '#22c55e' },
+                { status: 'Troca de Óleo', rotulo: 'Troca de óleo', cor: '#f59e0b' },
+                { status: 'Baixada', rotulo: 'Baixadas', cor: '#ef4444' }
+            ];
+            const total = base.length;
+            const fatias = situacoes.map(s => {
+                const quantidade = base.filter(v => v.status === s.status).length;
+                return { ...s, quantidade, percentual: total ? quantidade / total * 100 : 0 };
+            });
+            const baixadas = base.filter(v => v.status === 'Baixada');
+            const grupos = new Map();
+            baixadas.forEach(v => {
+                const categoria = categoriasBaixa.includes(v.categoria_baixa) ? v.categoria_baixa : 'Não categorizado';
+                grupos.set(categoria, (grupos.get(categoria) || 0) + 1);
+            });
+            const motivos = [...grupos].map(([categoria, quantidade]) => ({ categoria, quantidade, percentual: quantidade / baixadas.length * 100 }))
+                .sort((a, b) => b.quantidade - a.quantidade || a.categoria.localeCompare(b.categoria, 'pt-BR'));
+            return { total, fatias, motivos };
+        }
+        function atualizarGrafico(base) {
+            const resumo = resumoGrafico(base);
+            const porcentagem = n => n.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
+            document.getElementById('escopoGrafico').innerText = setorFiltro === 'Todos' ? '1º BPTRAN · Todas as subunidades' : setorFiltro;
+            document.getElementById('totalGrafico').innerText = resumo.total + (resumo.total === 1 ? ' viatura' : ' viaturas');
+            let angulo = -Math.PI / 2;
+            const partes = resumo.fatias.filter(s => s.quantidade > 0).map(s => {
+                const fim = angulo + s.quantidade / resumo.total * Math.PI * 2;
+                const x1 = 100 + 78 * Math.cos(angulo), y1 = 100 + 78 * Math.sin(angulo);
+                const x2 = 100 + 78 * Math.cos(fim), y2 = 100 + 78 * Math.sin(fim);
+                const forma = s.quantidade === resumo.total
+                    ? '<circle cx="100" cy="100" r="78"'
+                    : `<path d="M 100 100 L ${x1} ${y1} A 78 78 0 ${fim - angulo > Math.PI ? 1 : 0} 1 ${x2} ${y2} Z"`;
+                angulo = fim;
+                const descricao = `${s.rotulo}: ${s.quantidade} (${porcentagem(s.percentual)})`;
+                return `${forma} class="fleet-chart-slice" fill="${s.cor}" tabindex="0" role="button" data-status="${escapeHTML(s.status)}" aria-label="Filtrar ${escapeHTML(descricao)}"><title>${escapeHTML(descricao)}</title></${s.quantidade === resumo.total ? 'circle' : 'path'}>`;
+            }).join('');
+            document.getElementById('graficoFrota').innerHTML = `<svg class="fleet-chart-svg" viewBox="0 0 200 200" role="group" aria-label="Distribuição da frota por situação">${partes || '<circle cx="100" cy="100" r="78" fill="#334155"></circle><text x="100" y="105" text-anchor="middle" fill="#cbd5e1" font-size="13">Sem viaturas</text>'}</svg>`;
+            document.getElementById('legendaGrafico').innerHTML = resumo.fatias.map(s => `<button type="button" class="fleet-legend-button" data-status="${escapeHTML(s.status)}" aria-pressed="${statusFiltro === s.status}" aria-label="Filtrar ${escapeHTML(s.rotulo)}"><span class="fleet-legend-dot" style="background:${s.cor}"></span><span class="flex-1">${escapeHTML(s.rotulo)}</span><strong>${s.quantidade} · ${porcentagem(s.percentual)}</strong></button>`).join('');
+            document.querySelectorAll('.fleet-chart [data-status]').forEach(item => {
+                item.addEventListener('click', () => setFiltroStatus(item.dataset.status));
+                if (item.tagName.toLowerCase() !== 'button') item.addEventListener('keydown', e => {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFiltroStatus(item.dataset.status); }
+                });
+            });
+            document.getElementById('motivosBaixaGrafico').hidden = statusFiltro !== 'Baixada';
+            document.getElementById('listaMotivosBaixa').innerHTML = resumo.motivos.map(m => `<div class="fleet-reason-row"><span>${escapeHTML(m.categoria)}</span><strong>${m.quantidade} · ${porcentagem(m.percentual)}</strong></div>`).join('') || '<p class="text-xs text-slate-400 py-2">Nenhuma viatura baixada nesta subunidade.</p>';
+        }
         function renderizarTabela() {
             const termo = document.getElementById('inputBusca').value.trim().toLowerCase();
             const filtradas = viaturasLocal.filter(v => (setorFiltro === 'Todos' || v.setor === setorFiltro) && (statusFiltro === 'Todos' || v.status === statusFiltro) && [v.prefixo, v.placa, v.modelo].some(c => String(c ?? '').toLowerCase().includes(termo)));
@@ -352,6 +424,7 @@
             document.getElementById('stat-op').innerText = baseCards.filter(v => v.status === 'Operante').length;
             document.getElementById('stat-ol').innerText = baseCards.filter(v => v.status === 'Troca de Óleo').length;
             document.getElementById('stat-bx').innerText = baseCards.filter(v => v.status === 'Baixada').length;
+            atualizarGrafico(baseCards);
             document.getElementById('resumoFiltros').innerText = (setorFiltro === 'Todos' ? 'Todas as subunidades' : setorFiltro) + ' · ' + (statusFiltro === 'Todos' ? 'Todas as situações' : statusFiltro) + (termo ? ' · Busca: ' + document.getElementById('inputBusca').value : '');
             document.getElementById('contagemResultados').innerText = filtradas.length + ' de ' + baseCards.length + ' viaturas';
             document.getElementById('corpo').innerHTML = ordenadas.map(v => {
@@ -362,7 +435,7 @@
                 const acoes = role === 'admin' && idValido
                     ? `<div class="whitespace-nowrap"><button type="button" onclick="editar(${id})" class="action-button" title="Editar viatura" aria-label="Editar ${escapeHTML(v.prefixo)}"><i class="fas fa-edit" aria-hidden="true"></i></button><button type="button" onclick="registrarTroca(${id})" class="action-button service" ${v.status === 'Baixada' || trocasEmAndamento.has(id) ? 'disabled' : ''} title="Confirmar troca de óleo realizada" aria-label="Registrar troca de óleo de ${escapeHTML(v.prefixo)}"><i class="fas fa-sync-alt" aria-hidden="true"></i></button><button type="button" onclick="confirmarExcluir(${id})" class="action-button danger" title="Excluir viatura" aria-label="Excluir ${escapeHTML(v.prefixo)}"><i class="fas fa-trash" aria-hidden="true"></i></button></div>`
                     : '<span class="text-xs text-slate-400">Somente leitura</span>';
-                return `<tr class="${v.status === 'Baixada' ? 'row-down' : v.status === 'Troca de Óleo' ? 'row-oil' : ''} border-b border-slate-800"><td class="p-4 text-slate-300 text-center">${escapeHTML(v.setor)}</td><td class="p-4"><strong class="text-blue-400">${escapeHTML(v.prefixo)}</strong><div class="text-xs text-slate-400 mt-1">${escapeHTML(placaDisplay)}</div><div class="text-[10px] text-slate-500 mt-1">${escapeHTML(v.modelo)}</div></td><td class="p-4">${barraRevisao(v)}</td><td class="p-4 text-center font-mono"><strong>${formatarKM(v.km)}</strong><div class="text-xs text-slate-400 mt-1">Revisão: ${formatarKM(v.km_revisao)}</div></td><td class="p-4 text-center text-slate-300">${escapeHTML(v.ultimo_usuario)}</td><td class="p-4 text-center"><span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase border ${color}">${escapeHTML(v.status)}</span>${v.motivo ? `<div class="text-xs text-red-400 mt-2 max-w-[180px]">${escapeHTML(v.motivo)}</div>` : ''}</td><td class="p-4 text-center">${acoes}</td></tr>`;
+                return `<tr class="${v.status === 'Baixada' ? 'row-down' : v.status === 'Troca de Óleo' ? 'row-oil' : ''} border-b border-slate-800"><td class="p-4 text-slate-300 text-center">${escapeHTML(v.setor)}</td><td class="p-4"><strong class="text-blue-400">${escapeHTML(v.prefixo)}</strong><div class="text-xs text-slate-400 mt-1">${escapeHTML(placaDisplay)}</div><div class="text-[10px] text-slate-500 mt-1">${escapeHTML(v.modelo)}</div></td><td class="p-4">${barraRevisao(v)}</td><td class="p-4 text-center font-mono"><strong>${formatarKM(v.km)}</strong><div class="text-xs text-slate-400 mt-1">Revisão: ${formatarKM(v.km_revisao)}</div></td><td class="p-4 text-center text-slate-300">${escapeHTML(v.ultimo_usuario)}</td><td class="p-4 text-center"><span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase border ${color}">${escapeHTML(v.status)}</span>${v.categoria_baixa && v.status === 'Baixada' ? `<div class="text-xs text-red-400 mt-2">${escapeHTML(v.categoria_baixa)}</div>` : ''}${v.motivo ? `<div class="text-xs text-red-400 mt-2 max-w-[180px]">${escapeHTML(v.motivo)}</div>` : ''}</td><td class="p-4 text-center">${acoes}</td></tr>`;
             }).join('') || '<tr><td colspan="7" class="empty-state">Nenhuma viatura encontrada com os filtros selecionados.</td></tr>';
             document.getElementById('labelSetorRelatorio').innerText = 'Filtro: ' + (setorFiltro === 'Todos' ? '1° BPTRAN' : setorFiltro);
         }
@@ -379,7 +452,7 @@
                 const dados = await res.json();
                 if (pedido !== pedidoHistorico || statusFiltro !== 'Todos' || setor !== setorFiltro) return;
                 if (!Array.isArray(dados)) throw new Error('Histórico inválido');
-                document.getElementById('corpoHistorico').innerHTML = dados.map(d => `<tr class="border-b border-slate-800"><td class="p-4 text-xs text-slate-300 whitespace-nowrap">${escapeHTML(d.hora)}</td><td class="p-4 text-xs"><strong class="text-blue-400">${escapeHTML(d.prefixo)}</strong><div class="text-slate-400 mt-1">${escapeHTML(d.setor)}</div></td><td class="p-4 text-xs font-mono whitespace-nowrap">${formatarKM(d.km_anterior)} → ${formatarKM(d.km_novo)}</td><td class="p-4 text-xs"><strong>${escapeHTML(d.status)}</strong>${d.motivo ? `<div class="text-slate-400 mt-1 max-w-[360px]">${escapeHTML(d.motivo)}</div>` : ''}</td><td class="p-4 text-xs text-slate-300">${escapeHTML(d.usuario)}</td></tr>`).join('') || '<tr><td colspan="5" class="empty-state">Ainda não há alterações registradas nesta subunidade.</td></tr>';
+                document.getElementById('corpoHistorico').innerHTML = dados.map(d => `<tr class="border-b border-slate-800"><td class="p-4 text-xs text-slate-300 whitespace-nowrap">${escapeHTML(d.hora)}</td><td class="p-4 text-xs"><strong class="text-blue-400">${escapeHTML(d.prefixo)}</strong><div class="text-slate-400 mt-1">${escapeHTML(d.setor)}</div></td><td class="p-4 text-xs font-mono whitespace-nowrap">${formatarKM(d.km_anterior)} → ${formatarKM(d.km_novo)}</td><td class="p-4 text-xs"><strong>${escapeHTML(d.status)}</strong>${d.categoria_baixa ? `<div class="text-xs text-red-400 mt-1">${escapeHTML(d.categoria_baixa)}</div>` : ''}${d.motivo ? `<div class="text-slate-400 mt-1 max-w-[360px]">${escapeHTML(d.motivo)}</div>` : ''}</td><td class="p-4 text-xs text-slate-300">${escapeHTML(d.usuario)}</td></tr>`).join('') || '<tr><td colspan="5" class="empty-state">Ainda não há alterações registradas nesta subunidade.</td></tr>';
             } catch (e) {
                 if (pedido === pedidoHistorico && statusFiltro === 'Todos' && setor === setorFiltro) document.getElementById('corpoHistorico').innerHTML = '<tr><td colspan="5" class="empty-state">Não foi possível carregar o histórico. Uma nova tentativa será feita automaticamente.</td></tr>';
             }

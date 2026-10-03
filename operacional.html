@@ -52,6 +52,19 @@
 
                 <!-- Painel de Baixa Oculto -->
                 <div id="pBaixa" class="hidden bg-red-900/10 border border-red-900/30 p-4 rounded-2xl">
+                    <label for="categoriaBaixa" class="text-[10px] font-black text-slate-400 mb-2 uppercase block">Motivo da baixa</label>
+                    <select id="categoriaBaixa" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-white text-sm outline-none mb-3">
+                        <option value="">-- Selecione o motivo --</option>
+                        <option value="Mecânico">Mecânico</option>
+                        <option value="Pneu">Pneu</option>
+                        <option value="Troca de óleo">Troca de óleo</option>
+                        <option value="Iluminação e/ou sonoro">Iluminação e/ou sonoro</option>
+                        <option value="Sindicância">Sindicância</option>
+                        <option value="Avaria">Avaria</option>
+                        <option value="Elétrica">Elétrica</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                    <label for="motivo" class="text-[10px] font-black text-slate-400 mb-2 uppercase block">Observação</label>
                     <textarea id="motivo" placeholder="Descreva o defeito aqui..." class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-white text-sm outline-none h-20"></textarea>
                 </div>
 
@@ -110,11 +123,16 @@
 
         function toggleB() {
             estaB = !estaB;
+            if (estaB) {
+                const v = viaturas.find(x => x.id == sV);
+                document.getElementById('categoriaBaixa').value = v?.status === 'Baixada' ? (v.categoria_baixa || '') : '';
+                document.getElementById('motivo').value = v?.status === 'Baixada' ? (v.motivo || '') : '';
+            }
             document.getElementById('pBaixa').classList.toggle('hidden', !estaB);
             const btn = document.getElementById('btnBaixa');
             btn.innerText = estaB ? "🚩 CANCELAR" : "❌ BAIXAR VTR";
             btn.classList.toggle('bg-red-600', estaB);
-            if(!estaB) document.getElementById('motivo').value = '';
+            if(!estaB) { document.getElementById('motivo').value = ''; document.getElementById('categoriaBaixa').value = ''; }
         }
 
         function abrirBusca(t) {
@@ -162,6 +180,10 @@
                 document.getElementById('labelV').classList.add('text-blue-400');
 
                 const v = viaturas.find(x => x.id == id);
+                if (estaB) {
+                    document.getElementById('categoriaBaixa').value = v.status === 'Baixada' ? (v.categoria_baixa || '') : '';
+                    document.getElementById('motivo').value = v.status === 'Baixada' ? (v.motivo || '') : '';
+                }
 
                 document.getElementById('info').classList.remove('hidden');
                 document.getElementById('kmD').innerText = Number(v.km).toLocaleString();
@@ -183,8 +205,8 @@
                 } else {
                     statusContainer.classList.add('status-baixada');
                     statusTexto.innerText = "🚨 INOPERANTE / OFICINA";
-                    if(v.motivo) {
-                        motivoTexto.innerText = "Motivo: " + v.motivo;
+                    if(v.motivo || v.categoria_baixa) {
+                        motivoTexto.innerText = "Motivo: " + [v.categoria_baixa, v.motivo].filter(Boolean).join(' — ');
                         motivoTexto.classList.remove('hidden');
                     }
                 }
@@ -207,12 +229,14 @@
             e.preventDefault(); if(!sU || !sV) return alert("Por favor, selecione os dados!");
             const nKM = parseInt(document.getElementById('nKM').value), mot = document.getElementById('motivo').value, v = viaturas.find(x => x.id == sV);
             if(nKM < v.km) return alert("ERRO: O KM digitado não pode ser menor que o atual!");
-            if(estaB && !mot) return alert("Por favor, descreva o problema da viatura!");
+            const categoria = document.getElementById('categoriaBaixa').value;
+            if(estaB && !categoria) return alert("Por favor, selecione o motivo da baixa!");
+            if(estaB && !mot.trim()) return alert("Por favor, descreva o problema da viatura!");
 
             const response = await fetch(`/api/operacional/viaturas/${sV}`, {
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({km: nKM, ultimo_usuario: sU, baixa: estaB, motivo: mot})
+                body: JSON.stringify({km: nKM, ultimo_usuario: sU, baixa: estaB, motivo: mot, categoria_baixa: estaB ? categoria : null})
             });
             if (!response.ok) return alert((await response.json()).error || "Erro ao salvar KM");
             showToast();

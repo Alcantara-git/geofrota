@@ -99,6 +99,7 @@ app.get(['/BRASAO%201BPTRAN.png', '/BRASAO 1BPTRAN.png'], (req, res) => res.send
 const inteiro = (v, min = 0) => { if (typeof v !== 'number' && (typeof v !== 'string' || !/^\d+$/.test(v))) return null; const n = Number(v); return Number.isSafeInteger(n) && n >= min ? n : null; };
 const texto = (v, max = 150) => typeof v === 'string' && v.trim() && v.length <= max ? v.trim() : null;
 const erro = (res, e) => { console.error(e); res.status(500).json({ error: 'Erro interno' }); };
+const categoriasBaixa = new Set(["Mecânico", "Pneu", "Troca de óleo", "Iluminação e/ou sonoro", "Sindicância", "Avaria", "Elétrica", "Outros"]);
 // historico.data_hora é timestamp sem fuso e armazena UTC no banco existente.
 // Primeiro interpreta UTC, depois converte para São Paulo, sem mudar os registros.
 // Consulta independente: não altera o marcador usado pelos relatórios existentes.
@@ -111,7 +112,7 @@ app.get('/api/alteracoes-recentes', protegerOperacional, async (req, res) => {
         let where = '';
         if (setor && setor !== 'Todos') { where = 'WHERE setor = $1'; params.push(setor); }
         const result = await pool.query(`SELECT id, prefixo, km_anterior, km_novo, status,
-            motivo, usuario, setor, data_hora,
+            motivo, categoria_baixa, usuario, setor, data_hora,
             TO_CHAR((data_hora AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI') AS hora
             FROM historico ${where} ORDER BY data_hora DESC, id DESC LIMIT 10`, params);
         res.json(result.rows);
@@ -154,7 +155,7 @@ app.post('/api/viaturas/:id/troca-oleo', protegerAdmin, async (req, res) => {
         if (novaRevisao > 2147483647) {
             await client.query('ROLLBACK'); return res.status(400).json({ error: 'Quilometragem fora do limite' });
         }
-        await client.query("UPDATE viaturas SET km_revisao=$1, status='Operante', motivo='' WHERE id=$2", [novaRevisao, id]);
+        await client.query("UPDATE viaturas SET km_revisao=$1, status='Operante', motivo='', categoria_baixa=NULL WHERE id=$2", [novaRevisao, id]);
         const registro = `Troca de óleo realizada. Revisão anterior: ${revisaoEsperada} km. Próxima revisão: ${novaRevisao} km.`;
         await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor) VALUES ($1,$2,$3,$4,$5,$6,$7)',
             [old.prefixo, kmEsperado, kmEsperado, 'Operante', registro, 'Gestor', old.setor]);
@@ -235,19 +236,24 @@ app.put('/api/operacional/viaturas/:id', protegerOperacional, async (req, res) =
     const id = inteiro(req.params.id, 1), km = inteiro(req.body.km);
     const usuario = texto(req.body.ultimo_usuario), baixa = req.body.baixa;
     const motivo = baixa ? texto(req.body.motivo, 500) : '';
+    const categoria = baixa ? texto(req.body.categoria_baixa, 50) : null;
+    // Clientes antigos podem manter o envio sem categoria; valores fornecidos são validados.
+    if (baixa && req.body.categoria_baixa !== undefined && !categoriasBaixa.has(categoria))
+        return res.status(400).json({ error: 'Selecione um motivo da baixa válido' });
     if (!id || km === null || !usuario || typeof baixa !== 'boolean' || (baixa && !motivo))
         return res.status(400).json({ error: 'Dados operacionais inválidos' });
     let client;
     try {
         client = await pool.connect();
         await client.query('BEGIN');
-        const old = (await client.query('SELECT prefixo, km, setor, km_revisao, status, motivo FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
+        const old = (await client.query('SELECT prefixo, km, setor, km_revisao, status, motivo, categoria_baixa FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
         if (!old) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Viatura não encontrada' }); }
         if (km < old.km) { await client.query('ROLLBACK'); return res.status(400).json({ error: 'KM inferior ao atual' }); }
         const status = baixa || old.status === 'Baixada' ? 'Baixada' : km >= old.km_revisao ? 'Troca de Óleo' : 'Operante';
         const finalMotivo = baixa ? motivo : status === 'Baixada' ? old.motivo : '';
-        await client.query('UPDATE viaturas SET km=$1, status=$2, ultimo_usuario=$3, motivo=$4 WHERE id=$5', [km, status, usuario, finalMotivo, id]);
-        await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor) VALUES ($1,$2,$3,$4,$5,$6,$7)', [old.prefixo, old.km, km, status, finalMotivo, usuario, old.setor]);
+        const finalCategoria = baixa ? (categoria || (old.status === 'Baixada' ? old.categoria_baixa : null)) : status === 'Baixada' ? old.categoria_baixa : null;
+        await client.query('UPDATE viaturas SET km=$1, status=$2, ultimo_usuario=$3, motivo=$4, categoria_baixa=$5 WHERE id=$6', [km, status, usuario, finalMotivo, finalCategoria, id]);
+        await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor, categoria_baixa) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)', [old.prefixo, old.km, km, status, finalMotivo, usuario, old.setor, finalCategoria]);
         await client.query('COMMIT');
         res.json({ success: true });
     } catch (e) { if (client) await client.query('ROLLBACK').catch(() => {}); erro(res, e); }
@@ -262,12 +268,13 @@ app.put('/api/viaturas/:id', protegerAdmin, async (req, res) => {
     try {
         client = await pool.connect();
         await client.query('BEGIN');
-        const old = (await client.query('SELECT prefixo, km FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
+        const old = (await client.query('SELECT prefixo, km, status, motivo, categoria_baixa FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
         if (!old) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Viatura não encontrada' }); }
         const status = req.body.status === 'Baixada' ? 'Baixada' : km >= revisao ? 'Troca de Óleo' : 'Operante';
-        const motivo = status === 'Baixada' && typeof req.body.motivo === 'string' ? req.body.motivo.slice(0, 500) : '';
-        await client.query('UPDATE viaturas SET km=$1, km_revisao=$2, status=$3, ultimo_usuario=$4, motivo=$5, setor=$6 WHERE id=$7', [km, revisao, status, usuario, motivo, setor, id]);
-        await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor) VALUES ($1,$2,$3,$4,$5,$6,$7)', [old.prefixo, old.km, km, status, motivo, usuario, setor]);
+        const motivo = status === 'Baixada' ? (typeof req.body.motivo === 'string' ? req.body.motivo.slice(0, 500) : old.status === 'Baixada' ? old.motivo : '') : '';
+        const categoria = status === 'Baixada' && old.status === 'Baixada' ? old.categoria_baixa : null;
+        await client.query('UPDATE viaturas SET km=$1, km_revisao=$2, status=$3, ultimo_usuario=$4, motivo=$5, setor=$6, categoria_baixa=$7 WHERE id=$8', [km, revisao, status, usuario, motivo, setor, categoria, id]);
+        await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor, categoria_baixa) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)', [old.prefixo, old.km, km, status, motivo, usuario, setor, categoria]);
         await client.query('COMMIT');
         res.json({ success: true });
     } catch (e) { if (client) await client.query('ROLLBACK').catch(() => {}); erro(res, e); }
