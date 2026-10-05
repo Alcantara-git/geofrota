@@ -3,6 +3,7 @@ const path = require('path');
 const crypto = require('crypto');
 const cookieParser = require('cookie-parser');
 const pool = require('./database');
+const { hashPassword, verifyPassword } = require('./auth');
 const app = express();
 
 app.disable('x-powered-by');
@@ -18,9 +19,8 @@ app.use((req, res, next) => {
     res.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data: https://raw.githubusercontent.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
     next();
 });
-const PWD_ADMIN = process.env.PWD_ADMIN;
 const PWD_OPER = process.env.PWD_OPER;
-if (!PWD_ADMIN || !PWD_OPER) throw new Error('Configure PWD_ADMIN e PWD_OPER.');
+if (!PWD_OPER) throw new Error('Configure PWD_OPER.');
 const sessions = new Map();
 const attempts = new Map();
 const COOKIE = 'geofrota_session';
@@ -45,11 +45,25 @@ function proteger(...roles) {
         if (!s) return res.status(401).json({ error: 'Acesso não autenticado' });
         if (!roles.includes(s.role)) return res.status(403).json({ error: 'Sem permissão' });
         req.role = s.role;
+        req.auth = s;
         next();
     };
 }
-const protegerAdmin = proteger('admin');
-const protegerOperacional = proteger('admin', 'oper');
+const protegerAdminBase = proteger('admin');
+const protegerAdmin = (req, res, next) => protegerAdminBase(req, res, () => {
+    if (req.auth.trocarSenha) return res.status(428).json({ error: 'Troque a senha temporária antes de continuar', code: 'PASSWORD_CHANGE_REQUIRED' });
+    next();
+});
+const protegerOperacionalBase = proteger('admin', 'oper');
+const protegerOperacional = (req, res, next) => protegerOperacionalBase(req, res, () => {
+    if (req.auth.role === 'admin' && req.auth.trocarSenha)
+        return res.status(428).json({ error: 'Troque a senha temporária antes de continuar', code: 'PASSWORD_CHANGE_REQUIRED' });
+    next();
+});
+const protegerSuperadmin = (req, res, next) => protegerAdmin(req, res, () => {
+    if (!req.auth.superadmin) return res.status(403).json({ error: 'Acesso exclusivo do administrador-geral' });
+    next();
+});
 app.use((req, res, next) => {
     if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
     const origin = req.get('origin');
@@ -63,22 +77,49 @@ function samePassword(given, expected) {
     const b = crypto.createHash('sha256').update(expected).digest();
     return crypto.timingSafeEqual(a, b);
 }
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
     const { senha, tipo } = req.body || {};
+    const usuarioInformado = typeof req.body?.usuario === 'string' ? req.body.usuario.trim().toUpperCase() : '';
     const now = Date.now(), key = req.ip;
     const a = attempts.get(key) || { count: 0, until: now + 15 * 60 * 1000 };
     if (now > a.until) { a.count = 0; a.until = now + 15 * 60 * 1000; }
     if (a.count >= 10) return res.status(429).json({ error: 'Muitas tentativas. Aguarde 15 minutos.' });
-    const valid = typeof senha === 'string' && senha.length <= 256 &&
-        ((tipo === 'admin' && samePassword(senha, PWD_ADMIN)) ||
-         (tipo === 'oper' && samePassword(senha, PWD_OPER)));
-    if (!valid) { a.count++; attempts.set(key, a); return res.status(401).json({ error: 'Senha incorreta' }); }
-    attempts.delete(key);
-    if (req.cookies[COOKIE]) sessions.delete(req.cookies[COOKIE]);
-    const token = crypto.randomBytes(32).toString('hex');
-    sessions.set(token, { role: tipo, expires: now + DURATION });
-    res.cookie(COOKIE, token, cookieOptions(req));
-    res.json({ success: true, redirect: tipo === 'admin' ? 'index.html' : 'operacional.html' });
+    try {
+        if (typeof senha !== 'string' || senha.length > 256 || !['admin', 'oper'].includes(tipo)) {
+            a.count++; attempts.set(key, a); return res.status(401).json({ error: 'Credenciais inválidas' });
+        }
+        let dadosSessao, redirect;
+        if (tipo === 'oper') {
+            if (!samePassword(senha, PWD_OPER)) {
+                a.count++; attempts.set(key, a); return res.status(401).json({ error: 'Senha incorreta' });
+            }
+            dadosSessao = { role: 'oper', usuario: 'OPERACIONAL', setor: null, superadmin: false, trocarSenha: false };
+            redirect = 'operacional.html';
+        } else {
+            if (!/^[A-Z0-9_-]{2,30}$/.test(usuarioInformado)) {
+                a.count++; attempts.set(key, a); return res.status(401).json({ error: 'Usuário ou senha incorretos' });
+            }
+            const result = await pool.query(`SELECT id, usuario, nome, setor, papel, senha_hash, ativo, trocar_senha
+                FROM administradores WHERE usuario=$1`, [usuarioInformado]);
+            const conta = result.rows[0];
+            const senhaValida = conta ? await verifyPassword(senha, conta.senha_hash) : false;
+            if (!conta || !conta.ativo || !senhaValida) {
+                a.count++; attempts.set(key, a); return res.status(401).json({ error: 'Usuário ou senha incorretos' });
+            }
+            dadosSessao = {
+                role: 'admin', adminId: String(conta.id), usuario: conta.usuario, nome: conta.nome,
+                setor: conta.setor, superadmin: conta.papel === 'superadmin', trocarSenha: conta.trocar_senha
+            };
+            redirect = conta.trocar_senha ? 'trocar-senha.html' : 'index.html';
+            await pool.query('UPDATE administradores SET ultimo_acesso=CURRENT_TIMESTAMP WHERE id=$1', [conta.id]);
+        }
+        attempts.delete(key);
+        if (req.cookies[COOKIE]) sessions.delete(req.cookies[COOKIE]);
+        const token = crypto.randomBytes(32).toString('hex');
+        sessions.set(token, { ...dadosSessao, expires: now + DURATION });
+        res.cookie(COOKIE, token, cookieOptions(req));
+        res.json({ success: true, redirect });
+    } catch (e) { erro(res, e); }
 });
 app.post('/api/logout', (req, res) => {
     if (req.cookies[COOKIE]) sessions.delete(req.cookies[COOKIE]);
@@ -88,18 +129,93 @@ app.post('/api/logout', (req, res) => {
 app.get('/api/session', (req, res) => {
     const s = session(req);
     if (!s) return res.status(401).json({ error: 'Acesso não autenticado' });
-    res.json({ role: s.role });
+    res.json({ role: s.role, usuario: s.usuario, nome: s.nome || null, setor: s.setor, superadmin: Boolean(s.superadmin), trocar_senha: Boolean(s.trocarSenha) });
 });
 // Lista explícita: código, banco, documentos e configuração não são arquivos públicos.
 app.get(['/', '/login.html'], (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
 app.get('/index.html', protegerOperacional, (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/usuarios.html', protegerAdmin, (req, res) => res.sendFile(path.join(__dirname, 'usuarios.html')));
 app.get('/operacional.html', protegerOperacional, (req, res) => res.sendFile(path.join(__dirname, 'operacional.html')));
+app.get('/trocar-senha.html', protegerAdminBase, (req, res) => res.sendFile(path.join(__dirname, 'trocar-senha.html')));
+app.get('/administradores.html', protegerSuperadmin, (req, res) => res.sendFile(path.join(__dirname, 'administradores.html')));
 app.get(['/BRASAO%201BPTRAN.png', '/BRASAO 1BPTRAN.png'], (req, res) => res.sendFile(path.join(__dirname, 'BRASAO 1BPTRAN.png')));
 const inteiro = (v, min = 0) => { if (typeof v !== 'number' && (typeof v !== 'string' || !/^\d+$/.test(v))) return null; const n = Number(v); return Number.isSafeInteger(n) && n >= min ? n : null; };
 const texto = (v, max = 150) => typeof v === 'string' && v.trim() && v.length <= max ? v.trim() : null;
 const erro = (res, e) => { console.error(e); res.status(500).json({ error: 'Erro interno' }); };
 const categoriasBaixa = new Set(["Mecânico", "Pneu", "Troca de óleo", "Iluminação e/ou sonoro", "Sindicância", "Avaria", "Elétrica", "Outros"]);
+const setoresValidos = new Set(['EM', 'CTT', '1° CIA', '2° CIA', '3° CIA', '4° CIA']);
+const podeGerenciarSetor = (req, setor) => Boolean(req.auth?.superadmin || (req.auth?.role === 'admin' && req.auth.setor === setor));
+const nomeConta = req => req.auth?.usuario ? `ADM ${req.auth.usuario}` : 'Gestor';
+
+app.post('/api/minha-senha', protegerAdminBase, async (req, res) => {
+    const atual = typeof req.body?.senha_atual === 'string' ? req.body.senha_atual : '';
+    const nova = typeof req.body?.nova_senha === 'string' ? req.body.nova_senha : '';
+    if (nova.length < 10 || nova.length > 256 || !/[A-Za-z]/.test(nova) || !/\d/.test(nova))
+        return res.status(400).json({ error: 'A nova senha deve ter ao menos 10 caracteres, com letras e números' });
+    if (atual === nova) return res.status(400).json({ error: 'A nova senha deve ser diferente da atual' });
+    try {
+        const conta = (await pool.query('SELECT senha_hash FROM administradores WHERE id=$1 AND ativo=TRUE', [req.auth.adminId])).rows[0];
+        if (!conta || !(await verifyPassword(atual, conta.senha_hash))) return res.status(401).json({ error: 'Senha atual incorreta' });
+        const senhaHash = await hashPassword(nova);
+        await pool.query('UPDATE administradores SET senha_hash=$1, trocar_senha=FALSE, atualizado_em=CURRENT_TIMESTAMP WHERE id=$2', [senhaHash, req.auth.adminId]);
+        req.auth.trocarSenha = false;
+        res.json({ success: true, redirect: 'index.html' });
+    } catch (e) { erro(res, e); }
+});
+
+app.get('/api/administradores', protegerSuperadmin, async (req, res) => {
+    try {
+        const result = await pool.query(`SELECT id, usuario, nome, setor, papel, ativo, trocar_senha, criado_em, ultimo_acesso
+            FROM administradores ORDER BY CASE WHEN papel='superadmin' THEN 0 ELSE 1 END, setor NULLS FIRST, usuario`);
+        res.json(result.rows);
+    } catch (e) { erro(res, e); }
+});
+
+app.post('/api/administradores', protegerSuperadmin, async (req, res) => {
+    const usuario = typeof req.body?.usuario === 'string' ? req.body.usuario.trim().toUpperCase() : '';
+    const nome = texto(req.body?.nome, 100);
+    const setor = texto(req.body?.setor, 20);
+    const senha = typeof req.body?.senha_temporaria === 'string' ? req.body.senha_temporaria : '';
+    if (!/^[A-Z0-9_-]{2,30}$/.test(usuario) || !nome || !setoresValidos.has(setor) || senha.length < 10 || !/[A-Za-z]/.test(senha) || !/\d/.test(senha))
+        return res.status(400).json({ error: 'Preencha usuário, nome, subunidade e uma senha temporária de ao menos 10 caracteres com letras e números' });
+    try {
+        const senhaHash = await hashPassword(senha);
+        await pool.query(`INSERT INTO administradores (usuario, nome, setor, papel, senha_hash, trocar_senha)
+            VALUES ($1,$2,$3,'admin',$4,TRUE)`, [usuario, nome, setor, senhaHash]);
+        res.json({ success: true });
+    } catch (e) {
+        if (e.code === '23505') return res.status(409).json({ error: 'Esse usuário já existe' });
+        erro(res, e);
+    }
+});
+
+app.put('/api/administradores/:id/status', protegerSuperadmin, async (req, res) => {
+    const id = inteiro(req.params.id, 1);
+    if (!id || typeof req.body?.ativo !== 'boolean') return res.status(400).json({ error: 'Dados inválidos' });
+    if (String(id) === String(req.auth.adminId) && !req.body.ativo) return res.status(400).json({ error: 'Você não pode bloquear a própria conta' });
+    try {
+        const result = await pool.query(`UPDATE administradores SET ativo=$1, atualizado_em=CURRENT_TIMESTAMP
+            WHERE id=$2 AND papel<>'superadmin' RETURNING id`, [req.body.ativo, id]);
+        if (!result.rowCount) return res.status(404).json({ error: 'Conta não encontrada ou protegida' });
+        if (!req.body.ativo) for (const [token, s] of sessions) if (String(s.adminId) === String(id)) sessions.delete(token);
+        res.json({ success: true });
+    } catch (e) { erro(res, e); }
+});
+
+app.put('/api/administradores/:id/redefinir-senha', protegerSuperadmin, async (req, res) => {
+    const id = inteiro(req.params.id, 1);
+    const senha = typeof req.body?.senha_temporaria === 'string' ? req.body.senha_temporaria : '';
+    if (!id || senha.length < 10 || !/[A-Za-z]/.test(senha) || !/\d/.test(senha))
+        return res.status(400).json({ error: 'A senha temporária deve ter ao menos 10 caracteres, com letras e números' });
+    try {
+        const senhaHash = await hashPassword(senha);
+        const result = await pool.query(`UPDATE administradores SET senha_hash=$1, trocar_senha=TRUE, ativo=TRUE, atualizado_em=CURRENT_TIMESTAMP
+            WHERE id=$2 RETURNING id`, [senhaHash, id]);
+        if (!result.rowCount) return res.status(404).json({ error: 'Conta não encontrada' });
+        for (const [token, s] of sessions) if (String(s.adminId) === String(id) && token !== req.cookies[COOKIE]) sessions.delete(token);
+        res.json({ success: true });
+    } catch (e) { erro(res, e); }
+});
 // historico.data_hora é timestamp sem fuso e armazena UTC no banco existente.
 // Primeiro interpreta UTC, depois converte para São Paulo, sem mudar os registros.
 // Consulta independente: não altera o marcador usado pelos relatórios existentes.
@@ -138,6 +254,7 @@ app.post('/api/viaturas/:id/troca-oleo', protegerAdmin, async (req, res) => {
         await client.query('BEGIN');
         const old = (await client.query('SELECT id, prefixo, modelo, km, km_revisao, status, setor FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
         if (!old) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Viatura não encontrada' }); }
+        if (!podeGerenciarSetor(req, old.setor)) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'Você pode alterar somente viaturas da sua subunidade' }); }
         if (Number(old.km) !== kmEsperado || Number(old.km_revisao) !== revisaoEsperada) {
             await client.query('ROLLBACK');
             return res.status(409).json({ error: 'Os dados da viatura mudaram. Atualize e confirme a troca novamente.' });
@@ -157,8 +274,8 @@ app.post('/api/viaturas/:id/troca-oleo', protegerAdmin, async (req, res) => {
         }
         await client.query("UPDATE viaturas SET km_revisao=$1, status='Operante', motivo='', categoria_baixa=NULL WHERE id=$2", [novaRevisao, id]);
         const registro = `Troca de óleo realizada. Revisão anterior: ${revisaoEsperada} km. Próxima revisão: ${novaRevisao} km.`;
-        await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-            [old.prefixo, kmEsperado, kmEsperado, 'Operante', registro, 'Gestor', old.setor]);
+        await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor, autor_conta) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+            [old.prefixo, kmEsperado, kmEsperado, 'Operante', registro, nomeConta(req), old.setor, req.auth.usuario]);
         await client.query('COMMIT');
         res.json({ success: true, km_revisao: novaRevisao, status: 'Operante' });
     } catch (e) { if (client) await client.query('ROLLBACK').catch(() => {}); erro(res, e); }
@@ -248,6 +365,7 @@ app.put('/api/operacional/viaturas/:id', protegerOperacional, async (req, res) =
         await client.query('BEGIN');
         const old = (await client.query('SELECT prefixo, km, setor, km_revisao, status, motivo, categoria_baixa FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
         if (!old) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Viatura não encontrada' }); }
+        if (req.auth.role === 'admin' && !podeGerenciarSetor(req, old.setor)) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'Você pode alterar somente viaturas da sua subunidade' }); }
         if (km < old.km) { await client.query('ROLLBACK'); return res.status(400).json({ error: 'KM inferior ao atual' }); }
         const status = baixa || old.status === 'Baixada' ? 'Baixada' : km >= old.km_revisao ? 'Troca de Óleo' : 'Operante';
         const finalMotivo = baixa ? motivo : status === 'Baixada' ? old.motivo : '';
@@ -261,54 +379,85 @@ app.put('/api/operacional/viaturas/:id', protegerOperacional, async (req, res) =
 });
 app.put('/api/viaturas/:id', protegerAdmin, async (req, res) => {
     const id = inteiro(req.params.id, 1), km = inteiro(req.body.km), revisao = inteiro(req.body.km_revisao);
-    const setor = texto(req.body.setor, 50), usuario = texto(req.body.ultimo_usuario) || 'Gestor';
+    const setor = texto(req.body.setor, 50), usuario = nomeConta(req);
     if (!id || km === null || revisao === null || !setor || !['Operante', 'Troca de Óleo', 'Baixada'].includes(req.body.status))
         return res.status(400).json({ error: 'Dados inválidos' });
     let client;
     try {
         client = await pool.connect();
         await client.query('BEGIN');
-        const old = (await client.query('SELECT prefixo, km, status, motivo, categoria_baixa FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
+        const old = (await client.query('SELECT prefixo, km, status, motivo, categoria_baixa, setor FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
         if (!old) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Viatura não encontrada' }); }
+        if (!podeGerenciarSetor(req, old.setor) || (!req.auth.superadmin && setor !== req.auth.setor)) {
+            await client.query('ROLLBACK'); return res.status(403).json({ error: 'Você pode alterar somente viaturas da sua subunidade' });
+        }
         const status = req.body.status === 'Baixada' ? 'Baixada' : km >= revisao ? 'Troca de Óleo' : 'Operante';
         const motivo = status === 'Baixada' ? (typeof req.body.motivo === 'string' ? req.body.motivo.slice(0, 500) : old.status === 'Baixada' ? old.motivo : '') : '';
         const categoria = status === 'Baixada' && old.status === 'Baixada' ? old.categoria_baixa : null;
         await client.query('UPDATE viaturas SET km=$1, km_revisao=$2, status=$3, ultimo_usuario=$4, motivo=$5, setor=$6, categoria_baixa=$7 WHERE id=$8', [km, revisao, status, usuario, motivo, setor, categoria, id]);
-        await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor, categoria_baixa) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)', [old.prefixo, old.km, km, status, motivo, usuario, setor, categoria]);
+        await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor, categoria_baixa, autor_conta) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [old.prefixo, old.km, km, status, motivo, usuario, setor, categoria, req.auth.usuario]);
         await client.query('COMMIT');
         res.json({ success: true });
     } catch (e) { if (client) await client.query('ROLLBACK').catch(() => {}); erro(res, e); }
     finally { if (client) client.release(); }
 });
 app.post('/api/viaturas', protegerAdmin, async (req, res) => {
-    const { prefixo, placa, modelo, setor, status } = req.body;
+    const { prefixo, placa, modelo, status } = req.body;
+    const setorSolicitado = texto(req.body.setor, 50);
+    const setor = req.auth.superadmin ? setorSolicitado : req.auth.setor;
     const km = inteiro(req.body.km), revisao = inteiro(req.body.km_revisao);
-    if (![prefixo, placa, modelo, setor].every(v => texto(v)) || km === null || revisao === null || !['Operante', 'Troca de Óleo', 'Baixada'].includes(status))
+    if (![prefixo, placa, modelo].every(v => texto(v)) || !setoresValidos.has(setor) || km === null || revisao === null || !['Operante', 'Troca de Óleo', 'Baixada'].includes(status))
         return res.status(400).json({ error: 'Dados inválidos' });
     try {
         const st = status === 'Baixada' ? 'Baixada' : km >= revisao ? 'Troca de Óleo' : 'Operante';
-        await pool.query('INSERT INTO viaturas (prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario, motivo, setor) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [prefixo.trim(), placa.trim(), modelo.trim(), km, revisao, st, 'Sistema', '', setor.trim()]);
+        await pool.query('INSERT INTO viaturas (prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario, motivo, setor) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [prefixo.trim(), placa.trim(), modelo.trim(), km, revisao, st, nomeConta(req), '', setor]);
         res.json({ success: true });
     } catch (e) { erro(res, e); }
 });
 app.delete('/api/viaturas/:id', protegerAdmin, async (req, res) => {
     const id = inteiro(req.params.id, 1); if (!id) return res.status(400).json({ error: 'ID inválido' });
-    try { await pool.query('DELETE FROM viaturas WHERE id=$1', [id]); res.json({ success: true }); }
+    try {
+        const result = req.auth.superadmin
+            ? await pool.query('DELETE FROM viaturas WHERE id=$1 RETURNING id', [id])
+            : await pool.query('DELETE FROM viaturas WHERE id=$1 AND setor=$2 RETURNING id', [id, req.auth.setor]);
+        if (!result.rowCount) return res.status(404).json({ error: 'Viatura não encontrada na sua subunidade' });
+        res.json({ success: true });
+    }
     catch (e) { erro(res, e); }
 });
 app.get('/api/usuarios', protegerOperacional, async (req, res) => {
-    try { res.json((await pool.query('SELECT * FROM usuarios ORDER BY nome ASC')).rows); }
+    try {
+        const rows = (await pool.query('SELECT * FROM usuarios ORDER BY nome ASC')).rows;
+        res.json(rows.map(u => ({ ...u, pode_editar: req.auth.role === 'admin' && (req.auth.superadmin || u.setor === req.auth.setor) })));
+    }
     catch (e) { erro(res, e); }
 });
 app.post('/api/usuarios', protegerAdmin, async (req, res) => {
     const nome = texto(req.body.nome), cargo = typeof req.body.cargo === 'string' && req.body.cargo.length <= 150 ? req.body.cargo.trim() : null;
-    if (!nome || cargo === null) return res.status(400).json({ error: 'Dados inválidos' });
-    try { await pool.query('INSERT INTO usuarios (nome, cargo) VALUES ($1,$2)', [nome, cargo]); res.json({ success: true }); }
+    const setorSolicitado = texto(req.body.setor, 20);
+    const setor = req.auth.superadmin ? setorSolicitado : req.auth.setor;
+    if (!nome || cargo === null || !setoresValidos.has(setor)) return res.status(400).json({ error: 'Dados inválidos' });
+    try { await pool.query('INSERT INTO usuarios (nome, cargo, setor) VALUES ($1,$2,$3)', [nome, cargo, setor]); res.json({ success: true }); }
     catch (e) { erro(res, e); }
+});
+app.put('/api/usuarios/:id/setor', protegerSuperadmin, async (req, res) => {
+    const id = inteiro(req.params.id, 1), setor = texto(req.body?.setor, 20);
+    if (!id || !setoresValidos.has(setor)) return res.status(400).json({ error: 'Subunidade inválida' });
+    try {
+        const result = await pool.query('UPDATE usuarios SET setor=$1 WHERE id=$2 RETURNING id', [setor, id]);
+        if (!result.rowCount) return res.status(404).json({ error: 'Militar não encontrado' });
+        res.json({ success: true });
+    } catch (e) { erro(res, e); }
 });
 app.delete('/api/usuarios/:id', protegerAdmin, async (req, res) => {
     const id = inteiro(req.params.id, 1); if (!id) return res.status(400).json({ error: 'ID inválido' });
-    try { await pool.query('DELETE FROM usuarios WHERE id=$1', [id]); res.json({ success: true }); }
+    try {
+        const result = req.auth.superadmin
+            ? await pool.query('DELETE FROM usuarios WHERE id=$1 RETURNING id', [id])
+            : await pool.query('DELETE FROM usuarios WHERE id=$1 AND setor=$2 RETURNING id', [id, req.auth.setor]);
+        if (!result.rowCount) return res.status(404).json({ error: 'Militar não encontrado na sua subunidade' });
+        res.json({ success: true });
+    }
     catch (e) { erro(res, e); }
 });
 app.use('/api', (req, res) => res.status(404).json({ error: 'Rota não encontrada' }));

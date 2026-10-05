@@ -5,7 +5,12 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "start:local": "node --env-file=.env.local server.js"
+    "start:local": "node --env-file=.env.local server.js",
+    "migrate:auth": "node --env-file=.env.local migrar-autenticacao.js",
+    "verify:auth": "node --env-file=.env.local verificar-autenticacao.js",
+    "test:auth": "node --env-file=.env.local testar-login.js",
+    "test:permissions": "node --env-file=.env.local testar-permissoes.js",
+    "test:superadmin": "node --env-file=.env.local testar-superadmin.js"
   },
   "dependencies": {
     "express": "^4.18.2",

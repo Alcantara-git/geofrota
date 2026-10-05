@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GEOFROTA | Trocar Senha</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: radial-gradient(circle at top, #1e293b 0%, #0f172a 100%); color: #f8fafc; min-height: 100vh; }
+        #toast { position: fixed; left: 50%; bottom: -140px; transform: translateX(-50%); width: min(92vw, 480px); padding: 16px 20px; border-radius: 16px; color: white; font-size: .875rem; font-weight: 700; text-align: center; transition: bottom .35s ease; z-index: 9999; }
+        #toast.show { bottom: 24px; }
+        #toast.error { background: #b91c1c; border: 1px solid #f87171; }
+        #toast.success { background: #15803d; border: 1px solid #4ade80; }
+    </style>
+</head>
+<body class="flex items-center justify-center p-4">
+    <div id="toast" role="alert" aria-live="assertive"></div>
+    <main class="w-full max-w-md bg-slate-800 border border-slate-700 rounded-3xl p-8 shadow-2xl">
+        <div class="text-center mb-7">
+            <i class="fas fa-key text-4xl text-amber-400 mb-4" aria-hidden="true"></i>
+            <h1 class="text-2xl font-black uppercase italic">Defina sua senha</h1>
+            <p id="identificacao" class="text-sm text-slate-400 mt-2">Carregando conta...</p>
+        </div>
+        <p class="text-sm text-slate-300 mb-6 leading-relaxed">A senha temporária deve ser substituída antes do primeiro acesso. Use pelo menos 10 caracteres, contendo letras e números.</p>
+        <form id="formSenha" class="space-y-4">
+            <div><label for="atual" class="text-sm text-slate-300 block mb-1">Senha temporária atual</label><input id="atual" type="password" autocomplete="current-password" required class="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl outline-none focus:border-amber-500"></div>
+            <div><label for="nova" class="text-sm text-slate-300 block mb-1">Nova senha</label><input id="nova" type="password" autocomplete="new-password" required minlength="10" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl outline-none focus:border-amber-500"></div>
+            <div><label for="confirmacao" class="text-sm text-slate-300 block mb-1">Confirme a nova senha</label><input id="confirmacao" type="password" autocomplete="new-password" required minlength="10" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl outline-none focus:border-amber-500"></div>
+            <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 p-4 rounded-xl font-black uppercase">Salvar nova senha</button>
+        </form>
+        <button type="button" onclick="logout()" class="w-full mt-4 text-sm text-slate-400 hover:text-white">Sair e voltar ao login</button>
+    </main>
+    <script>
+        const toast = (mensagem, tipo='error') => { const t=document.getElementById('toast'); t.textContent=mensagem; t.className=tipo+' show'; clearTimeout(toast.timer); toast.timer=setTimeout(()=>t.classList.remove('show'),4000); };
+        async function iniciar() { const res=await fetch('/api/session'); if(!res.ok){location.href='login.html';return;} const s=await res.json(); if(s.role!=='admin'){location.href='login.html';return;} document.getElementById('identificacao').textContent=(s.nome||s.usuario)+(s.setor?' · '+s.setor:' · Administrador-geral'); if(!s.trocar_senha) document.querySelector('h1').textContent='Alterar senha'; }
+        document.getElementById('formSenha').onsubmit=async e=>{ e.preventDefault(); const atual=document.getElementById('atual').value,nova=document.getElementById('nova').value,confirmacao=document.getElementById('confirmacao').value; if(nova!==confirmacao)return toast('A confirmação não corresponde à nova senha.'); const res=await fetch('/api/minha-senha',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({senha_atual:atual,nova_senha:nova})}); const data=await res.json(); if(!res.ok)return toast(data.error||'Não foi possível alterar a senha.'); toast('Senha alterada com sucesso.','success'); setTimeout(()=>location.href=data.redirect||'index.html',700); };
+        async function logout(){await fetch('/api/logout',{method:'POST'});location.href='login.html';}
+        iniciar();
+    </script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GEOFROTA | Administradores</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body{background:#0f172a;color:#f8fafc;min-height:100vh}.card{background:#1e293b;border:1px solid #334155}#toast{position:fixed;left:50%;bottom:-140px;transform:translateX(-50%);width:min(92vw,480px);padding:16px 20px;border-radius:16px;color:#fff;font-size:.875rem;font-weight:700;text-align:center;transition:bottom .35s;z-index:9999}#toast.show{bottom:24px}#toast.success{background:#15803d;border:1px solid #4ade80}#toast.error{background:#b91c1c;border:1px solid #f87171}
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div id="toast" role="status" aria-live="polite"></div>
+    <main class="max-w-6xl mx-auto">
+        <header class="flex flex-wrap justify-between items-center gap-4 mb-8"><div><h1 class="text-3xl font-black text-blue-400 uppercase italic">Contas administrativas</h1><p class="text-sm text-slate-400 mt-1">Acesso exclusivo do administrador-geral</p></div><div class="flex gap-2"><a href="index.html" class="bg-slate-700 px-5 py-3 rounded-xl font-bold">Dashboard</a><button onclick="logout()" class="bg-red-600/20 text-red-400 px-5 py-3 rounded-xl font-bold">Sair</button></div></header>
+        <section class="card rounded-2xl p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4">Criar nova conta de subunidade</h2>
+            <form id="formConta" class="grid md:grid-cols-5 gap-3">
+                <input id="usuario" required maxlength="30" placeholder="Usuário" class="bg-slate-900 border border-slate-700 p-3 rounded-xl uppercase">
+                <input id="nome" required maxlength="100" placeholder="Nome da conta" class="bg-slate-900 border border-slate-700 p-3 rounded-xl">
+                <select id="setor" required class="bg-slate-900 border border-slate-700 p-3 rounded-xl"><option value="">Subunidade</option><option>EM</option><option>CTT</option><option>1° CIA</option><option>2° CIA</option><option>3° CIA</option><option>4° CIA</option></select>
+                <input id="senha" type="password" required minlength="10" autocomplete="new-password" placeholder="Senha temporária" class="bg-slate-900 border border-slate-700 p-3 rounded-xl">
+                <button class="bg-blue-600 hover:bg-blue-500 p-3 rounded-xl font-bold">Criar conta</button>
+            </form>
+        </section>
+        <section class="card rounded-2xl overflow-x-auto"><table class="w-full min-w-[850px] text-left"><thead class="bg-slate-900 text-slate-300 text-sm"><tr><th class="p-4">Usuário</th><th class="p-4">Nome</th><th class="p-4">Subunidade</th><th class="p-4">Situação</th><th class="p-4">Último acesso</th><th class="p-4 text-center">Ações</th></tr></thead><tbody id="lista"></tbody></table></section>
+    </main>
+    <div id="modalSenha" class="hidden fixed inset-0 bg-black/90 p-4 items-center justify-center z-50">
+        <form id="formRedefinir" class="card w-full max-w-md rounded-3xl p-8">
+            <input type="hidden" id="contaId">
+            <h2 class="text-xl font-black mb-2">Redefinir senha</h2>
+            <p id="contaLabel" class="text-sm text-slate-400 mb-5"></p>
+            <label for="novaSenhaTemporaria" class="text-sm text-slate-300 block mb-1">Nova senha temporária</label>
+            <input id="novaSenhaTemporaria" type="password" autocomplete="new-password" required minlength="10" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl mb-5" placeholder="Ao menos 10 caracteres">
+            <div class="grid grid-cols-2 gap-3"><button type="button" onclick="fecharRedefinir()" class="bg-slate-700 p-3 rounded-xl font-bold">Cancelar</button><button class="bg-amber-600 p-3 rounded-xl font-bold">Redefinir</button></div>
+        </form>
+    </div>
+    <script>
+        const escapeHTML=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        function showToast(m,t='success'){const e=document.getElementById('toast');e.textContent=m;e.className=t+' show';clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>e.classList.remove('show'),4000)}
+        async function carregar(){const r=await fetch('/api/administradores');if(r.status===401||r.status===403){location.href='index.html';return;}const dados=await r.json();document.getElementById('lista').innerHTML=dados.map(c=>`<tr class="border-t border-slate-700"><td class="p-4 font-black text-blue-400">${escapeHTML(c.usuario)}</td><td class="p-4">${escapeHTML(c.nome)}</td><td class="p-4">${escapeHTML(c.setor||'Todas')}</td><td class="p-4"><span class="${c.ativo?'text-green-400':'text-red-400'} font-bold">${c.ativo?'Ativa':'Bloqueada'}</span>${c.trocar_senha?'<div class="text-amber-400 text-sm">Troca de senha pendente</div>':''}</td><td class="p-4 text-sm text-slate-300">${c.ultimo_acesso?new Date(c.ultimo_acesso).toLocaleString('pt-BR'):'Nunca'}</td><td class="p-4 text-center">${c.papel==='superadmin'?'<span class="text-slate-500">Conta protegida</span>':`<button onclick="abrirRedefinir(${Number(c.id)},'${escapeHTML(c.usuario)}')" class="bg-amber-600 px-3 py-2 rounded-lg mr-2 font-bold">Redefinir senha</button><button onclick="statusConta(${Number(c.id)},${!c.ativo})" class="${c.ativo?'bg-red-700':'bg-green-700'} px-3 py-2 rounded-lg font-bold">${c.ativo?'Bloquear':'Ativar'}</button>`}</td></tr>`).join('');}
+        document.getElementById('formConta').onsubmit=async e=>{e.preventDefault();const body={usuario:document.getElementById('usuario').value,nome:document.getElementById('nome').value,setor:document.getElementById('setor').value,senha_temporaria:document.getElementById('senha').value};const r=await fetch('/api/administradores',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),d=await r.json();if(!r.ok)return showToast(d.error||'Erro ao criar conta','error');e.target.reset();showToast('Conta criada com sucesso.');carregar();};
+        async function statusConta(id,ativo){if(!confirm(`${ativo?'Ativar':'Bloquear'} esta conta?`))return;const r=await fetch(`/api/administradores/${id}/status`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({ativo})}),d=await r.json();if(!r.ok)return showToast(d.error||'Erro ao alterar conta','error');showToast('Situação atualizada.');carregar();}
+        function abrirRedefinir(id,usuario){document.getElementById('contaId').value=id;document.getElementById('contaLabel').textContent='Conta: '+usuario;document.getElementById('novaSenhaTemporaria').value='';const m=document.getElementById('modalSenha');m.classList.remove('hidden');m.classList.add('flex');document.getElementById('novaSenhaTemporaria').focus();}
+        function fecharRedefinir(){const m=document.getElementById('modalSenha');m.classList.add('hidden');m.classList.remove('flex');}
+        document.getElementById('formRedefinir').onsubmit=async e=>{e.preventDefault();const id=document.getElementById('contaId').value,senha=document.getElementById('novaSenhaTemporaria').value;const r=await fetch(`/api/administradores/${id}/redefinir-senha`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({senha_temporaria:senha})}),d=await r.json();if(!r.ok)return showToast(d.error||'Erro ao redefinir senha','error');fecharRedefinir();showToast('Senha temporária redefinida.');carregar();};
+        async function logout(){await fetch('/api/logout',{method:'POST'});location.href='login.html';}
+        carregar();
+    </script>
+</body>
+</html>

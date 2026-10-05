@@ -47,6 +47,17 @@
                 <i class="fas fa-user-shield text-4xl text-amber-500 mb-4"></i>
                 <h2 class="text-2xl font-black uppercase italic">Administrativo</h2>
                 <form id="form-admin" onsubmit="fazerLogin('admin', event)" class="hidden mt-6 w-full animate-pulse">
+                    <label for="usuario-admin" class="sr-only">Acesso administrativo</label>
+                    <select id="usuario-admin" aria-label="Selecione o acesso administrativo" required class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-center text-white outline-none focus:ring-2 ring-amber-600 mb-3 font-bold">
+                        <option value="" selected disabled>Selecione o acesso</option>
+                        <option value="1BPTRAN">1º BPTRAN</option>
+                        <option value="EM">EM</option>
+                        <option value="CTT">CTT</option>
+                        <option value="1CIA">1ª CIA</option>
+                        <option value="2CIA">2ª CIA</option>
+                        <option value="3CIA">3ª CIA</option>
+                        <option value="4CIA">4ª CIA</option>
+                    </select>
                     <label for="senha-admin" class="sr-only">Senha do gestor</label>
                     <div class="relative mb-4">
                         <input type="password" id="senha-admin" placeholder="Senha Gestor" aria-label="Senha do gestor" autocomplete="current-password" class="w-full bg-slate-900 border border-slate-700 p-4 pr-14 rounded-2xl text-center text-white outline-none focus:ring-2 ring-amber-600 font-bold">
@@ -64,7 +75,7 @@
             document.getElementById('form-oper').classList.add('hidden'); 
             document.getElementById('form-admin').classList.add('hidden'); 
             document.getElementById('form-'+t).classList.remove('hidden'); 
-            document.getElementById('senha-'+t).focus();
+            document.getElementById(t === 'admin' ? 'usuario-admin' : 'senha-oper').focus();
         }
         function toggleSenha(t, event) {
             event.stopPropagation();
@@ -80,7 +91,9 @@
         async function fazerLogin(t, event) {
             if (event) event.preventDefault();
             const senha = document.getElementById('senha-'+t).value;
-            const res = await fetch('/api/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ senha, tipo: t }) });
+            const usuario = t === 'admin' ? document.getElementById('usuario-admin').value.trim().toUpperCase() : undefined;
+            if (t === 'admin' && !usuario) return showToast('Informe o usuário administrativo.');
+            const res = await fetch('/api/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ senha, tipo: t, usuario }) });
             const data = await res.json();
             if (res.ok) {
                 localStorage.setItem('role', t); // Grava a função do usuário (admin ou oper)

@@ -29,6 +29,7 @@
             <a href="index.html" class="block p-3 text-slate-400 hover:bg-slate-800 rounded-xl transition font-medium">Dashboard</a>
             <a href="operacional.html" class="block p-3 text-slate-400 hover:bg-slate-800 rounded-xl transition font-medium">Operacional</a>
             <a href="usuarios.html" class="block p-3 bg-blue-600 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest">Usuários</a>
+            <a id="linkAdministradores" hidden href="administradores.html" class="block p-3 text-slate-400 hover:bg-slate-800 rounded-xl transition font-medium">Administradores</a>
             <button onclick="logout()" class="flex items-center p-3 text-red-500 mt-10 hover:bg-red-500/10 w-full text-left rounded-xl transition font-bold uppercase text-xs"><i class="fas fa-sign-out-alt mr-2"></i> Sair</button>
         </nav>
     </aside>
@@ -40,6 +41,7 @@
             <div class="flex flex-wrap gap-2 w-full md:w-auto">
                 <input type="text" id="un" placeholder="Militar" class="flex-1 bg-slate-800 p-3 rounded-xl border border-slate-700 outline-none text-white focus:border-blue-500">
                 <input type="text" id="ure" placeholder="RE" class="flex-1 bg-slate-800 p-3 rounded-xl border border-slate-700 outline-none text-white focus:border-blue-500 w-32">
+                <select id="usetor" class="bg-slate-800 p-3 rounded-xl border border-slate-700 outline-none text-white focus:border-blue-500"><option>EM</option><option>CTT</option><option>1° CIA</option><option>2° CIA</option><option>3° CIA</option><option>4° CIA</option></select>
                 <button onclick="addU()" class="bg-blue-600 px-6 py-3 rounded-xl font-bold hover:bg-blue-500 uppercase text-xs w-full md:w-auto">Adicionar</button>
             </div>
         </div>
@@ -53,7 +55,7 @@
         <div class="bg-slate-800 rounded-2xl overflow-x-auto shadow-2xl">
             <table class="w-full text-left text-sm min-w-[500px]">
                 <thead class="bg-slate-900 text-slate-400 text-[10px] uppercase font-black tracking-widest text-center">
-                    <tr><th class="p-4 text-center">Identificação do Militar (Nome e RE)</th><th class="p-4 text-center">Ações</th></tr>
+                    <tr><th class="p-4 text-center">Identificação do Militar (Nome e RE)</th><th class="p-4 text-center">Subunidade</th><th class="p-4 text-center">Ações</th></tr>
                 </thead>
                 <tbody id="listaU" class="divide-y divide-slate-900 text-center"></tbody>
             </table>
@@ -76,6 +78,7 @@
     <script>
         const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         let usuariosLocal = []; // Memória auxiliar para a busca rápida
+        let adminSetor = null, isSuperadmin = false;
         function showToast(mensagem, tipo = 'success') {
             const toast = document.getElementById('toast');
             toast.textContent = mensagem;
@@ -103,8 +106,9 @@
             const lista = document.getElementById('listaU');
             
             const filtrados = usuariosLocal.filter(u => 
-                u.nome.toLowerCase().includes(termo) || 
-                (u.cargo && u.cargo.toLowerCase().includes(termo))
+                u.nome.toLowerCase().includes(termo) ||
+                (u.cargo && u.cargo.toLowerCase().includes(termo)) ||
+                (u.setor && u.setor.toLowerCase().includes(termo))
             );
 
             lista.innerHTML = filtrados.map(u => `
@@ -112,16 +116,21 @@
                     <td class="p-4 uppercase font-bold text-slate-200 text-center">
                         ${escapeHTML(u.nome)} <span class="text-xs text-blue-400 ml-1">(${escapeHTML(u.cargo || '---')})</span>
                     </td>
+                    <td class="p-4 text-center text-slate-300">${isSuperadmin ? seletorSetorUsuario(u) : escapeHTML(u.setor || 'Não definida')}</td>
                     <td class="p-4 text-center">
-                        <button onclick="abrirConfirmarExcluir(${u.id})" class="text-slate-500 hover:text-red-500 transition px-4"><i class="fas fa-trash"></i></button>
+                        ${u.pode_editar ? `<button onclick="abrirConfirmarExcluir(${Number(u.id)})" aria-label="Excluir ${escapeHTML(u.nome)}" class="text-slate-500 hover:text-red-500 transition px-4"><i class="fas fa-trash"></i></button>` : '<span class="text-slate-500 text-sm">Somente leitura</span>'}
                     </td>
                 </tr>`).join('');
         }
+        function seletorSetorUsuario(u) {
+            const setores=['EM','CTT','1° CIA','2° CIA','3° CIA','4° CIA'];
+            return `<select aria-label="Subunidade de ${escapeHTML(u.nome)}" onchange="alterarSetor(${Number(u.id)},this.value)" class="bg-slate-900 border border-slate-700 p-2 rounded-lg text-white"><option value="">Não definida</option>${setores.map(s=>`<option value="${s}" ${u.setor===s?'selected':''}>${s}</option>`).join('')}</select>`;
+        }
 
         async function addU() {
-            const nome=document.getElementById('un').value, re=document.getElementById('ure').value;
+            const nome=document.getElementById('un').value, re=document.getElementById('ure').value, setor=document.getElementById('usetor').value;
             if(!nome.trim()) return showToast("Informe o nome do militar.", "error");
-            const res = await fetch('/api/usuarios', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({nome, cargo: re})});
+            const res = await fetch('/api/usuarios', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({nome, cargo: re, setor})});
             if(res.ok) { document.getElementById('un').value=''; document.getElementById('ure').value=''; showToast('Militar adicionado com sucesso.'); carregar(); }
             else showToast((await res.json()).error || 'Erro ao adicionar o militar.', 'error');
         }
@@ -129,11 +138,22 @@
         function abrirConfirmarExcluir(id) { document.getElementById('modalExcluirUser').classList.remove('hidden'); document.getElementById('btnConfirmarExcluirUser').onclick = () => deletarUser(id); }
         function fecharExcluirUser() { document.getElementById('modalExcluirUser').classList.add('hidden'); }
         async function deletarUser(id) { const res = await fetch('/api/usuarios/'+id, {method:'DELETE'}); if (!res.ok) return showToast('Erro ao remover o militar.', 'error'); fecharExcluirUser(); showToast('Militar removido com sucesso.'); carregar(); }
+        async function alterarSetor(id, setor) { if(!setor) return showToast('Selecione uma subunidade válida.', 'error'); const res=await fetch('/api/usuarios/'+id+'/setor',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({setor})}); const data=await res.json(); if(!res.ok)return showToast(data.error||'Erro ao alterar a subunidade.','error'); showToast('Subunidade atualizada.'); carregar(); }
 
         async function logout() { await fetch('/api/logout', {method:'POST'}); window.location.href = 'login.html'; }
         
-        // Inicia carregando os dados
-        carregar();
+        async function iniciar() {
+            const res = await fetch('/api/session');
+            if (!res.ok) { location.href='login.html'; return; }
+            const sessao = await res.json();
+            if (sessao.trocar_senha) { location.href='trocar-senha.html'; return; }
+            adminSetor = sessao.setor; isSuperadmin = Boolean(sessao.superadmin);
+            document.getElementById('linkAdministradores').hidden = !isSuperadmin;
+            const seletor = document.getElementById('usetor');
+            if (!isSuperadmin) { seletor.value = adminSetor; seletor.disabled = true; }
+            carregar();
+        }
+        iniciar();
     </script>
 </body>
 </html>
