@@ -13,9 +13,16 @@
         /* Estilo da Barra de Busca igual ao index.html */
         .search-input { background-color: #1e293b; border: 1px solid #334155; transition: 0.3s; }
         .search-input:focus { border-color: #3b82f6; box-shadow: 0 0 10px rgba(59, 130, 246, 0.2); outline: none; }
+        .text-\[9px\], .text-\[10px\], .text-\[11px\] { font-size: 0.75rem !important; line-height: 1rem !important; }
+        .text-xs { font-size: 0.875rem !important; line-height: 1.25rem !important; }
+        #toast { position: fixed; left: 50%; bottom: -140px; transform: translateX(-50%); width: min(92vw, 480px); padding: 16px 20px; border-radius: 16px; color: white; font-size: 0.875rem; line-height: 1.35rem; font-weight: 700; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,.45); transition: bottom .35s ease; z-index: 9999; }
+        #toast.show { bottom: 24px; }
+        #toast.toast-success { background: #15803d; border: 1px solid #4ade80; }
+        #toast.toast-error { background: #b91c1c; border: 1px solid #f87171; }
     </style>
 </head>
 <body class="flex flex-col md:flex-row">
+    <div id="toast" class="toast-success" role="status" aria-live="polite"></div>
     <aside class="w-full md:w-64 sidebar p-6 flex flex-col md:min-h-screen">
         <div class="text-2xl font-bold text-blue-500 mb-8 uppercase text-center italic">Geo<span class="text-white">Frota</span></div>
         <nav class="space-y-4 flex-1">
@@ -69,6 +76,16 @@
     <script>
         const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         let usuariosLocal = []; // Memória auxiliar para a busca rápida
+        function showToast(mensagem, tipo = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = mensagem;
+            toast.setAttribute('role', tipo === 'error' ? 'alert' : 'status');
+            toast.classList.toggle('toast-error', tipo === 'error');
+            toast.classList.toggle('toast-success', tipo !== 'error');
+            toast.classList.add('show');
+            clearTimeout(showToast.timer);
+            showToast.timer = setTimeout(() => toast.classList.remove('show'), tipo === 'error' ? 4000 : 3000);
+        }
 
         async function carregar() {
             try {
@@ -103,14 +120,15 @@
 
         async function addU() {
             const nome=document.getElementById('un').value, re=document.getElementById('ure').value;
-            if(!nome) return alert("Nome!");
+            if(!nome.trim()) return showToast("Informe o nome do militar.", "error");
             const res = await fetch('/api/usuarios', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({nome, cargo: re})});
-            if(res.ok) { document.getElementById('un').value=''; document.getElementById('ure').value=''; carregar(); }
+            if(res.ok) { document.getElementById('un').value=''; document.getElementById('ure').value=''; showToast('Militar adicionado com sucesso.'); carregar(); }
+            else showToast((await res.json()).error || 'Erro ao adicionar o militar.', 'error');
         }
         
         function abrirConfirmarExcluir(id) { document.getElementById('modalExcluirUser').classList.remove('hidden'); document.getElementById('btnConfirmarExcluirUser').onclick = () => deletarUser(id); }
         function fecharExcluirUser() { document.getElementById('modalExcluirUser').classList.add('hidden'); }
-        async function deletarUser(id) { const res = await fetch('/api/usuarios/'+id, {method:'DELETE'}); if (!res.ok) return alert('Erro ao remover usuário'); fecharExcluirUser(); carregar(); }
+        async function deletarUser(id) { const res = await fetch('/api/usuarios/'+id, {method:'DELETE'}); if (!res.ok) return showToast('Erro ao remover o militar.', 'error'); fecharExcluirUser(); showToast('Militar removido com sucesso.'); carregar(); }
 
         async function logout() { await fetch('/api/logout', {method:'POST'}); window.location.href = 'login.html'; }
         

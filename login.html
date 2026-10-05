@@ -12,9 +12,14 @@
         .card-access { background: #1e293b; border: 1px solid #334155; transition: 0.4s; cursor: pointer; }
         .card-access:hover { border-color: #3b82f6; transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .brasao { width: 220px; filter: drop-shadow(0 0 15px rgba(0,0,0,0.4)); margin-bottom: 2rem; }
+        .text-\[9px\], .text-\[10px\], .text-\[11px\] { font-size: 0.75rem !important; line-height: 1rem !important; }
+        .text-xs { font-size: 0.875rem !important; line-height: 1.25rem !important; }
+        #toast { position: fixed; left: 50%; bottom: -120px; transform: translateX(-50%); width: min(92vw, 460px); padding: 16px 20px; border-radius: 16px; background: #b91c1c; border: 1px solid #f87171; color: white; font-size: 0.875rem; font-weight: 700; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,.45); transition: bottom .35s ease; z-index: 9999; }
+        #toast.show { bottom: 24px; }
     </style>
 </head>
 <body class="bg-portal min-h-screen flex items-center justify-center p-4">
+    <div id="toast" role="alert" aria-live="assertive"></div>
     <div class="w-full max-w-4xl text-center">
         <!-- Link RAW do GitHub para transparência funcionar -->
         <img src="BRASAO%201BPTRAN.png" alt="1° BPTran" class="brasao mx-auto">
@@ -57,8 +62,15 @@
                 localStorage.setItem('role', t); // Grava a função do usuário (admin ou oper)
                 window.location.href = data.redirect; 
             } else {
-                alert("Senha Incorreta!");
+                showToast(data.error || "Senha incorreta. Verifique e tente novamente.");
             }
+        }
+        function showToast(mensagem) {
+            const toast = document.getElementById('toast');
+            toast.textContent = mensagem;
+            toast.classList.add('show');
+            clearTimeout(showToast.timer);
+            showToast.timer = setTimeout(() => toast.classList.remove('show'), 4000);
         }
         document.querySelectorAll('input').forEach(i => i.onclick = (e) => e.stopPropagation());
     </script>

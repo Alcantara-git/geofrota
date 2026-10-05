@@ -11,8 +11,13 @@
         .custom-select { background-color: #0f172a; border: 1px solid #334155; padding: 1rem; border-radius: 1rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
         .list-item { padding: 1rem; border-bottom: 1px solid #1e293b; cursor: pointer; transition: 0.2s; }
         .list-item:hover { background-color: #1e293b; color: #3b82f6; }
-        #toast { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); transition: 0.5s ease; z-index: 9999; }
+        #toast { position: fixed; bottom: -140px; left: 50%; transform: translateX(-50%); width: min(92vw, 480px); padding: 16px 20px; font-size: 0.875rem !important; line-height: 1.35rem; transition: 0.4s ease; z-index: 9999; }
         #toast.show { bottom: 30px; }
+        #toast.toast-success { background: #15803d; border-color: #4ade80; }
+        #toast.toast-error { background: #b91c1c; border-color: #f87171; }
+        .text-\[9px\], .text-\[10px\], .text-\[11px\] { font-size: 0.75rem !important; line-height: 1rem !important; }
+        .text-xs { font-size: 0.875rem !important; line-height: 1.25rem !important; }
+        label { line-height: 1.1rem !important; }
 
         /* Cores de Alerta de Status */
         .status-operante { border: 1px solid #22c55e; background: rgba(34, 197, 94, 0.1); color: #4ade80; }
@@ -21,7 +26,7 @@
     </style>
 </head>
 <body class="p-4">
-    <div id="toast" class="bg-green-600 text-white px-8 py-4 rounded-2xl font-black shadow-2xl uppercase text-[10px] tracking-widest border border-green-400 text-center">✅ Hodômetro Atualizado!</div>
+    <div id="toast" role="status" aria-live="polite" class="toast-success text-white rounded-2xl font-black shadow-2xl border text-center">✅ Hodômetro atualizado!</div>
 
     <div class="w-full max-w-md">
         <div class="text-center mb-6">
@@ -115,10 +120,18 @@
             window.location.href = 'login.html';
         }
 
-        function showToast() {
+        function showToast(mensagem = '✅ Hodômetro atualizado!', tipo = 'success', recarregar = false) {
             const t = document.getElementById('toast');
+            t.textContent = mensagem;
+            t.setAttribute('role', tipo === 'error' ? 'alert' : 'status');
+            t.classList.toggle('toast-error', tipo === 'error');
+            t.classList.toggle('toast-success', tipo !== 'error');
             t.classList.add('show');
-            setTimeout(() => { t.classList.remove('show'); setTimeout(() => location.reload(), 200); }, 2500);
+            clearTimeout(showToast.timer);
+            showToast.timer = setTimeout(() => {
+                t.classList.remove('show');
+                if (recarregar) setTimeout(() => location.reload(), 200);
+            }, tipo === 'error' ? 4000 : 2500);
         }
 
         function toggleB() {
@@ -226,20 +239,20 @@
         }
 
         document.getElementById('formKM').onsubmit = async (e) => {
-            e.preventDefault(); if(!sU || !sV) return alert("Por favor, selecione os dados!");
+            e.preventDefault(); if(!sU || !sV) return showToast("Selecione o responsável e a viatura.", "error");
             const nKM = parseInt(document.getElementById('nKM').value), mot = document.getElementById('motivo').value, v = viaturas.find(x => x.id == sV);
-            if(nKM < v.km) return alert("ERRO: O KM digitado não pode ser menor que o atual!");
+            if(nKM < v.km) return showToast("O KM digitado não pode ser menor que o atual.", "error");
             const categoria = document.getElementById('categoriaBaixa').value;
-            if(estaB && !categoria) return alert("Por favor, selecione o motivo da baixa!");
-            if(estaB && !mot.trim()) return alert("Por favor, descreva o problema da viatura!");
+            if(estaB && !categoria) return showToast("Selecione o motivo da baixa.", "error");
+            if(estaB && !mot.trim()) return showToast("Descreva o problema da viatura.", "error");
 
             const response = await fetch(`/api/operacional/viaturas/${sV}`, {
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({km: nKM, ultimo_usuario: sU, baixa: estaB, motivo: mot, categoria_baixa: estaB ? categoria : null})
             });
-            if (!response.ok) return alert((await response.json()).error || "Erro ao salvar KM");
-            showToast();
+            if (!response.ok) return showToast((await response.json()).error || "Erro ao salvar o KM.", "error");
+            showToast('✅ Hodômetro atualizado!', 'success', true);
         };
 
         setInterval(sincronizar, 5000);
