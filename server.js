@@ -61,7 +61,7 @@ const protegerOperacional = (req, res, next) => protegerOperacionalBase(req, res
     next();
 });
 const protegerSuperadmin = (req, res, next) => protegerAdmin(req, res, () => {
-    if (!req.auth.superadmin) return res.status(403).json({ error: 'Acesso exclusivo do administrador-geral' });
+    if (!req.auth.superadmin) return res.status(403).json({ error: 'Acesso exclusivo do administrador 1BPTRAN' });
     next();
 });
 app.use((req, res, next) => {
@@ -137,7 +137,10 @@ app.get('/index.html', protegerOperacional, (req, res) => res.sendFile(path.join
 app.get('/usuarios.html', protegerAdmin, (req, res) => res.sendFile(path.join(__dirname, 'usuarios.html')));
 app.get('/operacional.html', protegerOperacional, (req, res) => res.sendFile(path.join(__dirname, 'operacional.html')));
 app.get('/trocar-senha.html', protegerAdminBase, (req, res) => res.sendFile(path.join(__dirname, 'trocar-senha.html')));
-app.get('/administradores.html', protegerSuperadmin, (req, res) => res.sendFile(path.join(__dirname, 'administradores.html')));
+app.get('/administradores.html', protegerAdmin, (req, res) => {
+    if (!req.auth.superadmin) return res.redirect(303, '/index.html?aviso=administradores');
+    res.sendFile(path.join(__dirname, 'administradores.html'));
+});
 app.get(['/BRASAO%201BPTRAN.png', '/BRASAO 1BPTRAN.png'], (req, res) => res.sendFile(path.join(__dirname, 'BRASAO 1BPTRAN.png')));
 const inteiro = (v, min = 0) => { if (typeof v !== 'number' && (typeof v !== 'string' || !/^\d+$/.test(v))) return null; const n = Number(v); return Number.isSafeInteger(n) && n >= min ? n : null; };
 const texto = (v, max = 150) => typeof v === 'string' && v.trim() && v.length <= max ? v.trim() : null;

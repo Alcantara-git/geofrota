@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        [data-admin-only][hidden] { display: none !important; }
+        [data-admin-only][hidden], [data-superadmin-only][hidden] { display: none !important; }
         body { background-color: #0f172a; color: #f8fafc; min-height: 100vh; overflow-y: auto; }
         .card { background-color: #1e293b; border: 1px solid #334155; transition: 0.3s; }
         .sidebar { background-color: #0f172a; border-right: 1px solid #1e293b; }
@@ -543,6 +543,11 @@
                 document.getElementById('modoPerfil').innerText = role === 'admin' ? (isSuperadmin ? 'Administrador-geral' : `Administrador ${adminUsuario} · ${adminSetor}`) : 'Operacional · Somente visualização';
                 document.querySelectorAll('[data-admin-only]').forEach(item => { item.hidden = role !== 'admin'; });
                 document.querySelectorAll('[data-superadmin-only]').forEach(item => { item.hidden = !isSuperadmin; });
+                const aviso = new URLSearchParams(window.location.search).get('aviso');
+                if (aviso === 'administradores') {
+                    showToast('Acesso exclusivo do administrador 1BPTRAN.', 'error');
+                    window.history.replaceState({}, '', window.location.pathname);
+                }
                 atualizarPermissoesAcoes();
                 await carregar();
                 setInterval(carregar, 5000);
