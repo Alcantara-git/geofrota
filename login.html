@@ -31,19 +31,31 @@
             <div onclick="abrirLogin('oper')" class="card-access p-10 rounded-[2.5rem] flex flex-col items-center">
                 <i class="fas fa-mobile-alt text-4xl text-blue-500 mb-4"></i>
                 <h2 class="text-2xl font-black uppercase italic">Operacional</h2>
-                <div id="form-oper" class="hidden mt-6 w-full animate-pulse">
-                    <input type="password" id="senha-oper" placeholder="Senha Unidade" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-center text-white outline-none focus:ring-2 ring-blue-600 mb-4 font-bold">
-                    <button onclick="fazerLogin('oper')" class="w-full bg-blue-600 p-4 rounded-2xl font-bold uppercase text-xs">Acessar</button>
-                </div>
+                <form id="form-oper" onsubmit="fazerLogin('oper', event)" class="hidden mt-6 w-full animate-pulse">
+                    <label for="senha-oper" class="sr-only">Senha da unidade</label>
+                    <div class="relative mb-4">
+                        <input type="password" id="senha-oper" placeholder="Senha Unidade" aria-label="Senha da unidade" autocomplete="current-password" class="w-full bg-slate-900 border border-slate-700 p-4 pr-14 rounded-2xl text-center text-white outline-none focus:ring-2 ring-blue-600 font-bold">
+                        <button type="button" id="olho-oper" onclick="toggleSenha('oper', event)" aria-label="Mostrar senha da unidade" aria-pressed="false" class="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-xl text-slate-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <i class="fas fa-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 p-4 rounded-2xl font-bold uppercase text-xs">Acessar</button>
+                </form>
             </div>
 
             <div onclick="abrirLogin('admin')" class="card-access p-10 rounded-[2.5rem] flex flex-col items-center">
                 <i class="fas fa-user-shield text-4xl text-amber-500 mb-4"></i>
                 <h2 class="text-2xl font-black uppercase italic">Administrativo</h2>
-                <div id="form-admin" class="hidden mt-6 w-full animate-pulse">
-                    <input type="password" id="senha-admin" placeholder="Senha Gestor" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-center text-white outline-none focus:ring-2 ring-amber-600 mb-4 font-bold">
-                    <button onclick="fazerLogin('admin')" class="w-full bg-amber-600 p-4 rounded-2xl font-bold uppercase text-xs">Entrar no Painel</button>
-                </div>
+                <form id="form-admin" onsubmit="fazerLogin('admin', event)" class="hidden mt-6 w-full animate-pulse">
+                    <label for="senha-admin" class="sr-only">Senha do gestor</label>
+                    <div class="relative mb-4">
+                        <input type="password" id="senha-admin" placeholder="Senha Gestor" aria-label="Senha do gestor" autocomplete="current-password" class="w-full bg-slate-900 border border-slate-700 p-4 pr-14 rounded-2xl text-center text-white outline-none focus:ring-2 ring-amber-600 font-bold">
+                        <button type="button" id="olho-admin" onclick="toggleSenha('admin', event)" aria-label="Mostrar senha do gestor" aria-pressed="false" class="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-xl text-slate-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            <i class="fas fa-eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <button type="submit" class="w-full bg-amber-600 p-4 rounded-2xl font-bold uppercase text-xs">Entrar no Painel</button>
+                </form>
             </div>
         </div>
     </div>
@@ -54,7 +66,19 @@
             document.getElementById('form-'+t).classList.remove('hidden'); 
             document.getElementById('senha-'+t).focus();
         }
-        async function fazerLogin(t) {
+        function toggleSenha(t, event) {
+            event.stopPropagation();
+            const input = document.getElementById('senha-' + t);
+            const botao = document.getElementById('olho-' + t);
+            const mostrando = input.type === 'text';
+            input.type = mostrando ? 'password' : 'text';
+            botao.setAttribute('aria-pressed', String(!mostrando));
+            botao.setAttribute('aria-label', (mostrando ? 'Mostrar ' : 'Ocultar ') + (t === 'admin' ? 'senha do gestor' : 'senha da unidade'));
+            botao.querySelector('i').className = mostrando ? 'fas fa-eye' : 'fas fa-eye-slash';
+            input.focus();
+        }
+        async function fazerLogin(t, event) {
+            if (event) event.preventDefault();
             const senha = document.getElementById('senha-'+t).value;
             const res = await fetch('/api/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ senha, tipo: t }) });
             const data = await res.json();
@@ -73,6 +97,7 @@
             showToast.timer = setTimeout(() => toast.classList.remove('show'), 4000);
         }
         document.querySelectorAll('input').forEach(i => i.onclick = (e) => e.stopPropagation());
+        document.querySelectorAll('form').forEach(f => f.onclick = (e) => e.stopPropagation());
     </script>
 </body>
 </html>
