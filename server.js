@@ -243,6 +243,11 @@ function cicloRevisao(modelo) {
     const bmw850 = /\bBMW\b/.test(nome) && /\b(?:F\s*)?850\b/.test(nome) && /\bGS\b/.test(nome);
     return bmw850 ? 3000 : 5000;
 }
+function atingiuTrocaOleo(km, revisao, modelo) {
+    const ciclo = cicloRevisao(modelo);
+    const percentual = Math.max(0, Math.round((Number(km) - (Number(revisao) - ciclo)) / ciclo * 100));
+    return percentual > 90;
+}
 
 // Confirmação de manutenção: somente administrador, com histórico e bloqueio de concorrência.
 app.post('/api/viaturas/:id/troca-oleo', protegerAdmin, async (req, res) => {
@@ -266,11 +271,11 @@ app.post('/api/viaturas/:id/troca-oleo', protegerAdmin, async (req, res) => {
             await client.query('ROLLBACK');
             return res.status(409).json({ error: 'A viatura está baixada. Regularize a baixa antes de registrar a troca.' });
         }
-        const ciclo = cicloRevisao(old.modelo);
-        const novaRevisao = kmEsperado + ciclo;
+        const incremento = cicloRevisao(old.modelo);
+        const novaRevisao = kmEsperado + incremento;
         if (novaRevisao === revisaoEsperada) {
             await client.query('ROLLBACK');
-            return res.status(409).json({ error: `A próxima revisão já está definida para este KM + ${ciclo.toLocaleString('pt-BR')}. Nenhuma alteração foi feita.` });
+            return res.status(409).json({ error: `A próxima revisão já está definida para este KM + ${incremento.toLocaleString('pt-BR')}. Nenhuma alteração foi feita.` });
         }
         if (novaRevisao > 2147483647) {
             await client.query('ROLLBACK'); return res.status(400).json({ error: 'Quilometragem fora do limite' });
@@ -348,7 +353,13 @@ app.get('/api/relatorio-periodo', protegerAdmin, async (req, res) => {
 });
 
 app.get('/api/viaturas', protegerOperacional, async (req, res) => {
-    try { res.json((await pool.query('SELECT * FROM viaturas ORDER BY setor ASC, prefixo ASC')).rows); }
+    try {
+        const rows = (await pool.query('SELECT * FROM viaturas ORDER BY setor ASC, prefixo ASC')).rows;
+        res.json(rows.map(v => v.status === 'Baixada' ? v : {
+            ...v,
+            status: atingiuTrocaOleo(v.km, v.km_revisao, v.modelo) ? 'Troca de Óleo' : 'Operante'
+        }));
+    }
     catch (e) { erro(res, e); }
 });
 // O operacional registra somente KM, responsável e baixa. A revisão e o setor são imutáveis aqui.
@@ -366,11 +377,11 @@ app.put('/api/operacional/viaturas/:id', protegerOperacional, async (req, res) =
     try {
         client = await pool.connect();
         await client.query('BEGIN');
-        const old = (await client.query('SELECT prefixo, km, setor, km_revisao, status, motivo, categoria_baixa FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
+        const old = (await client.query('SELECT prefixo, modelo, km, setor, km_revisao, status, motivo, categoria_baixa FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
         if (!old) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Viatura não encontrada' }); }
         if (req.auth.role === 'admin' && !podeGerenciarSetor(req, old.setor)) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'Você pode alterar somente viaturas da sua subunidade' }); }
         if (km < old.km) { await client.query('ROLLBACK'); return res.status(400).json({ error: 'KM inferior ao atual' }); }
-        const status = baixa || old.status === 'Baixada' ? 'Baixada' : km >= old.km_revisao ? 'Troca de Óleo' : 'Operante';
+        const status = baixa || old.status === 'Baixada' ? 'Baixada' : atingiuTrocaOleo(km, old.km_revisao, old.modelo) ? 'Troca de Óleo' : 'Operante';
         const finalMotivo = baixa ? motivo : status === 'Baixada' ? old.motivo : '';
         const finalCategoria = baixa ? (categoria || (old.status === 'Baixada' ? old.categoria_baixa : null)) : status === 'Baixada' ? old.categoria_baixa : null;
         await client.query('UPDATE viaturas SET km=$1, status=$2, ultimo_usuario=$3, motivo=$4, categoria_baixa=$5 WHERE id=$6', [km, status, usuario, finalMotivo, finalCategoria, id]);
@@ -389,12 +400,12 @@ app.put('/api/viaturas/:id', protegerAdmin, async (req, res) => {
     try {
         client = await pool.connect();
         await client.query('BEGIN');
-        const old = (await client.query('SELECT prefixo, km, status, motivo, categoria_baixa, setor FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
+        const old = (await client.query('SELECT prefixo, modelo, km, status, motivo, categoria_baixa, setor FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
         if (!old) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Viatura não encontrada' }); }
         if (!podeGerenciarSetor(req, old.setor) || (!req.auth.superadmin && setor !== req.auth.setor)) {
             await client.query('ROLLBACK'); return res.status(403).json({ error: 'Você pode alterar somente viaturas da sua subunidade' });
         }
-        const status = req.body.status === 'Baixada' ? 'Baixada' : km >= revisao ? 'Troca de Óleo' : 'Operante';
+        const status = req.body.status === 'Baixada' ? 'Baixada' : atingiuTrocaOleo(km, revisao, old.modelo) ? 'Troca de Óleo' : 'Operante';
         const motivo = status === 'Baixada' ? (typeof req.body.motivo === 'string' ? req.body.motivo.slice(0, 500) : old.status === 'Baixada' ? old.motivo : '') : '';
         const categoria = status === 'Baixada' && old.status === 'Baixada' ? old.categoria_baixa : null;
         await client.query('UPDATE viaturas SET km=$1, km_revisao=$2, status=$3, ultimo_usuario=$4, motivo=$5, setor=$6, categoria_baixa=$7 WHERE id=$8', [km, revisao, status, usuario, motivo, setor, categoria, id]);
@@ -412,7 +423,7 @@ app.post('/api/viaturas', protegerAdmin, async (req, res) => {
     if (![prefixo, placa, modelo].every(v => texto(v)) || !setoresValidos.has(setor) || km === null || revisao === null || !['Operante', 'Troca de Óleo', 'Baixada'].includes(status))
         return res.status(400).json({ error: 'Dados inválidos' });
     try {
-        const st = status === 'Baixada' ? 'Baixada' : km >= revisao ? 'Troca de Óleo' : 'Operante';
+        const st = status === 'Baixada' ? 'Baixada' : atingiuTrocaOleo(km, revisao, modelo) ? 'Troca de Óleo' : 'Operante';
         await pool.query('INSERT INTO viaturas (prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario, motivo, setor) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [prefixo.trim(), placa.trim(), modelo.trim(), km, revisao, st, nomeConta(req), '', setor]);
         res.json({ success: true });
     } catch (e) { erro(res, e); }

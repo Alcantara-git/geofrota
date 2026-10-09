@@ -179,7 +179,7 @@
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-[10px] font-black uppercase tracking-widest" aria-label="Filtrar por situação">
             <button type="button" id="card-total" onclick="setFiltroStatus('Todos')" aria-pressed="true" class="card stat-card card-active"><div class="stat-top"><span class="text-slate-300">Total</span><span class="stat-icon text-blue-400"><i class="fas fa-car" aria-hidden="true"></i></span></div><h3 id="stat-total" class="text-blue-400">0</h3><small>Todas as viaturas</small></button>
             <button type="button" id="card-operante" onclick="setFiltroStatus('Operante')" aria-pressed="false" class="card stat-card "><div class="stat-top"><span class="text-slate-300">Operantes</span><span class="stat-icon text-green-500"><i class="fas fa-check" aria-hidden="true"></i></span></div><h3 id="stat-op" class="text-green-500">0</h3><small>Disponíveis para operação</small></button>
-            <button type="button" id="card-oleo" onclick="setFiltroStatus('Troca de Óleo')" aria-pressed="false" class="card stat-card "><div class="stat-top"><span class="text-slate-300">Troca de óleo</span><span class="stat-icon text-amber-500"><i class="fas fa-oil-can" aria-hidden="true"></i></span></div><h3 id="stat-ol" class="text-amber-500">0</h3><small>Revisão atingida</small></button>
+            <button type="button" id="card-oleo" onclick="setFiltroStatus('Troca de Óleo')" aria-pressed="false" class="card stat-card "><div class="stat-top"><span class="text-slate-300">Troca de óleo</span><span class="stat-icon text-amber-500"><i class="fas fa-oil-can" aria-hidden="true"></i></span></div><h3 id="stat-ol" class="text-amber-500">0</h3><small>91% do ciclo atingido</small></button>
             <button type="button" id="card-baixada" onclick="setFiltroStatus('Baixada')" aria-pressed="false" class="card stat-card "><div class="stat-top"><span class="text-slate-300">Baixadas</span><span class="stat-icon text-red-500"><i class="fas fa-tools" aria-hidden="true"></i></span></div><h3 id="stat-bx" class="text-red-500">0</h3><small>Indisponíveis</small></button>
         </div>
 
@@ -235,6 +235,23 @@
             <div class="grid grid-cols-2 gap-4">
                 <button onclick="fecharExcluir()" class="bg-slate-700 p-4 rounded-2xl font-bold uppercase text-xs text-white">Sair</button>
                 <button id="btnConfirmarExcluir" class="bg-red-600 p-4 rounded-2xl font-bold uppercase text-xs text-white shadow-lg">Excluir</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalTrocaOleo" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[210] no-print" role="dialog" aria-modal="true" aria-labelledby="tituloTrocaOleo">
+        <div class="card w-full max-w-md p-8 rounded-3xl text-center border-t-4 border-amber-500 shadow-2xl">
+            <i class="fas fa-oil-can text-amber-500 text-4xl mb-4" aria-hidden="true"></i>
+            <h3 id="tituloTrocaOleo" class="text-xl font-black text-white mb-3 uppercase italic">Registrar troca de óleo</h3>
+            <p class="text-slate-400 text-sm leading-relaxed">Confirma que a troca de óleo da viatura <strong id="trocaOleoPrefixo" class="text-white"></strong> foi realizada em <strong id="trocaOleoKmAtual" class="text-white"></strong> km?</p>
+            <div class="bg-slate-900 border border-slate-700 rounded-2xl p-4 my-6">
+                <span class="block text-[10px] uppercase tracking-widest text-slate-500 font-bold">Próxima revisão</span>
+                <strong id="trocaOleoProximaRevisao" class="block text-2xl text-amber-400 mt-1"></strong>
+            </div>
+            <p class="text-xs text-slate-500 mb-6">A confirmação será registrada no histórico.</p>
+            <div class="grid grid-cols-2 gap-4">
+                <button type="button" onclick="fecharTrocaOleo()" class="bg-slate-700 p-4 rounded-2xl font-bold uppercase text-xs text-white">Cancelar</button>
+                <button type="button" id="btnConfirmarTrocaOleo" onclick="confirmarTrocaOleo()" class="bg-amber-600 hover:bg-amber-500 p-4 rounded-2xl font-bold uppercase text-xs text-white shadow-lg">Confirmar</button>
             </div>
         </div>
     </div>
@@ -308,6 +325,7 @@
         let campoOrdenacao = '', direcaoOrdenacao = 'crescente';
         const comparadorOrdenacao = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' });
         const trocasEmAndamento = new Set();
+        let trocaOleoPendente = null;
         const categoriasBaixa = ["Mecânico", "Pneu", "Troca de óleo", "Iluminação e/ou sonoro", "Sindicância", "Avaria", "Elétrica", "Outros"];
         const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         const podeGerenciar = setor => role === 'admin' && (isSuperadmin || setor === adminSetor);
@@ -496,12 +514,26 @@
             document.getElementById('btn-Todos').classList.add('active');
             setFiltroStatus('Todos');
         }
-        async function registrarTroca(id) {
+        function registrarTroca(id) {
             if (role !== 'admin' || trocasEmAndamento.has(id)) return;
             const v = viaturasLocal.find(x => Number(x.id) === id);
             if (!v || !podeGerenciar(v.setor) || v.status === 'Baixada') return;
             const kmAtual = Number(v.km), revisaoAtual = Number(v.km_revisao);
-            if (!window.confirm(`Confirma que a troca de óleo da viatura ${v.prefixo} foi realizada em ${formatarKM(kmAtual)} km?\nPróxima revisão: ${formatarKM(kmAtual + cicloRevisao(v.modelo))} km.\nA confirmação será registrada no histórico.`)) return;
+            trocaOleoPendente = { id, kmAtual, revisaoAtual };
+            document.getElementById('trocaOleoPrefixo').innerText = v.prefixo;
+            document.getElementById('trocaOleoKmAtual').innerText = formatarKM(kmAtual);
+            document.getElementById('trocaOleoProximaRevisao').innerText = formatarKM(kmAtual + cicloRevisao(v.modelo)) + ' km';
+            document.getElementById('modalTrocaOleo').classList.remove('hidden');
+            document.getElementById('btnConfirmarTrocaOleo').focus();
+        }
+        function fecharTrocaOleo() {
+            document.getElementById('modalTrocaOleo').classList.add('hidden');
+            trocaOleoPendente = null;
+        }
+        async function confirmarTrocaOleo() {
+            if (!trocaOleoPendente) return;
+            const { id, kmAtual, revisaoAtual } = trocaOleoPendente;
+            fecharTrocaOleo();
             trocasEmAndamento.add(id); renderizarTabela();
             try {
                 const res = await fetch(`/api/viaturas/${id}/troca-oleo`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({km_atual:kmAtual, km_revisao:revisaoAtual}) });
