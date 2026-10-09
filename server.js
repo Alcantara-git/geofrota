@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const cookieParser = require('cookie-parser');
 const pool = require('./database');
 const { hashPassword, verifyPassword } = require('./auth');
+const { sincronizarKmCtt } = require('./planilha-ctt');
 const app = express();
 
 app.disable('x-powered-by');
@@ -387,7 +388,16 @@ app.put('/api/operacional/viaturas/:id', protegerOperacional, async (req, res) =
         await client.query('UPDATE viaturas SET km=$1, status=$2, ultimo_usuario=$3, motivo=$4, categoria_baixa=$5 WHERE id=$6', [km, status, usuario, finalMotivo, finalCategoria, id]);
         await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor, categoria_baixa) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)', [old.prefixo, old.km, km, status, finalMotivo, usuario, old.setor, finalCategoria]);
         await client.query('COMMIT');
-        res.json({ success: true });
+        let aviso;
+        if (km !== old.km && old.setor === 'CTT') {
+            try {
+                await sincronizarKmCtt({ prefixo: old.prefixo, responsavel: usuario, km, setor: old.setor });
+            } catch (e) {
+                console.error('Falha ao sincronizar o KM com a planilha CTT:', e.message);
+                aviso = 'KM salvo no GEOFROTA, mas não foi possível sincronizar a planilha da CTT.';
+            }
+        }
+        res.json({ success: true, aviso });
     } catch (e) { if (client) await client.query('ROLLBACK').catch(() => {}); erro(res, e); }
     finally { if (client) client.release(); }
 });
@@ -411,7 +421,16 @@ app.put('/api/viaturas/:id', protegerAdmin, async (req, res) => {
         await client.query('UPDATE viaturas SET km=$1, km_revisao=$2, status=$3, ultimo_usuario=$4, motivo=$5, setor=$6, categoria_baixa=$7 WHERE id=$8', [km, revisao, status, usuario, motivo, setor, categoria, id]);
         await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor, categoria_baixa, autor_conta) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [old.prefixo, old.km, km, status, motivo, usuario, setor, categoria, req.auth.usuario]);
         await client.query('COMMIT');
-        res.json({ success: true });
+        let aviso;
+        if (km !== old.km && setor === 'CTT') {
+            try {
+                await sincronizarKmCtt({ prefixo: old.prefixo, responsavel: usuario, km, setor });
+            } catch (e) {
+                console.error('Falha ao sincronizar o KM com a planilha CTT:', e.message);
+                aviso = 'KM salvo no GEOFROTA, mas não foi possível sincronizar a planilha da CTT.';
+            }
+        }
+        res.json({ success: true, aviso });
     } catch (e) { if (client) await client.query('ROLLBACK').catch(() => {}); erro(res, e); }
     finally { if (client) client.release(); }
 });
@@ -484,3 +503,4 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 if (require.main === module) app.listen(PORT, () => console.log(`GEOFROTA ON: ${PORT}`));
 module.exports = app;
+

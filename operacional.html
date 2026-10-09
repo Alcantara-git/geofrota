@@ -252,6 +252,8 @@
                 body: JSON.stringify({km: nKM, ultimo_usuario: sU, baixa: estaB, motivo: mot, categoria_baixa: estaB ? categoria : null})
             });
             if (!response.ok) return showToast((await response.json()).error || "Erro ao salvar o KM.", "error");
+            const resultado = await response.json();
+            if (resultado.aviso) return showToast('⚠️ ' + resultado.aviso, 'error', true);
             showToast('✅ Hodômetro atualizado!', 'success', true);
         };
 
@@ -260,3 +262,4 @@
     </script>
 </body>
 </html>
+
