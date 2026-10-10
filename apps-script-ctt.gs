@@ -1,6 +1,7 @@
 const NOME_ABA_RESPOSTAS = 'Respostas ao formulário 1';
 const NOME_ABA_REVISAO = 'REVISÃO';
 const CHAVE_SEGREDO = 'GEOFROTA_WEBHOOK_SECRET';
+const VERSAO_CONECTOR = 5;
 
 function respostaJson(dados) {
   return ContentService
@@ -9,7 +10,16 @@ function respostaJson(dados) {
 }
 
 function doGet() {
-  return respostaJson({ success: true, servico: 'GEOFROTA CTT' });
+  return respostaJson({ success: true, servico: 'GEOFROTA CTT', versao: VERSAO_CONECTOR });
+}
+
+function normalizarPrefixo(valor) {
+  return String(valor || '')
+    .normalize('NFKC')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/[‐‑‒–—−]/g, '-')
+    .replace(/\s+/g, '')
+    .toUpperCase();
 }
 
 function atualizarKmRevisao(planilha, prefixo, km) {
@@ -17,14 +27,16 @@ function atualizarKmRevisao(planilha, prefixo, km) {
   if (!aba) throw new Error('Aba REVISÃO não encontrada');
 
   const ultimaLinha = Math.max(aba.getLastRow(), 1);
-  const prefixoNormalizado = prefixo.toUpperCase();
+  const prefixoNormalizado = normalizarPrefixo(prefixo);
   if (ultimaLinha >= 2) {
     const prefixos = aba.getRange(2, 1, ultimaLinha - 1, 1).getDisplayValues();
-    const indice = prefixos.findIndex(linha => String(linha[0] || '').trim().toUpperCase() === prefixoNormalizado);
-    if (indice >= 0) {
-      const linha = indice + 2;
-      aba.getRange(linha, 6).setValue(km);
-      return { linha, nova: false };
+    const linhas = [];
+    prefixos.forEach((linha, indice) => {
+      if (normalizarPrefixo(linha[0]) === prefixoNormalizado) linhas.push(indice + 2);
+    });
+    if (linhas.length) {
+      linhas.forEach(linha => aba.getRange(linha, 6).setValue(km));
+      return { linha: linhas[0], linhas, nova: false, duplicadas: linhas.length > 1 };
     }
   }
 
@@ -32,7 +44,7 @@ function atualizarKmRevisao(planilha, prefixo, km) {
   if (ultimaLinha >= 2) aba.getRange(ultimaLinha, 1, 1, 6).copyTo(aba.getRange(novaLinha, 1, 1, 6), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
   aba.getRange(novaLinha, 1).setValue(prefixo);
   aba.getRange(novaLinha, 6).setValue(km);
-  return { linha: novaLinha, nova: true };
+  return { linha: novaLinha, linhas: [novaLinha], nova: true, duplicadas: false };
 }
 
 function doPost(e) {
@@ -63,7 +75,7 @@ function doPost(e) {
       bloqueio.releaseLock();
     }
 
-    return respostaJson({ success: true, revisao: atualizacao });
+    return respostaJson({ success: true, versao: VERSAO_CONECTOR, revisao: atualizacao });
   } catch (erro) {
     console.error(erro);
     return respostaJson({ success: false, error: 'Falha interna' });
