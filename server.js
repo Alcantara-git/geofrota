@@ -444,7 +444,16 @@ app.post('/api/viaturas', protegerAdmin, async (req, res) => {
     try {
         const st = status === 'Baixada' ? 'Baixada' : atingiuTrocaOleo(km, revisao, modelo) ? 'Troca de Óleo' : 'Operante';
         await pool.query('INSERT INTO viaturas (prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario, motivo, setor) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [prefixo.trim(), placa.trim(), modelo.trim(), km, revisao, st, nomeConta(req), '', setor]);
-        res.json({ success: true });
+        let aviso;
+        if (setor === 'CTT') {
+            try {
+                await sincronizarKmCtt({ prefixo: prefixo.trim(), responsavel: nomeConta(req), km, setor });
+            } catch (e) {
+                console.error('Falha ao cadastrar a viatura na planilha CTT:', e.message);
+                aviso = 'Viatura cadastrada no GEOFROTA, mas não foi possível incluí-la na planilha da CTT.';
+            }
+        }
+        res.json({ success: true, aviso });
     } catch (e) { erro(res, e); }
 });
 app.delete('/api/viaturas/:id', protegerAdmin, async (req, res) => {
