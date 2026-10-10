@@ -1,7 +1,7 @@
 const NOME_ABA_RESPOSTAS = 'Respostas ao formulário 1';
 const NOME_ABA_REVISAO = 'REVISÃO';
 const CHAVE_SEGREDO = 'GEOFROTA_WEBHOOK_SECRET';
-const VERSAO_CONECTOR = 6;
+const VERSAO_CONECTOR = 7;
 
 function respostaJson(dados) {
   return ContentService
@@ -23,7 +23,7 @@ function normalizarPrefixo(valor) {
 }
 
 function statusParaPlanilha(status) {
-  if (status === 'Operante') return 'OPERANDO';
+  if (status === 'Operante' || status === 'Troca de Óleo') return 'OPERANDO';
   if (status === 'Baixada') return 'BAIXADA';
   return null;
 }
