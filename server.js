@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const cookieParser = require('cookie-parser');
 const pool = require('./database');
 const { hashPassword, verifyPassword } = require('./auth');
-const { sincronizarKmCtt } = require('./planilha-ctt');
+const { sincronizarViaturaCtt } = require('./planilha-ctt');
 const app = express();
 
 app.disable('x-powered-by');
@@ -261,7 +261,7 @@ app.post('/api/viaturas/:id/troca-oleo', protegerAdmin, async (req, res) => {
     try {
         client = await pool.connect();
         await client.query('BEGIN');
-        const old = (await client.query('SELECT id, prefixo, modelo, km, km_revisao, status, setor FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
+        const old = (await client.query('SELECT id, prefixo, modelo, placa, km, km_revisao, status, setor FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
         if (!old) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Viatura não encontrada' }); }
         if (!podeGerenciarSetor(req, old.setor)) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'Você pode alterar somente viaturas da sua subunidade' }); }
         if (Number(old.km) !== kmEsperado || Number(old.km_revisao) !== revisaoEsperada) {
@@ -286,7 +286,16 @@ app.post('/api/viaturas/:id/troca-oleo', protegerAdmin, async (req, res) => {
         await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor, autor_conta) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
             [old.prefixo, kmEsperado, kmEsperado, 'Operante', registro, nomeConta(req), old.setor, req.auth.usuario]);
         await client.query('COMMIT');
-        res.json({ success: true, km_revisao: novaRevisao, status: 'Operante' });
+        let aviso;
+        if (old.setor === 'CTT') {
+            try {
+                await sincronizarViaturaCtt({ prefixo: old.prefixo, responsavel: nomeConta(req), modelo: old.modelo, placa: old.placa, km: kmEsperado, km_revisao: novaRevisao, status: 'Operante', setor: old.setor });
+            } catch (e) {
+                console.error('Falha ao sincronizar a troca de óleo com a planilha CTT:', e.message);
+                aviso = 'Troca salva no GEOFROTA, mas não foi possível sincronizar a planilha da CTT.';
+            }
+        }
+        res.json({ success: true, km_revisao: novaRevisao, status: 'Operante', aviso });
     } catch (e) { if (client) await client.query('ROLLBACK').catch(() => {}); erro(res, e); }
     finally { if (client) client.release(); }
 });
@@ -378,7 +387,7 @@ app.put('/api/operacional/viaturas/:id', protegerOperacional, async (req, res) =
     try {
         client = await pool.connect();
         await client.query('BEGIN');
-        const old = (await client.query('SELECT prefixo, modelo, km, setor, km_revisao, status, motivo, categoria_baixa FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
+        const old = (await client.query('SELECT prefixo, modelo, placa, km, setor, km_revisao, status, motivo, categoria_baixa FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
         if (!old) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Viatura não encontrada' }); }
         if (req.auth.role === 'admin' && !podeGerenciarSetor(req, old.setor)) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'Você pode alterar somente viaturas da sua subunidade' }); }
         if (km < old.km) { await client.query('ROLLBACK'); return res.status(400).json({ error: 'KM inferior ao atual' }); }
@@ -389,9 +398,9 @@ app.put('/api/operacional/viaturas/:id', protegerOperacional, async (req, res) =
         await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor, categoria_baixa) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)', [old.prefixo, old.km, km, status, finalMotivo, usuario, old.setor, finalCategoria]);
         await client.query('COMMIT');
         let aviso;
-        if (km !== old.km && old.setor === 'CTT') {
+        if (old.setor === 'CTT') {
             try {
-                await sincronizarKmCtt({ prefixo: old.prefixo, responsavel: usuario, km, setor: old.setor });
+                await sincronizarViaturaCtt({ prefixo: old.prefixo, responsavel: usuario, modelo: old.modelo, placa: old.placa, km, km_revisao: old.km_revisao, status, setor: old.setor });
             } catch (e) {
                 console.error('Falha ao sincronizar o KM com a planilha CTT:', e.message);
                 aviso = 'KM salvo no GEOFROTA, mas não foi possível sincronizar a planilha da CTT.';
@@ -410,7 +419,7 @@ app.put('/api/viaturas/:id', protegerAdmin, async (req, res) => {
     try {
         client = await pool.connect();
         await client.query('BEGIN');
-        const old = (await client.query('SELECT prefixo, modelo, km, status, motivo, categoria_baixa, setor FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
+        const old = (await client.query('SELECT prefixo, modelo, placa, km, status, motivo, categoria_baixa, setor FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
         if (!old) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Viatura não encontrada' }); }
         if (!podeGerenciarSetor(req, old.setor) || (!req.auth.superadmin && setor !== req.auth.setor)) {
             await client.query('ROLLBACK'); return res.status(403).json({ error: 'Você pode alterar somente viaturas da sua subunidade' });
@@ -422,9 +431,9 @@ app.put('/api/viaturas/:id', protegerAdmin, async (req, res) => {
         await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor, categoria_baixa, autor_conta) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [old.prefixo, old.km, km, status, motivo, usuario, setor, categoria, req.auth.usuario]);
         await client.query('COMMIT');
         let aviso;
-        if (km !== old.km && setor === 'CTT') {
+        if (setor === 'CTT') {
             try {
-                await sincronizarKmCtt({ prefixo: old.prefixo, responsavel: usuario, km, setor });
+                await sincronizarViaturaCtt({ prefixo: old.prefixo, responsavel: usuario, modelo: old.modelo, placa: old.placa, km, km_revisao: revisao, status, setor });
             } catch (e) {
                 console.error('Falha ao sincronizar o KM com a planilha CTT:', e.message);
                 aviso = 'KM salvo no GEOFROTA, mas não foi possível sincronizar a planilha da CTT.';
@@ -447,7 +456,7 @@ app.post('/api/viaturas', protegerAdmin, async (req, res) => {
         let aviso;
         if (setor === 'CTT') {
             try {
-                await sincronizarKmCtt({ prefixo: prefixo.trim(), responsavel: nomeConta(req), km, setor });
+                await sincronizarViaturaCtt({ prefixo: prefixo.trim(), responsavel: nomeConta(req), modelo: modelo.trim(), placa: placa.trim(), km, km_revisao: revisao, status: st, setor });
             } catch (e) {
                 console.error('Falha ao cadastrar a viatura na planilha CTT:', e.message);
                 aviso = 'Viatura cadastrada no GEOFROTA, mas não foi possível incluí-la na planilha da CTT.';

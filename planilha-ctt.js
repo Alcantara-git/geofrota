@@ -6,7 +6,7 @@ function sincronizacaoAtiva() {
     return String(process.env.CTT_SHEETS_SYNC_ENABLED).toLowerCase() === 'true';
 }
 
-async function sincronizarKmCtt({ prefixo, responsavel, km, setor }) {
+async function sincronizarViaturaCtt({ prefixo, responsavel, modelo, placa, km, km_revisao, status, setor }) {
     if (!sincronizacaoAtiva() || setor !== 'CTT') return { ignorado: true };
 
     const url = process.env.CTT_SHEETS_WEBHOOK_URL;
@@ -19,7 +19,7 @@ async function sincronizarKmCtt({ prefixo, responsavel, km, setor }) {
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ secret, prefixo, responsavel, km }),
+            body: JSON.stringify({ secret, prefixo, responsavel, modelo, placa, km, km_revisao, status }),
             signal: controller.signal
         });
         const texto = await response.text();
@@ -34,5 +34,5 @@ async function sincronizarKmCtt({ prefixo, responsavel, km, setor }) {
     }
 }
 
-module.exports = { sincronizarKmCtt };
+module.exports = { sincronizarViaturaCtt };
 
