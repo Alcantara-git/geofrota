@@ -145,6 +145,12 @@ app.get('/administradores.html', protegerAdmin, (req, res) => {
 app.get(['/BRASAO%201BPTRAN.png', '/BRASAO 1BPTRAN.png'], (req, res) => res.sendFile(path.join(__dirname, 'BRASAO 1BPTRAN.png')));
 const inteiro = (v, min = 0) => { if (typeof v !== 'number' && (typeof v !== 'string' || !/^\d+$/.test(v))) return null; const n = Number(v); return Number.isSafeInteger(n) && n >= min ? n : null; };
 const texto = (v, max = 150) => typeof v === 'string' && v.trim() && v.length <= max ? v.trim() : null;
+const normalizarPrefixo = v => String(v ?? '')
+    .normalize('NFKC')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/[‐‑‒–—−]/g, '-')
+    .replace(/\s+/g, '')
+    .toUpperCase();
 const erro = (res, e) => { console.error(e); res.status(500).json({ error: 'Erro interno' }); };
 const categoriasBaixa = new Set(["Mecânico", "Pneu", "Troca de óleo", "Iluminação e/ou sonoro", "Sindicância", "Avaria", "Elétrica", "Outros"]);
 const setoresValidos = new Set(['EM', 'CTT', '1° CIA', '2° CIA', '3° CIA', '4° CIA']);
@@ -439,23 +445,28 @@ app.put('/api/viaturas/:id', protegerAdmin, async (req, res) => {
 });
 app.post('/api/viaturas', protegerAdmin, async (req, res) => {
     const { prefixo, placa, modelo, status } = req.body;
+    const prefixoNormalizado = normalizarPrefixo(prefixo);
     const setorSolicitado = texto(req.body.setor, 50);
     const setor = req.auth.superadmin ? setorSolicitado : req.auth.setor;
     const km = inteiro(req.body.km), revisao = inteiro(req.body.km_revisao);
-    if (![prefixo, placa, modelo].every(v => texto(v)) || !setoresValidos.has(setor) || km === null || revisao === null || !['Operante', 'Troca de Óleo', 'Baixada'].includes(status))
+    if (!prefixoNormalizado || prefixoNormalizado.length > 150 || ![placa, modelo].every(v => texto(v)) || !setoresValidos.has(setor) || km === null || revisao === null || !['Operante', 'Troca de Óleo', 'Baixada'].includes(status))
         return res.status(400).json({ error: 'Dados inválidos' });
     try {
         const st = status === 'Baixada' ? 'Baixada' : atingiuTrocaOleo(km, revisao, modelo) ? 'Troca de Óleo' : 'Operante';
-        await pool.query('INSERT INTO viaturas (prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario, motivo, setor) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [prefixo.trim(), placa.trim(), modelo.trim(), km, revisao, st, nomeConta(req), '', setor]);
+        await pool.query('INSERT INTO viaturas (prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario, motivo, setor) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [prefixoNormalizado, placa.trim(), modelo.trim(), km, revisao, st, nomeConta(req), '', setor]);
         let aviso;
         try {
-            await sincronizarViaturaPlanilha({ prefixo: prefixo.trim(), responsavel: nomeConta(req), modelo: modelo.trim(), placa: placa.trim(), km, km_revisao: revisao, status: st, setor });
+            await sincronizarViaturaPlanilha({ prefixo: prefixoNormalizado, responsavel: nomeConta(req), modelo: modelo.trim(), placa: placa.trim(), km, km_revisao: revisao, status: st, setor });
         } catch (e) {
             console.error('Falha ao cadastrar a viatura na planilha da frota:', e.message);
             aviso = 'Viatura cadastrada no GEOFROTA, mas não foi possível incluí-la na planilha da frota.';
         }
         res.json({ success: true, aviso });
-    } catch (e) { erro(res, e); }
+    } catch (e) {
+        if (e?.code === '23505' && e?.constraint === 'viaturas_prefixo_normalizado_uidx')
+            return res.status(409).json({ error: `A viatura ${prefixoNormalizado} já está cadastrada.` });
+        erro(res, e);
+    }
 });
 app.delete('/api/viaturas/:id', protegerAdmin, async (req, res) => {
     const id = inteiro(req.params.id, 1); if (!id) return res.status(400).json({ error: 'ID inválido' });

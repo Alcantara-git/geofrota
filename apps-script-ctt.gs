@@ -1,7 +1,7 @@
 const NOME_ABA_RESPOSTAS = 'Respostas ao formulário 1';
 const NOMES_ABAS_FROTA = ['EM', 'CTT', '1° CIA', '2° CIA', '3° CIA', '4° CIA'];
 const CHAVE_SEGREDO = 'GEOFROTA_WEBHOOK_SECRET';
-const VERSAO_CONECTOR = 9;
+const VERSAO_CONECTOR = 10;
 
 function respostaJson(dados) {
   return ContentService
@@ -51,6 +51,31 @@ function removerViaturaDaAba(planilha, nomeAba, prefixo) {
   const linhas = localizarLinhasPorPrefixo(aba, prefixo);
   linhas.slice().sort((a, b) => b - a).forEach(linha => aba.deleteRow(linha));
   return linhas;
+}
+
+function transferirViaturaEntreAbas(planilha, setorAnterior, setorNovo, prefixo) {
+  const abaOrigem = planilha.getSheetByName(setorAnterior);
+  const abaDestino = planilha.getSheetByName(setorNovo);
+  if (!abaOrigem || !abaDestino) throw new Error('Aba da subunidade não encontrada');
+
+  const linhasOrigem = localizarLinhasPorPrefixo(abaOrigem, prefixo);
+  if (!linhasOrigem.length) return { movida: false, motivo: 'Viatura ausente na aba anterior' };
+
+  const linhaOrigem = linhasOrigem[0];
+  const linhasDestino = localizarLinhasPorPrefixo(abaDestino, prefixo);
+  const linhaDestino = linhasDestino.length ? linhasDestino[0] : Math.max(abaDestino.getLastRow() + 1, 3);
+  const totalColunas = Math.max(abaOrigem.getLastColumn(), 9);
+
+  if (abaDestino.getMaxRows() < linhaDestino) abaDestino.insertRowsAfter(abaDestino.getMaxRows(), linhaDestino - abaDestino.getMaxRows());
+  if (abaDestino.getMaxColumns() < totalColunas) abaDestino.insertColumnsAfter(abaDestino.getMaxColumns(), totalColunas - abaDestino.getMaxColumns());
+
+  abaOrigem.getRange(linhaOrigem, 1, 1, totalColunas)
+    .copyTo(abaDestino.getRange(linhaDestino, 1, 1, totalColunas), SpreadsheetApp.CopyPasteType.PASTE_NORMAL, false);
+  abaDestino.setRowHeight(linhaDestino, abaOrigem.getRowHeight(linhaOrigem));
+
+  linhasDestino.slice(1).sort((a, b) => b - a).forEach(linha => abaDestino.deleteRow(linha));
+  linhasOrigem.slice().sort((a, b) => b - a).forEach(linha => abaOrigem.deleteRow(linha));
+  return { movida: true, origem: setorAnterior, destino: setorNovo, linha: linhaDestino, colunas: totalColunas };
 }
 
 function atualizarViaturaFrota(planilha, dados) {
@@ -140,16 +165,19 @@ function doPost(e) {
     const bloqueio = LockService.getScriptLock();
     bloqueio.waitLock(10000);
     let atualizacao;
+    let transferencia = null;
     try {
       abaRespostas.appendRow([new Date(), prefixo, responsavel, km]);
-      if (setorAnterior && setorAnterior !== setor) removerViaturaDaAba(planilha, setorAnterior, prefixo);
+      if (setorAnterior && setorAnterior !== setor) {
+        transferencia = transferirViaturaEntreAbas(planilha, setorAnterior, setor, prefixo);
+      }
       atualizacao = atualizarViaturaFrota(planilha, { prefixo, modelo, placa, km, kmRevisao, status, setor, completa });
       SpreadsheetApp.flush();
     } finally {
       bloqueio.releaseLock();
     }
 
-    return respostaJson({ success: true, versao: VERSAO_CONECTOR, frota: atualizacao });
+    return respostaJson({ success: true, versao: VERSAO_CONECTOR, transferencia, frota: atualizacao });
   } catch (erro) {
     console.error(erro);
     return respostaJson({ success: false, error: 'Falha interna' });
