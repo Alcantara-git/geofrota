@@ -61,13 +61,42 @@
         .details-toggle i { transition: transform .2s; }
         .details-toggle[aria-expanded="true"] i { transform: rotate(180deg); }
         .vehicle-details-row > td { padding: 0; background: #111827; }
-        .vehicle-details-panel { margin: 0 14px 14px; padding: 18px; border: 1px solid #334155; border-top: 2px solid #3b82f6; border-radius: 0 0 14px 14px; background: rgba(15,23,42,.92); }
-        .vehicle-notes { width: 100%; min-height: 100px; resize: vertical; background: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 12px; color: #f8fafc; outline: none; }
+        .vehicle-details-panel { margin: 0 14px 14px; padding: 20px; border: 1px solid #334155; border-top: 2px solid #3b82f6; border-radius: 0 0 14px 14px; background: rgba(15,23,42,.96); }
+        .vehicle-details-grid { display: grid; grid-template-columns: minmax(0,46fr) minmax(0,54fr); gap: 16px; align-items: stretch; }
+        .vehicle-detail-card { min-width: 0; padding: 22px; border: 1px solid #263852; border-radius: 14px; background: linear-gradient(145deg,rgba(20,34,57,.92),rgba(15,23,42,.96)); }
+        .vehicle-section-title { color: #fff; font-size: 1.5rem; line-height: 1.2; font-weight: 800; }
+        .vehicle-section-description { color: #b8c7dc; font-size: 1rem; line-height: 1.5; margin-top: 7px; }
+        .vehicle-notes { width: 100%; min-height: 185px; resize: vertical; background: #0f172a; border: 1px solid #3b4e6b; border-radius: 13px; padding: 18px; margin-top: 18px; color: #f8fafc; font-size: 1.0625rem; line-height: 1.55; outline: none; }
+        .vehicle-notes::placeholder { color: #9fb0c8; opacity: 1; }
         .vehicle-notes:focus { border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
         .vehicle-notes[readonly] { color: #cbd5e1; cursor: default; }
-        .vehicle-history-item { display: grid; grid-template-columns: 130px minmax(0,1fr) auto; gap: 12px; padding: 11px 0; border-bottom: 1px solid #1e293b; align-items: start; }
-        .vehicle-history-item:last-child { border-bottom: 0; }
-        @media(max-width:767px) { .vehicle-history-item { grid-template-columns: 1fr; gap: 4px; } }
+        .vehicle-notes-actions { display: flex; justify-content: flex-start; margin-top: 14px; }
+        .vehicle-notes-save { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 22px; border-radius: 12px; background: #2563eb; color: #fff; font-size: 1rem; font-weight: 800; text-transform: uppercase; box-shadow: 0 8px 20px rgba(37,99,235,.2); }
+        .vehicle-notes-save:hover { background: #3b82f6; }
+        .vehicle-notes-save:disabled { opacity: .5; cursor: not-allowed; }
+        .vehicle-history-list { display: grid; gap: 8px; margin-top: 14px; }
+        .vehicle-history-item { display: grid; grid-template-columns: 105px 112px minmax(180px,1fr) auto; gap: 14px; padding: 13px 14px; border: 1px solid #263852; border-radius: 12px; background: rgba(30,41,59,.58); align-items: center; }
+        .vehicle-history-time strong, .vehicle-history-time span { display: block; }
+        .vehicle-history-time strong { color: #e2e8f0; font-size: .9rem; }
+        .vehicle-history-time span { color: #94a3b8; font-size: .82rem; margin-top: 3px; }
+        .vehicle-history-status { display: inline-flex; align-items: center; justify-content: center; gap: 7px; width: max-content; min-width: 104px; padding: 7px 12px; border-radius: 999px; font-size: .82rem; font-weight: 800; }
+        .vehicle-history-status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+        .vehicle-history-status.status-down { color: #f87171; background: rgba(127,29,29,.42); }
+        .vehicle-history-status.status-oil { color: #fbbf24; background: rgba(120,53,15,.42); }
+        .vehicle-history-status.status-active { color: #4ade80; background: rgba(20,83,45,.48); }
+        .vehicle-history-content strong { display: block; color: #f1f5f9; font-size: .92rem; }
+        .vehicle-history-content p { color: #a9bad0; font-size: .86rem; line-height: 1.4; margin-top: 4px; }
+        .vehicle-history-responsible { color: #8192ac !important; }
+        .vehicle-history-km { padding: 8px 11px; border: 1px solid #365274; border-radius: 10px; background: rgba(15,23,42,.75); color: #dbeafe; font-size: .82rem; font-weight: 700; white-space: nowrap; }
+        @media(max-width:1180px) { .vehicle-details-grid { grid-template-columns: 1fr; } }
+        @media(max-width:767px) {
+            .vehicle-details-panel { margin: 0 6px 10px; padding: 10px; }
+            .vehicle-detail-card { padding: 16px; }
+            .vehicle-section-title { font-size: 1.3rem; }
+            .vehicle-section-description { font-size: .95rem; }
+            .vehicle-history-item { grid-template-columns: 1fr; gap: 8px; }
+            .vehicle-history-km { width: max-content; }
+        }
         .filter-summary { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; font-size: 12px; color: #cbd5e1; }
         .empty-state { text-align: center; padding: 32px; color: #94a3b8; font-size: 13px; }
         #toast { max-width: calc(100vw - 32px); width: max-content; }
@@ -486,8 +515,12 @@
                 return `<tr id="detalhes-${id}" class="vehicle-details-row"><td colspan="8"><div class="vehicle-details-panel text-center text-slate-400 text-sm"><i class="fas fa-circle-notch fa-spin mr-2" aria-hidden="true"></i>Carregando anotações e histórico...</div></td></tr>`;
             const editavel = podeGerenciar(v.setor);
             const historico = Array.isArray(dados.historico) ? dados.historico : [];
-            const lista = historico.map(item => `<div class="vehicle-history-item"><div class="text-xs text-slate-400 whitespace-nowrap">${escapeHTML(item.hora)}</div><div><strong class="text-sm text-slate-200">${escapeHTML(item.status)}</strong>${item.categoria_baixa ? `<span class="text-xs text-red-400 ml-2">${escapeHTML(item.categoria_baixa)}</span>` : ''}<div class="text-xs text-slate-400 mt-1 whitespace-pre-wrap break-words">${escapeHTML(item.motivo || 'Atualização da viatura')}</div><div class="text-xs text-slate-500 mt-1">Responsável: ${escapeHTML(item.usuario || item.autor_conta || 'Não informado')}</div></div><div class="text-xs font-mono text-slate-300 whitespace-nowrap">${formatarKM(item.km_anterior)} → ${formatarKM(item.km_novo)} km</div></div>`).join('') || '<p class="text-sm text-slate-400 py-4">Ainda não há alterações registradas para esta viatura.</p>';
-            return `<tr id="detalhes-${id}" class="vehicle-details-row"><td colspan="8"><div class="vehicle-details-panel"><div class="grid lg:grid-cols-2 gap-6"><section aria-labelledby="titulo-anotacoes-${id}"><div class="flex items-center justify-between gap-3 mb-3"><div><h4 id="titulo-anotacoes-${id}" class="font-bold text-white">Anotações da viatura</h4><p class="text-xs text-slate-400 mt-1">Espaço para informações complementares. Limite de 2.000 caracteres.</p></div></div><textarea id="observacoes-${id}" class="vehicle-notes" maxlength="2000" ${editavel ? '' : 'readonly'} placeholder="${editavel ? 'Digite uma observação sobre esta viatura...' : 'Nenhuma anotação cadastrada.'}">${escapeHTML(dados.observacoes || '')}</textarea>${editavel ? `<div class="flex justify-end mt-3"><button type="button" onclick="salvarObservacoes(${id})" ${anotacoesSalvando.has(id) ? 'disabled' : ''} class="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 px-5 py-2 rounded-xl text-xs font-bold uppercase text-white"><i class="fas fa-save mr-2" aria-hidden="true"></i>${anotacoesSalvando.has(id) ? 'Salvando...' : 'Salvar anotação'}</button></div>` : '<p class="text-xs text-slate-500 mt-2">Somente o administrador responsável pela subunidade pode editar.</p>'}</section><section aria-labelledby="titulo-historico-${id}"><h4 id="titulo-historico-${id}" class="font-bold text-white">5 últimas alterações</h4><p class="text-xs text-slate-400 mt-1 mb-2">Histórico individual da viatura</p><div>${lista}</div></section></div></div></td></tr>`;
+            const lista = historico.map(item => {
+                const [data = '', hora = ''] = String(item.hora || '').split(' ');
+                const statusClasse = item.status === 'Baixada' ? 'status-down' : item.status === 'Troca de Óleo' ? 'status-oil' : 'status-active';
+                return `<div class="vehicle-history-item"><time class="vehicle-history-time"><strong>${escapeHTML(data)}</strong><span>${escapeHTML(hora)}</span></time><span class="vehicle-history-status ${statusClasse}">${escapeHTML(item.status)}</span><div class="vehicle-history-content"><strong>${escapeHTML(item.motivo || 'Atualização da viatura')}</strong>${item.categoria_baixa ? `<p class="text-red-400">${escapeHTML(item.categoria_baixa)}</p>` : ''}<p class="vehicle-history-responsible">Responsável: ${escapeHTML(item.usuario || item.autor_conta || 'Não informado')}</p></div><div class="vehicle-history-km font-mono"><i class="fas fa-road mr-2" aria-hidden="true"></i>${formatarKM(item.km_anterior)} → ${formatarKM(item.km_novo)} km</div></div>`;
+            }).join('') || '<p class="text-base text-slate-400 py-4">Ainda não há alterações registradas para esta viatura.</p>';
+            return `<tr id="detalhes-${id}" class="vehicle-details-row"><td colspan="8"><div class="vehicle-details-panel"><div class="vehicle-details-grid"><section class="vehicle-detail-card" aria-labelledby="titulo-anotacoes-${id}"><h4 id="titulo-anotacoes-${id}" class="vehicle-section-title">Anotações da viatura</h4><p class="vehicle-section-description">Espaço para informações complementares. Limite de 2.000 caracteres.</p><textarea id="observacoes-${id}" class="vehicle-notes" maxlength="2000" ${editavel ? '' : 'readonly'} placeholder="${editavel ? 'Digite uma observação sobre esta viatura...' : 'Nenhuma anotação cadastrada.'}">${escapeHTML(dados.observacoes || '')}</textarea>${editavel ? `<div class="vehicle-notes-actions"><button type="button" onclick="salvarObservacoes(${id})" ${anotacoesSalvando.has(id) ? 'disabled' : ''} class="vehicle-notes-save"><i class="fas fa-save mr-2" aria-hidden="true"></i>${anotacoesSalvando.has(id) ? 'Salvando...' : 'Salvar anotação'}</button></div>` : '<p class="vehicle-section-description">Somente o administrador responsável pela subunidade pode editar.</p>'}</section><section class="vehicle-detail-card" aria-labelledby="titulo-historico-${id}"><h4 id="titulo-historico-${id}" class="vehicle-section-title">5 últimas alterações</h4><p class="vehicle-section-description">Histórico individual da viatura</p><div class="vehicle-history-list">${lista}</div></section></div></div></td></tr>`;
         }
 
         async function alternarDetalhes(id) {
