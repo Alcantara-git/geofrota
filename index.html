@@ -366,7 +366,7 @@
         const comparadorOrdenacao = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' });
         const trocasEmAndamento = new Set();
         let trocaOleoPendente = null;
-        const categoriasBaixa = ["Mecânico", "Pneu", "Troca de óleo", "Iluminação e/ou sonoro", "Sindicância", "Avaria", "Elétrica", "Outros"];
+        const categoriasBaixa = ["Mecânico", "Pneu", "Bateria", "Freios", "Troca de óleo", "Iluminação e/ou sonoro", "Sindicância", "Avaria", "Elétrica", "Outros"];
         const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         const podeGerenciar = setor => role === 'admin' && (isSuperadmin || setor === adminSetor);
         function showToast(msg, tipo = 'success') { const t = document.getElementById('toast'); t.innerText = msg; t.setAttribute('role', tipo === 'error' ? 'alert' : 'status'); t.classList.toggle('toast-error', tipo === 'error'); t.classList.toggle('toast-success', tipo !== 'error'); t.classList.add('show'); clearTimeout(showToast.timer); showToast.timer = setTimeout(() => t.classList.remove('show'), tipo === 'error' ? 4000 : 3000); }

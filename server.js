@@ -152,7 +152,7 @@ const normalizarPrefixo = v => String(v ?? '')
     .replace(/\s+/g, '')
     .toUpperCase();
 const erro = (res, e) => { console.error(e); res.status(500).json({ error: 'Erro interno' }); };
-const categoriasBaixa = new Set(["Mecânico", "Pneu", "Troca de óleo", "Iluminação e/ou sonoro", "Sindicância", "Avaria", "Elétrica", "Outros"]);
+const categoriasBaixa = new Set(["Mecânico", "Pneu", "Bateria", "Freios", "Troca de óleo", "Iluminação e/ou sonoro", "Sindicância", "Avaria", "Elétrica", "Outros"]);
 const setoresValidos = new Set(['EM', 'CTT', '1° CIA', '2° CIA', '3° CIA', '4° CIA']);
 const podeGerenciarSetor = (req, setor) => Boolean(req.auth?.superadmin || (req.auth?.role === 'admin' && req.auth.setor === setor));
 const nomeConta = req => req.auth?.usuario ? `ADM ${req.auth.usuario}` : 'Gestor';
