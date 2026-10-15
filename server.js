@@ -245,6 +245,56 @@ app.get('/api/alteracoes-recentes', protegerOperacional, async (req, res) => {
     } catch (e) { erro(res, e); }
 });
 
+// Detalhes expansíveis de uma viatura: anotação atual e seus 5 registros mais recentes.
+app.get('/api/viaturas/:id/detalhes', protegerOperacional, async (req, res) => {
+    const id = inteiro(req.params.id, 1);
+    if (!id) return res.status(400).json({ error: 'Viatura inválida' });
+    try {
+        const viatura = (await pool.query('SELECT id, prefixo, setor, observacoes FROM viaturas WHERE id=$1', [id])).rows[0];
+        if (!viatura) return res.status(404).json({ error: 'Viatura não encontrada' });
+        const historico = await pool.query(`SELECT id, km_anterior, km_novo, status, motivo,
+            categoria_baixa, usuario, autor_conta,
+            TO_CHAR((data_hora AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI') AS hora
+            FROM historico WHERE prefixo=$1 ORDER BY data_hora DESC, id DESC LIMIT 5`, [viatura.prefixo]);
+        res.json({
+            observacoes: viatura.observacoes || '',
+            historico: historico.rows
+        });
+    } catch (e) { erro(res, e); }
+});
+
+// A anotação não participa da sincronização com o Google Sheets; cada alteração fica auditada no histórico.
+app.put('/api/viaturas/:id/observacoes', protegerAdmin, async (req, res) => {
+    const id = inteiro(req.params.id, 1);
+    const recebida = typeof req.body?.observacoes === 'string' ? req.body.observacoes.replace(/\r\n?/g, '\n').trim() : null;
+    if (!id || recebida === null || recebida.length > 2000 || recebida.includes('\u0000'))
+        return res.status(400).json({ error: 'A anotação deve ter no máximo 2.000 caracteres' });
+    let client;
+    try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+        const viatura = (await client.query('SELECT id, prefixo, setor, km, status, observacoes FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
+        if (!viatura) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Viatura não encontrada' }); }
+        if (!podeGerenciarSetor(req, viatura.setor)) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ error: 'Você pode alterar somente viaturas da sua subunidade' });
+        }
+        if ((viatura.observacoes || '') === recebida) {
+            await client.query('COMMIT');
+            return res.json({ success: true, observacoes: recebida, alterada: false });
+        }
+        await client.query('UPDATE viaturas SET observacoes=$1 WHERE id=$2', [recebida, id]);
+        const resumo = recebida ? `Anotação atualizada: ${recebida.slice(0, 300)}` : 'Anotação removida.';
+        await client.query(`INSERT INTO historico
+            (prefixo, km_anterior, km_novo, status, motivo, usuario, setor, autor_conta)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+            [viatura.prefixo, viatura.km, viatura.km, viatura.status, resumo, nomeConta(req), viatura.setor, req.auth.usuario]);
+        await client.query('COMMIT');
+        res.json({ success: true, observacoes: recebida, alterada: true });
+    } catch (e) { if (client) await client.query('ROLLBACK').catch(() => {}); erro(res, e); }
+    finally { if (client) client.release(); }
+});
+
 function cicloRevisao(modelo) {
     const nome = String(modelo ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').replace(/([A-Z])([0-9])/g, '$1 $2').replace(/([0-9])([A-Z])/g, '$1 $2');
     const bmw850 = /\bBMW\b/.test(nome) && /\b(?:F\s*)?850\b/.test(nome) && /\bGS\b/.test(nome);
@@ -368,7 +418,9 @@ app.get('/api/relatorio-periodo', protegerAdmin, async (req, res) => {
 
 app.get('/api/viaturas', protegerOperacional, async (req, res) => {
     try {
-        const rows = (await pool.query('SELECT * FROM viaturas ORDER BY setor ASC, prefixo ASC')).rows;
+        const rows = (await pool.query(`SELECT id, prefixo, placa, modelo, km, km_revisao, status,
+            ultimo_usuario, motivo, setor, categoria_baixa
+            FROM viaturas ORDER BY setor ASC, prefixo ASC`)).rows;
         res.json(rows.map(v => v.status === 'Baixada' ? v : {
             ...v,
             status: atingiuTrocaOleo(v.km, v.km_revisao, v.modelo) ? 'Troca de Óleo' : 'Operante'

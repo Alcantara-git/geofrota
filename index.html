@@ -56,9 +56,20 @@
         .action-button.service { color: #60a5fa; }
         .action-button.danger:hover { color: #f87171; border-color: #f87171; }
         .action-button:disabled { opacity: .35; cursor: not-allowed; }
+        .details-toggle { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; color: #93c5fd; border: 1px solid rgba(96,165,250,.45); background: rgba(37,99,235,.18); transition: .2s; }
+        .details-toggle:hover, .details-toggle[aria-expanded="true"] { color: #fff; background: #2563eb; border-color: #60a5fa; }
+        .details-toggle i { transition: transform .2s; }
+        .details-toggle[aria-expanded="true"] i { transform: rotate(180deg); }
+        .vehicle-details-row > td { padding: 0; background: #111827; }
+        .vehicle-details-panel { margin: 0 14px 14px; padding: 18px; border: 1px solid #334155; border-top: 2px solid #3b82f6; border-radius: 0 0 14px 14px; background: rgba(15,23,42,.92); }
+        .vehicle-notes { width: 100%; min-height: 100px; resize: vertical; background: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 12px; color: #f8fafc; outline: none; }
+        .vehicle-notes:focus { border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
+        .vehicle-notes[readonly] { color: #cbd5e1; cursor: default; }
+        .vehicle-history-item { display: grid; grid-template-columns: 130px minmax(0,1fr) auto; gap: 12px; padding: 11px 0; border-bottom: 1px solid #1e293b; align-items: start; }
+        .vehicle-history-item:last-child { border-bottom: 0; }
+        @media(max-width:767px) { .vehicle-history-item { grid-template-columns: 1fr; gap: 4px; } }
         .filter-summary { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; font-size: 12px; color: #cbd5e1; }
         .empty-state { text-align: center; padding: 32px; color: #94a3b8; font-size: 13px; }
-        .recent-scroll { max-height: 340px; overflow: auto; }
         #toast { max-width: calc(100vw - 32px); width: max-content; }
         #toast { min-width: min(360px, calc(100vw - 32px)); font-size: 0.875rem !important; line-height: 1.35rem; padding: 16px 20px; }
         #toast.toast-success { background: #1d4ed8; border-color: #60a5fa; }
@@ -215,17 +226,12 @@
         <div class="card rounded-2xl overflow-x-auto shadow-2xl">
             <table class="fleet-table w-full text-left">
                 <thead class="bg-slate-800 text-slate-400 text-[10px] uppercase font-black tracking-widest">
-                    <tr><th class="p-4 text-center">Subunidade</th><th class="p-4">VTR / Placa</th><th class="p-4">Ciclo da revisão</th><th class="p-4 text-center">KM / Revisão</th><th class="p-4 text-center">Último Condutor</th><th class="p-4 text-center">Status / Motivo</th><th class="p-4 text-center">Ações</th></tr>
+                    <tr><th class="p-4 text-center" aria-label="Detalhes"></th><th class="p-4 text-center">Subunidade</th><th class="p-4">VTR / Placa</th><th class="p-4">Ciclo da revisão</th><th class="p-4 text-center">KM / Revisão</th><th class="p-4 text-center">Último Condutor</th><th class="p-4 text-center">Status / Motivo</th><th class="p-4 text-center">Ações</th></tr>
                 </thead>
-                <tbody id="corpo" class="divide-y divide-slate-800"><tr><td colspan="7" class="empty-state">Carregando viaturas...</td></tr></tbody>
+                <tbody id="corpo" class="divide-y divide-slate-800"><tr><td colspan="8" class="empty-state">Carregando viaturas...</td></tr></tbody>
             </table>
         </div>
         <p class="text-[11px] text-slate-400 mt-3 leading-relaxed">Ciclo de 3.000 km para BMW GS 850 e de 5.000 km para os demais modelos: verde até 70% · amarelo de 71% a 90% · vermelho de 91% a 100% · vermelho listrado acima de 100%.</p>
-
-        <section id="painelHistorico" class="card rounded-2xl mt-6 overflow-hidden" aria-labelledby="tituloHistorico">
-            <div class="p-5 border-b border-slate-700 flex flex-wrap justify-between gap-2"><div><h3 id="tituloHistorico" class="font-bold text-white">10 últimas alterações</h3><p id="escopoHistorico" class="text-xs text-slate-400 mt-1">Todas as subunidades</p></div><span class="text-xs text-slate-400">Atualização automática</span></div>
-            <div class="recent-scroll"><table class="w-full text-left min-w-[800px]"><thead class="bg-slate-800 text-[10px] uppercase text-slate-300"><tr><th class="p-4">Data e hora</th><th class="p-4">Subunidade / VTR</th><th class="p-4">KM anterior → novo</th><th class="p-4">Situação / registro</th><th class="p-4">Responsável</th></tr></thead><tbody id="corpoHistorico"><tr><td colspan="5" class="empty-state">Carregando histórico...</td></tr></tbody></table></div>
-        </section>
 
     </main>
 
@@ -324,7 +330,9 @@
     <script>
         let viaturasLocal = []; let statusFiltro = 'Todos'; let setorFiltro = 'Todos'; let role = null;
         let adminSetor = null, adminUsuario = null, isSuperadmin = false;
-        let listaCarregada = false, pedidoLista = 0, pedidoHistorico = 0;
+        let listaCarregada = false, pedidoLista = 0;
+        let viaturaDetalhesAberta = null;
+        const detalhesViaturas = new Map(), detalhesCarregando = new Set(), anotacoesSalvando = new Set();
         let campoOrdenacao = '', direcaoOrdenacao = 'crescente';
         const comparadorOrdenacao = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' });
         const trocasEmAndamento = new Set();
@@ -365,11 +373,10 @@
                     viaturasLocal = novas; listaCarregada = true; renderizarTabela();
                 }
                 document.getElementById('estadoAtualizacao').innerText = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR');
-                if (statusFiltro === 'Todos') await carregarHistorico();
             } catch(e) {
                 if (pedido !== pedidoLista) return;
                 document.getElementById('estadoAtualizacao').innerText = 'Falha na atualização';
-                if (!listaCarregada) document.getElementById('corpo').innerHTML = '<tr><td colspan="7" class="empty-state">Não foi possível carregar a frota. Uma nova tentativa será feita automaticamente.</td></tr>';
+                if (!listaCarregada) document.getElementById('corpo').innerHTML = '<tr><td colspan="8" class="empty-state">Não foi possível carregar a frota. Uma nova tentativa será feita automaticamente.</td></tr>';
             }
         }
         function alterarOrdenacao() {
@@ -460,55 +467,100 @@
             document.getElementById('corpo').innerHTML = ordenadas.map(v => {
                 const id = Number(v.id);
                 const idValido = Number.isSafeInteger(id) && id > 0;
+                const aberta = idValido && viaturaDetalhesAberta === id;
                 const color = v.status === 'Operante' ? 'text-green-500 border-green-500/20 bg-green-500/10' : v.status === 'Troca de Óleo' ? 'text-amber-500 border-amber-500/20 bg-amber-500/10' : 'text-red-500 border-red-500/20 bg-red-500/10';
                 const placaDisplay = role === 'admin' ? v.placa : '***-****';
                 const acoes = podeGerenciar(v.setor) && idValido
                     ? `<div class="whitespace-nowrap"><button type="button" onclick="editar(${id})" class="action-button" title="Editar viatura" aria-label="Editar ${escapeHTML(v.prefixo)}"><i class="fas fa-edit" aria-hidden="true"></i></button><button type="button" onclick="registrarTroca(${id})" class="action-button service" ${v.status === 'Baixada' || trocasEmAndamento.has(id) ? 'disabled' : ''} title="Confirmar troca de óleo realizada" aria-label="Registrar troca de óleo de ${escapeHTML(v.prefixo)}"><i class="fas fa-sync-alt" aria-hidden="true"></i></button><button type="button" onclick="confirmarExcluir(${id})" class="action-button danger" title="Excluir viatura" aria-label="Excluir ${escapeHTML(v.prefixo)}"><i class="fas fa-trash" aria-hidden="true"></i></button></div>`
                     : '<span class="text-xs text-slate-400">Somente leitura</span>';
-                return `<tr class="${v.status === 'Baixada' ? 'row-down' : v.status === 'Troca de Óleo' ? 'row-oil' : ''} border-b border-slate-800"><td class="p-4 text-slate-300 text-center">${escapeHTML(v.setor)}</td><td class="p-4"><strong class="text-blue-400">${escapeHTML(v.prefixo)}</strong><div class="text-xs text-slate-400 mt-1">${escapeHTML(placaDisplay)}</div><div class="text-[10px] text-slate-500 mt-1">${escapeHTML(v.modelo)}</div></td><td class="p-4">${barraRevisao(v)}</td><td class="p-4 text-center font-mono"><strong>${formatarKM(v.km)}</strong><div class="text-xs text-slate-400 mt-1">Revisão: ${formatarKM(v.km_revisao)}</div></td><td class="p-4 text-center text-slate-300">${escapeHTML(v.ultimo_usuario)}</td><td class="p-4 text-center"><span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase border ${color}">${escapeHTML(v.status)}</span>${v.categoria_baixa && v.status === 'Baixada' ? `<div class="text-xs text-red-400 mt-2">${escapeHTML(v.categoria_baixa)}</div>` : ''}${v.motivo ? `<div class="text-xs text-red-400 mt-2 max-w-[180px]">${escapeHTML(v.motivo)}</div>` : ''}</td><td class="p-4 text-center">${acoes}</td></tr>`;
-            }).join('') || '<tr><td colspan="7" class="empty-state">Nenhuma viatura encontrada com os filtros selecionados.</td></tr>';
+                const botaoDetalhes = idValido ? `<button type="button" class="details-toggle" onclick="alternarDetalhes(${id})" aria-expanded="${aberta}" aria-controls="detalhes-${id}" title="${aberta ? 'Fechar' : 'Abrir'} anotações e histórico" aria-label="${aberta ? 'Fechar' : 'Abrir'} anotações e histórico de ${escapeHTML(v.prefixo)}"><i class="fas fa-chevron-down" aria-hidden="true"></i></button>` : '';
+                const linha = `<tr class="${v.status === 'Baixada' ? 'row-down' : v.status === 'Troca de Óleo' ? 'row-oil' : ''} border-b border-slate-800"><td class="p-4 text-center">${botaoDetalhes}</td><td class="p-4 text-slate-300 text-center">${escapeHTML(v.setor)}</td><td class="p-4"><strong class="text-blue-400">${escapeHTML(v.prefixo)}</strong><div class="text-xs text-slate-400 mt-1">${escapeHTML(placaDisplay)}</div><div class="text-[10px] text-slate-500 mt-1">${escapeHTML(v.modelo)}</div></td><td class="p-4">${barraRevisao(v)}</td><td class="p-4 text-center font-mono"><strong>${formatarKM(v.km)}</strong><div class="text-xs text-slate-400 mt-1">Revisão: ${formatarKM(v.km_revisao)}</div></td><td class="p-4 text-center text-slate-300">${escapeHTML(v.ultimo_usuario)}</td><td class="p-4 text-center"><span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase border ${color}">${escapeHTML(v.status)}</span>${v.categoria_baixa && v.status === 'Baixada' ? `<div class="text-xs text-red-400 mt-2">${escapeHTML(v.categoria_baixa)}</div>` : ''}${v.motivo ? `<div class="text-xs text-red-400 mt-2 max-w-[180px]">${escapeHTML(v.motivo)}</div>` : ''}</td><td class="p-4 text-center">${acoes}</td></tr>`;
+                return linha + (aberta ? renderizarDetalhesViatura(v, id) : '');
+            }).join('') || '<tr><td colspan="8" class="empty-state">Nenhuma viatura encontrada com os filtros selecionados.</td></tr>';
             document.getElementById('labelSetorRelatorio').innerText = 'Filtro: ' + (setorFiltro === 'Todos' ? '1° BPTRAN' : setorFiltro);
         }
-        async function carregarHistorico() {
-            if (statusFiltro !== 'Todos') return;
-            const pedido = ++pedidoHistorico;
-            const setor = setorFiltro;
-            document.getElementById('escopoHistorico').innerText = setor === 'Todos' ? 'Todas as subunidades · 10 registros mais recentes' : setor + ' · 10 registros mais recentes';
+
+        function renderizarDetalhesViatura(v, id) {
+            const dados = detalhesViaturas.get(id);
+            if (detalhesCarregando.has(id) || !dados)
+                return `<tr id="detalhes-${id}" class="vehicle-details-row"><td colspan="8"><div class="vehicle-details-panel text-center text-slate-400 text-sm"><i class="fas fa-circle-notch fa-spin mr-2" aria-hidden="true"></i>Carregando anotações e histórico...</div></td></tr>`;
+            const editavel = podeGerenciar(v.setor);
+            const historico = Array.isArray(dados.historico) ? dados.historico : [];
+            const lista = historico.map(item => `<div class="vehicle-history-item"><div class="text-xs text-slate-400 whitespace-nowrap">${escapeHTML(item.hora)}</div><div><strong class="text-sm text-slate-200">${escapeHTML(item.status)}</strong>${item.categoria_baixa ? `<span class="text-xs text-red-400 ml-2">${escapeHTML(item.categoria_baixa)}</span>` : ''}<div class="text-xs text-slate-400 mt-1 whitespace-pre-wrap break-words">${escapeHTML(item.motivo || 'Atualização da viatura')}</div><div class="text-xs text-slate-500 mt-1">Responsável: ${escapeHTML(item.usuario || item.autor_conta || 'Não informado')}</div></div><div class="text-xs font-mono text-slate-300 whitespace-nowrap">${formatarKM(item.km_anterior)} → ${formatarKM(item.km_novo)} km</div></div>`).join('') || '<p class="text-sm text-slate-400 py-4">Ainda não há alterações registradas para esta viatura.</p>';
+            return `<tr id="detalhes-${id}" class="vehicle-details-row"><td colspan="8"><div class="vehicle-details-panel"><div class="grid lg:grid-cols-2 gap-6"><section aria-labelledby="titulo-anotacoes-${id}"><div class="flex items-center justify-between gap-3 mb-3"><div><h4 id="titulo-anotacoes-${id}" class="font-bold text-white">Anotações da viatura</h4><p class="text-xs text-slate-400 mt-1">Espaço para informações complementares. Limite de 2.000 caracteres.</p></div></div><textarea id="observacoes-${id}" class="vehicle-notes" maxlength="2000" ${editavel ? '' : 'readonly'} placeholder="${editavel ? 'Digite uma observação sobre esta viatura...' : 'Nenhuma anotação cadastrada.'}">${escapeHTML(dados.observacoes || '')}</textarea>${editavel ? `<div class="flex justify-end mt-3"><button type="button" onclick="salvarObservacoes(${id})" ${anotacoesSalvando.has(id) ? 'disabled' : ''} class="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 px-5 py-2 rounded-xl text-xs font-bold uppercase text-white"><i class="fas fa-save mr-2" aria-hidden="true"></i>${anotacoesSalvando.has(id) ? 'Salvando...' : 'Salvar anotação'}</button></div>` : '<p class="text-xs text-slate-500 mt-2">Somente o administrador responsável pela subunidade pode editar.</p>'}</section><section aria-labelledby="titulo-historico-${id}"><h4 id="titulo-historico-${id}" class="font-bold text-white">5 últimas alterações</h4><p class="text-xs text-slate-400 mt-1 mb-2">Histórico individual da viatura</p><div>${lista}</div></section></div></div></td></tr>`;
+        }
+
+        async function alternarDetalhes(id) {
+            if (!Number.isSafeInteger(id) || id < 1) return;
+            if (viaturaDetalhesAberta === id) {
+                viaturaDetalhesAberta = null;
+                renderizarTabela();
+                return;
+            }
+            viaturaDetalhesAberta = id;
+            renderizarTabela();
+            if (!detalhesViaturas.has(id)) await carregarDetalhesViatura(id);
+        }
+
+        async function carregarDetalhesViatura(id, forcar = false) {
+            if (detalhesCarregando.has(id) || (!forcar && detalhesViaturas.has(id))) return;
+            detalhesCarregando.add(id);
+            if (viaturaDetalhesAberta === id) renderizarTabela();
             try {
-                const res = await fetch('/api/alteracoes-recentes?setor=' + encodeURIComponent(setor));
-                if (pedido !== pedidoHistorico || statusFiltro !== 'Todos' || setor !== setorFiltro) return;
+                const res = await fetch(`/api/viaturas/${id}/detalhes?t=${Date.now()}`);
                 if (res.status === 401) { window.location.href = 'login.html'; return; }
-                if (!res.ok) throw new Error('Falha no histórico');
                 const dados = await res.json();
-                if (pedido !== pedidoHistorico || statusFiltro !== 'Todos' || setor !== setorFiltro) return;
-                if (!Array.isArray(dados)) throw new Error('Histórico inválido');
-                document.getElementById('corpoHistorico').innerHTML = dados.map(d => `<tr class="border-b border-slate-800"><td class="p-4 text-xs text-slate-300 whitespace-nowrap">${escapeHTML(d.hora)}</td><td class="p-4 text-xs"><strong class="text-blue-400">${escapeHTML(d.prefixo)}</strong><div class="text-slate-400 mt-1">${escapeHTML(d.setor)}</div></td><td class="p-4 text-xs font-mono whitespace-nowrap">${formatarKM(d.km_anterior)} → ${formatarKM(d.km_novo)}</td><td class="p-4 text-xs"><strong>${escapeHTML(d.status)}</strong>${d.categoria_baixa ? `<div class="text-xs text-red-400 mt-1">${escapeHTML(d.categoria_baixa)}</div>` : ''}${d.motivo ? `<div class="text-slate-400 mt-1 max-w-[360px]">${escapeHTML(d.motivo)}</div>` : ''}</td><td class="p-4 text-xs text-slate-300">${escapeHTML(d.usuario)}</td></tr>`).join('') || '<tr><td colspan="5" class="empty-state">Ainda não há alterações registradas nesta subunidade.</td></tr>';
+                if (!res.ok) throw new Error(dados.error || 'Não foi possível carregar os detalhes');
+                if (!Array.isArray(dados.historico)) throw new Error('Detalhes inválidos');
+                detalhesViaturas.set(id, dados);
             } catch (e) {
-                if (pedido === pedidoHistorico && statusFiltro === 'Todos' && setor === setorFiltro) document.getElementById('corpoHistorico').innerHTML = '<tr><td colspan="5" class="empty-state">Não foi possível carregar o histórico. Uma nova tentativa será feita automaticamente.</td></tr>';
+                showToast(e.message || 'Não foi possível carregar os detalhes da viatura.', 'error');
+                if (viaturaDetalhesAberta === id) viaturaDetalhesAberta = null;
+            } finally {
+                detalhesCarregando.delete(id);
+                renderizarTabela();
+            }
+        }
+
+        async function salvarObservacoes(id) {
+            const v = viaturasLocal.find(item => Number(item.id) === id);
+            const campo = document.getElementById(`observacoes-${id}`);
+            if (!v || !campo || !podeGerenciar(v.setor) || anotacoesSalvando.has(id)) return;
+            const observacoes = campo.value;
+            const atuais = detalhesViaturas.get(id);
+            if (atuais) detalhesViaturas.set(id, { ...atuais, observacoes });
+            anotacoesSalvando.add(id);
+            renderizarTabela();
+            try {
+                const res = await fetch(`/api/viaturas/${id}/observacoes`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ observacoes }) });
+                const dados = await res.json();
+                if (!res.ok) throw new Error(dados.error || 'Não foi possível salvar a anotação');
+                await carregarDetalhesViatura(id, true);
+                showToast(dados.alterada === false ? 'A anotação já estava salva.' : 'Anotação salva no histórico!');
+            } catch (e) {
+                showToast(e.message || 'Não foi possível salvar a anotação.', 'error');
+            } finally {
+                anotacoesSalvando.delete(id);
+                renderizarTabela();
             }
         }
         function setSetor(s) {
             setorFiltro = s;
+            viaturaDetalhesAberta = null;
             document.querySelectorAll('.btn-setor').forEach(b => b.classList.remove('active'));
             const idBtn = { '1° CIA':'btn-1CIA', '2° CIA':'btn-2CIA', '3° CIA':'btn-3CIA', '4° CIA':'btn-4CIA' }[s] || 'btn-' + s;
             document.getElementById(idBtn).classList.add('active');
             atualizarPermissoesAcoes();
             renderizarTabela();
-            if (statusFiltro === 'Todos') {
-                document.getElementById('corpoHistorico').innerHTML = '<tr><td colspan="5" class="empty-state">Carregando histórico...</td></tr>';
-                carregarHistorico();
-            }
         }
         function setFiltroStatus(s) {
             statusFiltro = s;
+            viaturaDetalhesAberta = null;
             document.querySelectorAll('.stat-card').forEach(c => { c.classList.remove('card-active'); c.setAttribute('aria-pressed','false'); });
             const idCard = { 'Todos':'card-total', 'Operante':'card-operante', 'Troca de Óleo':'card-oleo', 'Baixada':'card-baixada' }[s];
             document.getElementById(idCard).classList.add('card-active');
             document.getElementById(idCard).setAttribute('aria-pressed','true');
-            document.getElementById('painelHistorico').hidden = s !== 'Todos';
-            if (s !== 'Todos') pedidoHistorico++;
             renderizarTabela();
-            if (s === 'Todos') carregarHistorico();
         }
         function limparFiltros() {
             document.getElementById('inputBusca').value = '';

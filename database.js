@@ -14,6 +14,7 @@ async function inicializarBanco() {
     try {
         await pool.query(`ALTER TABLE viaturas ADD COLUMN IF NOT EXISTS motivo TEXT DEFAULT '';`);
         await pool.query(`ALTER TABLE viaturas ADD COLUMN IF NOT EXISTS setor TEXT DEFAULT 'CTT';`);
+        await pool.query(`ALTER TABLE viaturas ADD COLUMN IF NOT EXISTS observacoes TEXT NOT NULL DEFAULT '';`);
         await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS viaturas_prefixo_normalizado_uidx ON viaturas ((UPPER(REGEXP_REPLACE(TRIM(prefixo), '[[:space:]]+', '', 'g'))));`);
         await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS setor TEXT;`);
         await pool.query(`CREATE TABLE IF NOT EXISTS historico (id SERIAL PRIMARY KEY, prefixo TEXT, km_anterior INTEGER, km_novo INTEGER, status TEXT, motivo TEXT, usuario TEXT, setor TEXT, data_hora TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP);`);
