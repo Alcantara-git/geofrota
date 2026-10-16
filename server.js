@@ -467,7 +467,10 @@ app.put('/api/operacional/viaturas/:id', protegerOperacional, async (req, res) =
 app.put('/api/viaturas/:id', protegerAdmin, async (req, res) => {
     const id = inteiro(req.params.id, 1), km = inteiro(req.body.km), revisao = inteiro(req.body.km_revisao);
     const setor = texto(req.body.setor, 50), usuario = nomeConta(req);
-    if (!id || km === null || revisao === null || !setor || !['Operante', 'Troca de Óleo', 'Baixada'].includes(req.body.status))
+    const placaSolicitada = req.body.placa === undefined ? undefined : texto(req.body.placa);
+    const modeloSolicitado = req.body.modelo === undefined ? undefined : texto(req.body.modelo);
+    if (!id || km === null || revisao === null || !setor || !['Operante', 'Troca de Óleo', 'Baixada'].includes(req.body.status)
+        || (req.body.placa !== undefined && !placaSolicitada) || (req.body.modelo !== undefined && !modeloSolicitado))
         return res.status(400).json({ error: 'Dados inválidos' });
     let client;
     try {
@@ -478,15 +481,21 @@ app.put('/api/viaturas/:id', protegerAdmin, async (req, res) => {
         if (!podeGerenciarSetor(req, old.setor) || (!req.auth.superadmin && setor !== req.auth.setor)) {
             await client.query('ROLLBACK'); return res.status(403).json({ error: 'Você pode alterar somente viaturas da sua subunidade' });
         }
-        const status = req.body.status === 'Baixada' ? 'Baixada' : atingiuTrocaOleo(km, revisao, old.modelo) ? 'Troca de Óleo' : 'Operante';
+        const placa = placaSolicitada ?? old.placa;
+        const modelo = modeloSolicitado ?? old.modelo;
+        const status = req.body.status === 'Baixada' ? 'Baixada' : atingiuTrocaOleo(km, revisao, modelo) ? 'Troca de Óleo' : 'Operante';
         const motivo = status === 'Baixada' ? (typeof req.body.motivo === 'string' ? req.body.motivo.slice(0, 500) : old.status === 'Baixada' ? old.motivo : '') : '';
         const categoria = status === 'Baixada' && old.status === 'Baixada' ? old.categoria_baixa : null;
-        await client.query('UPDATE viaturas SET km=$1, km_revisao=$2, status=$3, ultimo_usuario=$4, motivo=$5, setor=$6, categoria_baixa=$7 WHERE id=$8', [km, revisao, status, usuario, motivo, setor, categoria, id]);
-        await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor, categoria_baixa, autor_conta) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [old.prefixo, old.km, km, status, motivo, usuario, setor, categoria, req.auth.usuario]);
+        const alteracoesCadastro = [];
+        if (old.placa !== placa) alteracoesCadastro.push(`placa: ${old.placa} → ${placa}`);
+        if (old.modelo !== modelo) alteracoesCadastro.push(`modelo: ${old.modelo} → ${modelo}`);
+        const registroHistorico = alteracoesCadastro.length ? `Cadastro atualizado — ${alteracoesCadastro.join('; ')}.` : motivo;
+        await client.query('UPDATE viaturas SET placa=$1, modelo=$2, km=$3, km_revisao=$4, status=$5, ultimo_usuario=$6, motivo=$7, setor=$8, categoria_baixa=$9 WHERE id=$10', [placa, modelo, km, revisao, status, usuario, motivo, setor, categoria, id]);
+        await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor, categoria_baixa, autor_conta) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [old.prefixo, old.km, km, status, registroHistorico, usuario, setor, categoria, req.auth.usuario]);
         await client.query('COMMIT');
         let aviso;
         try {
-            await sincronizarViaturaPlanilha({ prefixo: old.prefixo, responsavel: usuario, modelo: old.modelo, placa: old.placa, km, km_revisao: revisao, status, setor, setor_anterior: old.setor });
+            await sincronizarViaturaPlanilha({ prefixo: old.prefixo, responsavel: usuario, modelo, placa, km, km_revisao: revisao, status, setor, setor_anterior: old.setor });
         } catch (e) {
             console.error('Falha ao sincronizar o KM com a planilha da frota:', e.message);
             aviso = 'KM salvo no GEOFROTA, mas não foi possível sincronizar a planilha da frota.';
