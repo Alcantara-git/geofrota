@@ -358,7 +358,7 @@ app.post('/api/viaturas/:id/troca-oleo', protegerAdmin, async (req, res) => {
 // ==========================================
 app.get('/api/relatorio-ultimo', protegerAdmin, async (req, res) => {
     try {
-        const { setor } = req.query;
+        const setor = texto(req.query.setor, 30), prefixo = texto(req.query.prefixo, 50);
 
         // 1. Pega o carimbo do último clique salvo (UTC)
         const config = await pool.query("SELECT valor FROM configuracoes WHERE chave = 'ultimo_acesso_relatorio'");
@@ -394,6 +394,10 @@ app.get('/api/relatorio-ultimo', protegerAdmin, async (req, res) => {
             sql += ` AND setor = $${params.length + 1}`;
             params.push(setor);
         }
+        if (prefixo) {
+            sql += ` AND prefixo = $${params.length + 1}`;
+            params.push(prefixo);
+        }
 
         const result = await pool.query(sql + ` ORDER BY data_hora DESC`, params);
 
@@ -406,11 +410,13 @@ app.get('/api/relatorio-ultimo', protegerAdmin, async (req, res) => {
 
 app.get('/api/relatorio-periodo', protegerAdmin, async (req, res) => {
     try {
-        const { inicio, fim, setor } = req.query;
+        const { inicio, fim } = req.query;
+        const setor = texto(req.query.setor, 30), prefixo = texto(req.query.prefixo, 50);
         if (![inicio, fim].every(d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)) || inicio > fim) return res.status(400).json({ error: 'Período inválido' });
         let sql = `SELECT *, TO_CHAR((data_hora AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YY HH24:MI') as hora FROM historico WHERE ((data_hora AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo')::date >= $1 AND ((data_hora AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo')::date <= $2`;
         let params = [inicio, fim];
-        if (setor && setor !== 'Todos') { sql += ` AND setor = $3`; params.push(setor); }
+        if (setor && setor !== 'Todos') { sql += ` AND setor = $${params.length + 1}`; params.push(setor); }
+        if (prefixo) { sql += ` AND prefixo = $${params.length + 1}`; params.push(prefixo); }
         const result = await pool.query(sql + ` ORDER BY data_hora DESC`, params);
         res.json(result.rows);
     } catch (e) { erro(res, e); }

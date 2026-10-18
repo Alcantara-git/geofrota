@@ -163,7 +163,7 @@
         <div class="text-2xl font-bold text-blue-500 mb-8 uppercase text-center italic tracking-tighter">Geo<span class="text-white">Frota</span></div>
         <nav class="space-y-2 flex-1">
             <a href="index.html" class="flex items-center p-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg"><i class="fas fa-chart-line mr-3"></i> Dashboard</a>
-            <button data-admin-only hidden onclick="document.getElementById('modalEscolhaRelatorio').classList.remove('hidden')" class="w-full flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition font-medium text-left">
+            <button data-admin-only hidden onclick="abrirRelatorios()" class="w-full flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition font-medium text-left">
                 <i class="fas fa-file-alt mr-3"></i> Relatório
             </button>
             <a href="operacional.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition font-medium">
@@ -298,7 +298,23 @@
     <div id="modalEscolhaRelatorio" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[130] no-print">
         <div class="card w-full max-w-md p-8 rounded-[2.5rem] text-center border-t-4 border-blue-500 shadow-2xl">
             <h3 class="text-xl font-black text-white mb-2 uppercase italic text-center text-white">Relatórios</h3>
-            <p id="labelSetorRelatorio" class="text-[10px] text-blue-400 font-bold mb-8 uppercase tracking-widest text-center">Filtro: 1° BPTRAN</p>
+            <p id="labelSetorRelatorio" class="text-[10px] text-blue-400 font-bold mb-4 uppercase tracking-widest text-center">Filtro: 1° BPTRAN</p>
+            <div class="grid grid-cols-2 p-1 mb-4 bg-slate-950 border border-blue-500 rounded-2xl" role="group" aria-label="Escopo do relatório">
+                <button type="button" id="btnRelatorioGeral" onclick="selecionarEscopoRelatorio('geral')" class="p-3 rounded-xl bg-blue-600 text-white font-black text-xs uppercase transition shadow-lg" aria-pressed="true">Geral</button>
+                <button type="button" id="btnRelatorioViatura" onclick="selecionarEscopoRelatorio('viatura')" class="p-3 rounded-xl text-blue-300 font-black text-xs uppercase transition hover:bg-slate-800" aria-pressed="false">Por viatura</button>
+            </div>
+            <div id="campoViaturaRelatorio" class="hidden mb-5 text-left">
+                <label for="buscaViaturaRelatorio" class="block text-[10px] font-bold text-slate-400 ml-1 mb-2 uppercase tracking-widest">Selecione a viatura</label>
+                <div id="controleViaturaRelatorio" class="relative">
+                    <input type="hidden" id="viaturaRelatorio" value="">
+                    <div class="flex bg-slate-950 border border-slate-700 rounded-xl focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
+                        <span class="flex items-center pl-4 text-blue-500" aria-hidden="true"><i class="fas fa-search"></i></span>
+                        <input type="search" id="buscaViaturaRelatorio" oninput="pesquisarViaturasRelatorio()" onfocus="abrirListaViaturasRelatorio()" onkeydown="teclaViaturaRelatorio(event)" autocomplete="off" placeholder="Pesquisar prefixo ou placa..." class="min-w-0 flex-1 bg-transparent p-3 text-white font-bold outline-none placeholder:text-slate-500" role="combobox" aria-autocomplete="list" aria-controls="listaViaturasRelatorio" aria-expanded="false">
+                        <button type="button" id="btnListaViaturasRelatorio" onclick="alternarListaViaturasRelatorio(event)" class="w-12 shrink-0 border-l border-slate-700 rounded-r-xl text-blue-400 hover:bg-blue-600 hover:text-white transition" aria-label="Abrir lista completa de viaturas" aria-expanded="false" aria-controls="listaViaturasRelatorio"><i class="fas fa-chevron-down transition-transform" aria-hidden="true"></i></button>
+                    </div>
+                    <div id="listaViaturasRelatorio" class="hidden absolute left-0 right-0 top-full mt-1 max-h-52 overflow-y-auto bg-slate-950 border border-blue-500 rounded-xl shadow-2xl z-50 p-1" role="listbox" aria-label="Viaturas disponíveis"></div>
+                </div>
+            </div>
             <div class="grid gap-4">
                 <button onclick="gerarRelatorio('ultimo')" class="btn-art p-6 rounded-3xl flex flex-col items-center group">
                     <i class="fas fa-history text-blue-500 text-2xl mb-2 group-hover:animate-bounce"></i>
@@ -359,6 +375,7 @@
 
     <script>
         let viaturasLocal = []; let statusFiltro = 'Todos'; let setorFiltro = 'Todos'; let role = null;
+        let escopoRelatorio = 'geral', viaturasRelatorioDisponiveis = [];
         let adminSetor = null, adminUsuario = null, isSuperadmin = false;
         let listaCarregada = false, pedidoLista = 0;
         let viaturaDetalhesAberta = null;
@@ -643,7 +660,125 @@
         function fecharExcluir() { document.getElementById('modalExcluir').classList.add('hidden'); }
         async function deletarVtr(id) { if (role !== 'admin') return; const res = await fetch(`/api/viaturas/${id}`, {method:'DELETE'}); const resultado = await res.json(); if (!res.ok) return showToast(resultado.error || "Erro ao remover a viatura.", "error"); fecharExcluir(); showToast(resultado.aviso ? '⚠️ ' + resultado.aviso : "Viatura removida!", resultado.aviso ? 'error' : 'success'); carregar(); }
 
-        async function gerarRelatorio(tipo) { if (role !== 'admin') return; document.getElementById('modalEscolhaRelatorio').classList.add('hidden'); let url = `/api/relatorio-ultimo?setor=${setorFiltro}`; if (tipo === 'periodo') { const i = document.getElementById('dataInicio').value, f = document.getElementById('dataFim').value; if (!i || !f) return; url = `/api/relatorio-periodo?inicio=${i}&fim=${f}&setor=${setorFiltro}`; } const res = await fetch(url); const data = await res.json(); const div = document.getElementById('conteudoRelatorio'); const unit = setorFiltro === 'Todos' ? '1° BPTRAN' : setorFiltro; if(data.length === 0) div.innerHTML = `<p class="text-center p-10 uppercase font-black text-slate-500 tracking-widest text-center">Sem registros para ${escapeHTML(unit)}.</p>`; else { let h = `<div class="text-center mb-8 text-center text-center"><h2 class="text-2xl font-black uppercase text-blue-500 italic text-center">Boletim GEOFROTA</h2><p class="text-xs uppercase font-bold text-center">${escapeHTML(unit)}</p></div><table class="w-full border border-slate-700 text-left"><thead><tr class="bg-slate-800 text-[10px] uppercase text-white"><th class="p-2 border border-slate-700 text-center">Data/Hora</th><th class="p-2 border border-slate-700 text-center">VTR</th><th class="p-2 border border-slate-700 text-center text-blue-400">Novo KM</th><th class="p-2 border border-slate-700 font-bold uppercase text-[10px] text-center">Status</th><th class="p-2 border border-slate-700 uppercase text-center">Responsável</th></tr></thead><tbody>`; data.forEach(d => h += `<tr class="border border-slate-700 text-[11px] text-center"><td class="p-2 border border-slate-700 font-mono text-center text-center">${escapeHTML(d.hora)}</td><td class="p-2 border border-slate-700 font-bold text-center text-center">${escapeHTML(d.prefixo)}</td><td class="p-2 border border-slate-700 text-center font-bold text-blue-400 text-center">${d.km_novo.toLocaleString()}</td><td class="p-2 border border-slate-700 font-bold uppercase text-[10px] text-center text-center">${escapeHTML(d.status)}</td><td class="p-2 border border-slate-700 uppercase text-center text-center">${escapeHTML(d.usuario)}</td></tr>`); div.innerHTML = h + `</tbody></table>`; } document.getElementById('modalRelatorio').classList.remove('hidden'); }
+        function atualizarViaturasRelatorio() {
+            const valor = document.getElementById('viaturaRelatorio'), busca = document.getElementById('buscaViaturaRelatorio');
+            const selecionada = valor.value;
+            viaturasRelatorioDisponiveis = viaturasLocal
+                .filter(v => setorFiltro === 'Todos' || v.setor === setorFiltro)
+                .slice()
+                .sort((a, b) => comparadorOrdenacao.compare(a.prefixo, b.prefixo));
+            const atual = viaturasRelatorioDisponiveis.find(v => v.prefixo === selecionada);
+            if (atual) busca.value = `${atual.prefixo} · ${atual.placa}`;
+            else { valor.value = ''; busca.value = ''; }
+            renderizarListaViaturasRelatorio('');
+        }
+        function renderizarListaViaturasRelatorio(termo = '') {
+            const lista = document.getElementById('listaViaturasRelatorio');
+            const consulta = normalizarComparacao(termo);
+            const resultados = viaturasRelatorioDisponiveis.filter(v => !consulta || [v.prefixo, v.placa, v.modelo].some(c => normalizarComparacao(c).includes(consulta)));
+            lista.innerHTML = resultados.length ? resultados.map(v => `<button type="button" role="option" data-prefixo="${escapeHTML(v.prefixo)}" class="w-full p-3 rounded-lg text-left hover:bg-blue-600/30 focus:bg-blue-600/30 focus:outline-none transition"><strong class="block text-sm text-white">${escapeHTML(v.prefixo)} <span class="text-blue-400">· ${escapeHTML(v.placa)}</span></strong><span class="block mt-1 text-[10px] uppercase text-slate-500">${escapeHTML(v.modelo)} · ${escapeHTML(v.setor)}</span></button>`).join('') : '<p class="p-4 text-center text-xs font-bold uppercase text-slate-500">Nenhuma viatura encontrada</p>';
+            lista.querySelectorAll('[data-prefixo]').forEach(botao => botao.addEventListener('click', () => selecionarViaturaRelatorio(botao.dataset.prefixo)));
+        }
+        function abrirListaViaturasRelatorio() {
+            if (escopoRelatorio !== 'viatura') return;
+            const lista = document.getElementById('listaViaturasRelatorio');
+            lista.classList.remove('hidden');
+            document.getElementById('buscaViaturaRelatorio').setAttribute('aria-expanded', 'true');
+            document.getElementById('btnListaViaturasRelatorio').setAttribute('aria-expanded', 'true');
+            document.querySelector('#btnListaViaturasRelatorio i').classList.add('rotate-180');
+        }
+        function fecharListaViaturasRelatorio() {
+            document.getElementById('listaViaturasRelatorio').classList.add('hidden');
+            document.getElementById('buscaViaturaRelatorio').setAttribute('aria-expanded', 'false');
+            document.getElementById('btnListaViaturasRelatorio').setAttribute('aria-expanded', 'false');
+            document.querySelector('#btnListaViaturasRelatorio i').classList.remove('rotate-180');
+        }
+        function alternarListaViaturasRelatorio(event) {
+            event.stopPropagation();
+            const lista = document.getElementById('listaViaturasRelatorio');
+            if (lista.classList.contains('hidden')) {
+                renderizarListaViaturasRelatorio('');
+                abrirListaViaturasRelatorio();
+                document.getElementById('buscaViaturaRelatorio').focus();
+            } else fecharListaViaturasRelatorio();
+        }
+        function pesquisarViaturasRelatorio() {
+            document.getElementById('viaturaRelatorio').value = '';
+            renderizarListaViaturasRelatorio(document.getElementById('buscaViaturaRelatorio').value);
+            abrirListaViaturasRelatorio();
+        }
+        function selecionarViaturaRelatorio(prefixo) {
+            const viatura = viaturasRelatorioDisponiveis.find(v => v.prefixo === prefixo);
+            if (!viatura) return;
+            document.getElementById('viaturaRelatorio').value = viatura.prefixo;
+            document.getElementById('buscaViaturaRelatorio').value = `${viatura.prefixo} · ${viatura.placa}`;
+            fecharListaViaturasRelatorio();
+        }
+        function teclaViaturaRelatorio(event) {
+            if (event.key === 'Escape') { fecharListaViaturasRelatorio(); return; }
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                abrirListaViaturasRelatorio();
+                document.querySelector('#listaViaturasRelatorio [data-prefixo]')?.focus();
+            }
+        }
+        document.addEventListener('click', event => {
+            if (!document.getElementById('controleViaturaRelatorio').contains(event.target)) fecharListaViaturasRelatorio();
+        });
+        function selecionarEscopoRelatorio(escopo) {
+            escopoRelatorio = escopo === 'viatura' ? 'viatura' : 'geral';
+            const porViatura = escopoRelatorio === 'viatura';
+            const geral = document.getElementById('btnRelatorioGeral'), viatura = document.getElementById('btnRelatorioViatura');
+            geral.classList.toggle('bg-blue-600', !porViatura); geral.classList.toggle('text-white', !porViatura); geral.classList.toggle('shadow-lg', !porViatura); geral.classList.toggle('text-blue-300', porViatura);
+            viatura.classList.toggle('bg-blue-600', porViatura); viatura.classList.toggle('text-white', porViatura); viatura.classList.toggle('shadow-lg', porViatura); viatura.classList.toggle('text-blue-300', !porViatura);
+            geral.setAttribute('aria-pressed', String(!porViatura)); viatura.setAttribute('aria-pressed', String(porViatura));
+            document.getElementById('campoViaturaRelatorio').classList.toggle('hidden', !porViatura);
+            if (porViatura) { atualizarViaturasRelatorio(); document.getElementById('buscaViaturaRelatorio').focus(); }
+            else fecharListaViaturasRelatorio();
+        }
+        function abrirRelatorios() {
+            if (role !== 'admin') return;
+            document.getElementById('viaturaRelatorio').value = '';
+            document.getElementById('buscaViaturaRelatorio').value = '';
+            selecionarEscopoRelatorio('geral');
+            atualizarViaturasRelatorio();
+            document.getElementById('modalEscolhaRelatorio').classList.remove('hidden');
+        }
+        async function gerarRelatorio(tipo) {
+            if (role !== 'admin') return;
+            const prefixo = escopoRelatorio === 'viatura' ? document.getElementById('viaturaRelatorio').value : '';
+            if (escopoRelatorio === 'viatura' && !prefixo) {
+                document.getElementById('modalFiltro').classList.add('hidden');
+                document.getElementById('modalEscolhaRelatorio').classList.remove('hidden');
+                showToast('Selecione uma viatura para gerar o relatório.', 'error');
+                return;
+            }
+            const parametros = new URLSearchParams({ setor: setorFiltro });
+            if (prefixo) parametros.set('prefixo', prefixo);
+            let rota = '/api/relatorio-ultimo';
+            if (tipo === 'periodo') {
+                const inicio = document.getElementById('dataInicio').value, fim = document.getElementById('dataFim').value;
+                if (!inicio || !fim) { showToast('Informe as datas inicial e final.', 'error'); return; }
+                parametros.set('inicio', inicio); parametros.set('fim', fim); rota = '/api/relatorio-periodo';
+            }
+            document.getElementById('modalEscolhaRelatorio').classList.add('hidden');
+            document.getElementById('modalFiltro').classList.add('hidden');
+            try {
+                const res = await fetch(`${rota}?${parametros.toString()}`);
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Não foi possível gerar o relatório');
+                const div = document.getElementById('conteudoRelatorio');
+                const unidade = setorFiltro === 'Todos' ? '1° BPTRAN' : setorFiltro;
+                const escopo = prefixo ? `${unidade} · ${prefixo}` : unidade;
+                if(data.length === 0) div.innerHTML = `<p class="text-center p-10 uppercase font-black text-slate-500 tracking-widest">Sem registros para ${escapeHTML(escopo)}.</p>`;
+                else {
+                    let h = `<div class="text-center mb-8"><h2 class="text-2xl font-black uppercase text-blue-500 italic">Boletim GEOFROTA</h2><p class="text-xs uppercase font-bold">${escapeHTML(escopo)}</p></div><table class="w-full border border-slate-700 text-left"><thead><tr class="bg-slate-800 text-[10px] uppercase text-white"><th class="p-2 border border-slate-700 text-center">Data/Hora</th><th class="p-2 border border-slate-700 text-center">VTR</th><th class="p-2 border border-slate-700 text-center text-blue-400">Novo KM</th><th class="p-2 border border-slate-700 font-bold uppercase text-[10px] text-center">Status</th><th class="p-2 border border-slate-700 uppercase text-center">Responsável</th></tr></thead><tbody>`;
+                    data.forEach(d => h += `<tr class="border border-slate-700 text-[11px] text-center"><td class="p-2 border border-slate-700 font-mono text-center">${escapeHTML(d.hora)}</td><td class="p-2 border border-slate-700 font-bold text-center">${escapeHTML(d.prefixo)}</td><td class="p-2 border border-slate-700 text-center font-bold text-blue-400">${Number(d.km_novo).toLocaleString('pt-BR')}</td><td class="p-2 border border-slate-700 font-bold uppercase text-[10px] text-center">${escapeHTML(d.status)}</td><td class="p-2 border border-slate-700 uppercase text-center">${escapeHTML(d.usuario)}</td></tr>`);
+                    div.innerHTML = h + '</tbody></table>';
+                }
+                document.getElementById('modalRelatorio').classList.remove('hidden');
+            } catch (e) { showToast(e.message || 'Erro ao gerar o relatório.', 'error'); }
+        }
         function abrirModal() { if (role !== 'admin') return; document.getElementById('modalTitulo').innerText = "Nova Viatura"; document.getElementById('formV').reset(); document.getElementById('editId').value = ""; const prefixo = document.getElementById('pref'); prefixo.disabled = false; prefixo.title = ''; document.getElementById('prefAjuda').hidden = true; document.getElementById('setor').value = isSuperadmin && setorFiltro !== 'Todos' ? setorFiltro : (adminSetor || 'EM'); document.getElementById('setor').disabled = !isSuperadmin; document.getElementById('modalV').classList.remove('hidden'); }
         function fecharModal() { document.getElementById('modalV').classList.add('hidden'); }
         function editar(id) { const v = viaturasLocal.find(x => Number(x.id) === Number(id)); if (!v || !podeGerenciar(v.setor)) return; document.getElementById('modalTitulo').innerText = "Viatura"; document.getElementById('editId').value = v.id; document.getElementById('pref').value = v.prefixo; document.getElementById('plac').value = v.placa; document.getElementById('mod').value = v.modelo; document.getElementById('km').value = v.km; document.getElementById('kmr').value = v.km_revisao; document.getElementById('st').value = v.status; document.getElementById('setor').value = v.setor; document.querySelectorAll('#formV input, #formV select').forEach(el => el.disabled = false); const prefixo = document.getElementById('pref'); prefixo.disabled = true; prefixo.title = 'Identificador permanente'; document.getElementById('prefAjuda').hidden = false; document.getElementById('setor').disabled = !isSuperadmin; document.getElementById('modalV').classList.remove('hidden'); }
