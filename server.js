@@ -478,7 +478,7 @@ app.put('/api/viaturas/:id', protegerAdmin, async (req, res) => {
     const baixadaSolicitada = req.body.status === 'Baixada';
     const motivoSolicitado = baixadaSolicitada ? texto(req.body.motivo, 500) : '';
     const categoriaSolicitada = baixadaSolicitada ? texto(req.body.categoria_baixa, 50) : null;
-    if (!id || km === null || revisao === null || !setor || !['Operante', 'Troca de Óleo', 'Baixada'].includes(req.body.status)
+    if (!id || km === null || revisao === null || !setoresValidos.has(setor) || !['Operante', 'Troca de Óleo', 'Baixada'].includes(req.body.status)
         || (req.body.placa !== undefined && !placaSolicitada) || (req.body.modelo !== undefined && !modeloSolicitado)
         || (baixadaSolicitada && (!motivoSolicitado || !categoriasBaixa.has(categoriaSolicitada))))
         return res.status(400).json({ error: 'Dados inválidos' });
@@ -488,7 +488,7 @@ app.put('/api/viaturas/:id', protegerAdmin, async (req, res) => {
         await client.query('BEGIN');
         const old = (await client.query('SELECT prefixo, modelo, placa, km, status, motivo, categoria_baixa, setor FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
         if (!old) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Viatura não encontrada' }); }
-        if (!podeGerenciarSetor(req, old.setor) || (!req.auth.superadmin && setor !== req.auth.setor)) {
+        if (!podeGerenciarSetor(req, old.setor)) {
             await client.query('ROLLBACK'); return res.status(403).json({ error: 'Você pode alterar somente viaturas da sua subunidade' });
         }
         const placa = placaSolicitada ?? old.placa;
@@ -499,6 +499,7 @@ app.put('/api/viaturas/:id', protegerAdmin, async (req, res) => {
         const alteracoesCadastro = [];
         if (old.placa !== placa) alteracoesCadastro.push(`placa: ${old.placa} → ${placa}`);
         if (old.modelo !== modelo) alteracoesCadastro.push(`modelo: ${old.modelo} → ${modelo}`);
+        if (old.setor !== setor) alteracoesCadastro.push(`subunidade: ${old.setor} → ${setor}`);
         const registroHistorico = alteracoesCadastro.length ? `Cadastro atualizado — ${alteracoesCadastro.join('; ')}.` : motivo;
         await client.query('UPDATE viaturas SET placa=$1, modelo=$2, km=$3, km_revisao=$4, status=$5, ultimo_usuario=$6, motivo=$7, setor=$8, categoria_baixa=$9 WHERE id=$10', [placa, modelo, km, revisao, status, usuario, motivo, setor, categoria, id]);
         await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor, categoria_baixa, autor_conta) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [old.prefixo, old.km, km, status, registroHistorico, usuario, setor, categoria, req.auth.usuario]);
