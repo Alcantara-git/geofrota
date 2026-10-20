@@ -475,8 +475,12 @@ app.put('/api/viaturas/:id', protegerAdmin, async (req, res) => {
     const setor = texto(req.body.setor, 50), usuario = nomeConta(req);
     const placaSolicitada = req.body.placa === undefined ? undefined : texto(req.body.placa);
     const modeloSolicitado = req.body.modelo === undefined ? undefined : texto(req.body.modelo);
+    const baixadaSolicitada = req.body.status === 'Baixada';
+    const motivoSolicitado = baixadaSolicitada ? texto(req.body.motivo, 500) : '';
+    const categoriaSolicitada = baixadaSolicitada ? texto(req.body.categoria_baixa, 50) : null;
     if (!id || km === null || revisao === null || !setor || !['Operante', 'Troca de Óleo', 'Baixada'].includes(req.body.status)
-        || (req.body.placa !== undefined && !placaSolicitada) || (req.body.modelo !== undefined && !modeloSolicitado))
+        || (req.body.placa !== undefined && !placaSolicitada) || (req.body.modelo !== undefined && !modeloSolicitado)
+        || (baixadaSolicitada && (!motivoSolicitado || !categoriasBaixa.has(categoriaSolicitada))))
         return res.status(400).json({ error: 'Dados inválidos' });
     let client;
     try {
@@ -490,8 +494,8 @@ app.put('/api/viaturas/:id', protegerAdmin, async (req, res) => {
         const placa = placaSolicitada ?? old.placa;
         const modelo = modeloSolicitado ?? old.modelo;
         const status = req.body.status === 'Baixada' ? 'Baixada' : atingiuTrocaOleo(km, revisao, modelo) ? 'Troca de Óleo' : 'Operante';
-        const motivo = status === 'Baixada' ? (typeof req.body.motivo === 'string' ? req.body.motivo.slice(0, 500) : old.status === 'Baixada' ? old.motivo : '') : '';
-        const categoria = status === 'Baixada' && old.status === 'Baixada' ? old.categoria_baixa : null;
+        const motivo = status === 'Baixada' ? motivoSolicitado : '';
+        const categoria = status === 'Baixada' ? categoriaSolicitada : null;
         const alteracoesCadastro = [];
         if (old.placa !== placa) alteracoesCadastro.push(`placa: ${old.placa} → ${placa}`);
         if (old.modelo !== modelo) alteracoesCadastro.push(`modelo: ${old.modelo} → ${modelo}`);
@@ -516,11 +520,14 @@ app.post('/api/viaturas', protegerAdmin, async (req, res) => {
     const setorSolicitado = texto(req.body.setor, 50);
     const setor = req.auth.superadmin ? setorSolicitado : req.auth.setor;
     const km = inteiro(req.body.km), revisao = inteiro(req.body.km_revisao);
-    if (!prefixoNormalizado || prefixoNormalizado.length > 150 || ![placa, modelo].every(v => texto(v)) || !setoresValidos.has(setor) || km === null || revisao === null || !['Operante', 'Troca de Óleo', 'Baixada'].includes(status))
+    const baixada = status === 'Baixada';
+    const motivo = baixada ? texto(req.body.motivo, 500) : '';
+    const categoria = baixada ? texto(req.body.categoria_baixa, 50) : null;
+    if (!prefixoNormalizado || prefixoNormalizado.length > 150 || ![placa, modelo].every(v => texto(v)) || !setoresValidos.has(setor) || km === null || revisao === null || !['Operante', 'Troca de Óleo', 'Baixada'].includes(status) || (baixada && (!motivo || !categoriasBaixa.has(categoria))))
         return res.status(400).json({ error: 'Dados inválidos' });
     try {
         const st = status === 'Baixada' ? 'Baixada' : atingiuTrocaOleo(km, revisao, modelo) ? 'Troca de Óleo' : 'Operante';
-        await pool.query('INSERT INTO viaturas (prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario, motivo, setor) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [prefixoNormalizado, placa.trim(), modelo.trim(), km, revisao, st, nomeConta(req), '', setor]);
+        await pool.query('INSERT INTO viaturas (prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario, motivo, setor, categoria_baixa) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [prefixoNormalizado, placa.trim(), modelo.trim(), km, revisao, st, nomeConta(req), motivo, setor, categoria]);
         let aviso;
         try {
             await sincronizarViaturaPlanilha({ prefixo: prefixoNormalizado, responsavel: nomeConta(req), modelo: modelo.trim(), placa: placa.trim(), km, km_revisao: revisao, status: st, setor });
