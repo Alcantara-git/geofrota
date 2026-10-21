@@ -44,16 +44,16 @@
 
         <div class="bg-slate-800 p-6 rounded-[2.5rem] shadow-2xl border border-slate-700">
             <form id="formKM" class="space-y-5">
-                <!-- Responsável -->
+                <!-- Responsável autenticado -->
                 <div>
-                    <label class="text-[10px] font-black text-slate-500 ml-1 uppercase text-left block">Responsável</label>
-                    <div onclick="abrirBusca('usuarios')" class="custom-select"><span id="labelU">-- Selecione seu Nome --</span><i class="fas fa-chevron-down text-xs"></i></div>
+                    <label class="text-[10px] font-black text-slate-500 ml-1 uppercase text-left block">Operador autenticado</label>
+                    <div class="custom-select cursor-default border-blue-500/40"><span id="operadorLogado" class="text-blue-400">Identificando operador...</span><i class="fas fa-user-check text-blue-400 text-xs"></i></div>
                 </div>
 
                 <!-- Viatura -->
                 <div>
                     <label class="text-[10px] font-black text-slate-500 ml-1 uppercase text-left block">Viatura</label>
-                    <div onclick="abrirBusca('viaturas')" class="custom-select"><span id="labelV">-- Selecione a VTR --</span><i class="fas fa-chevron-down text-xs"></i></div>
+                    <div onclick="abrirBusca()" class="custom-select"><span id="labelV">-- Selecione a VTR --</span><i class="fas fa-chevron-down text-xs"></i></div>
                 </div>
 
                 <!-- NOVO: Display de Alerta de Status -->
@@ -115,7 +115,7 @@
     <script>
         const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         const categoriasBaixa = ["Mecânico", "Pneu", "Bateria", "Freios", "Troca de óleo", "Iluminação e/ou sonoro", "Sindicância", "Avaria", "Elétrica", "Outros"];
-        let viaturas = [], usuarios = [], estaB = false, tBusca = '', sV = null, sU = null;
+        let viaturas = [], estaB = false, sV = null;
 
         function definirCategoriaBaixa(valor = '') {
             const categoria = categoriasBaixa.includes(valor) ? valor : '';
@@ -167,9 +167,8 @@
             if(!estaB) { document.getElementById('motivo').value = ''; definirCategoriaBaixa(''); fecharCategoriasBaixa(); }
         }
 
-        function abrirBusca(t) {
-            tBusca = t;
-            document.getElementById('mTit').innerText = t === 'usuarios' ? 'Selecionar Responsável' : 'Selecionar Viatura';
+        function abrirBusca() {
+            document.getElementById('mTit').innerText = 'Selecionar Viatura';
             document.getElementById('iBusca').value = '';
             document.getElementById('mBusca').classList.remove('hidden');
             document.getElementById('iBusca').focus();
@@ -182,65 +181,51 @@
             const l = document.getElementById('lRes');
             l.replaceChildren();
             termo = termo.toLowerCase();
-            const items = tBusca === 'usuarios'
-                ? usuarios.filter(u => u.nome.toLowerCase().includes(termo) || (u.cargo && u.cargo.toLowerCase().includes(termo)))
-                : viaturas.filter(v => v.prefixo.toLowerCase().includes(termo) || v.placa.toLowerCase().includes(termo));
+            const items = viaturas.filter(v => v.prefixo.toLowerCase().includes(termo) || v.placa.toLowerCase().includes(termo));
             items.forEach(item => {
                 const entry = document.createElement('div');
                 entry.className = 'list-item';
-                if (tBusca === 'usuarios') {
-                    const label = `${item.nome} (${item.cargo || ''})`;
-                    entry.innerHTML = `<span class="font-bold uppercase">${escapeHTML(item.nome)}</span> <span class="text-xs text-slate-500 ml-1">(${escapeHTML(item.cargo)})</span>`;
-                    entry.addEventListener('click', () => sel(label, label));
-                } else {
-                    const label = `${item.prefixo} (${item.placa})`;
-                    entry.innerHTML = `<div class="font-bold">${escapeHTML(item.prefixo)}</div><div class="text-xs text-slate-500">${escapeHTML(item.placa)} - ${escapeHTML(item.modelo)}</div>`;
-                    entry.addEventListener('click', () => sel(item.id, label));
-                }
+                const label = `${item.prefixo} (${item.placa})`;
+                entry.innerHTML = `<div class="font-bold">${escapeHTML(item.prefixo)}</div><div class="text-xs text-slate-500">${escapeHTML(item.placa)} - ${escapeHTML(item.modelo)}</div>`;
+                entry.addEventListener('click', () => sel(item.id, label));
                 l.appendChild(entry);
             });
         }
 
         function sel(id, display) {
-            if (tBusca === 'usuarios') {
-                sU = id;
-                document.getElementById('labelU').innerText = display;
-                document.getElementById('labelU').classList.add('text-blue-400');
+            sV = id;
+            document.getElementById('labelV').innerText = display;
+            document.getElementById('labelV').classList.add('text-blue-400');
+
+            const v = viaturas.find(x => x.id == id);
+            if (estaB) {
+                definirCategoriaBaixa(v.status === 'Baixada' ? (v.categoria_baixa || '') : '');
+                document.getElementById('motivo').value = v.status === 'Baixada' ? (v.motivo || '') : '';
+            }
+
+            document.getElementById('info').classList.remove('hidden');
+            document.getElementById('kmD').innerText = Number(v.km).toLocaleString();
+            document.getElementById('nKM').value = v.km;
+
+            const statusContainer = document.getElementById('statusVtrContainer');
+            const statusTexto = document.getElementById('statusVtrTexto');
+            const motivoTexto = document.getElementById('motivoVtrTexto');
+
+            statusContainer.classList.remove('hidden', 'status-operante', 'status-oleo', 'status-baixada');
+            motivoTexto.classList.add('hidden');
+
+            if (v.status === 'Operante') {
+                statusContainer.classList.add('status-operante');
+                statusTexto.innerText = "✅ PRONTA PARA O EMPREGO";
+            } else if (v.status === 'Troca de Óleo') {
+                statusContainer.classList.add('status-oleo');
+                statusTexto.innerText = "⚠️ ATENÇÃO: TROCA DE ÓLEO";
             } else {
-                sV = id;
-                document.getElementById('labelV').innerText = display;
-                document.getElementById('labelV').classList.add('text-blue-400');
-
-                const v = viaturas.find(x => x.id == id);
-                if (estaB) {
-                    definirCategoriaBaixa(v.status === 'Baixada' ? (v.categoria_baixa || '') : '');
-                    document.getElementById('motivo').value = v.status === 'Baixada' ? (v.motivo || '') : '';
-                }
-
-                document.getElementById('info').classList.remove('hidden');
-                document.getElementById('kmD').innerText = Number(v.km).toLocaleString();
-                document.getElementById('nKM').value = v.km;
-
-                const statusContainer = document.getElementById('statusVtrContainer');
-                const statusTexto = document.getElementById('statusVtrTexto');
-                const motivoTexto = document.getElementById('motivoVtrTexto');
-
-                statusContainer.classList.remove('hidden', 'status-operante', 'status-oleo', 'status-baixada');
-                motivoTexto.classList.add('hidden');
-
-                if (v.status === 'Operante') {
-                    statusContainer.classList.add('status-operante');
-                    statusTexto.innerText = "✅ PRONTA PARA O EMPREGO";
-                } else if (v.status === 'Troca de Óleo') {
-                    statusContainer.classList.add('status-oleo');
-                    statusTexto.innerText = "⚠️ ATENÇÃO: TROCA DE ÓLEO";
-                } else {
-                    statusContainer.classList.add('status-baixada');
-                    statusTexto.innerText = "🚨 INOPERANTE / OFICINA";
-                    if(v.motivo || v.categoria_baixa) {
-                        motivoTexto.innerText = "Motivo: " + [v.categoria_baixa, v.motivo].filter(Boolean).join(' — ');
-                        motivoTexto.classList.remove('hidden');
-                    }
+                statusContainer.classList.add('status-baixada');
+                statusTexto.innerText = "🚨 INOPERANTE / OFICINA";
+                if(v.motivo || v.categoria_baixa) {
+                    motivoTexto.innerText = "Motivo: " + [v.categoria_baixa, v.motivo].filter(Boolean).join(' — ');
+                    motivoTexto.classList.remove('hidden');
                 }
             }
             fecharB();
@@ -248,9 +233,8 @@
 
         async function sincronizar() {
             const rv = await fetch('/api/viaturas?t='+Date.now());
-            const ru = await fetch('/api/usuarios?t='+Date.now());
-            if(rv.status === 401 || ru.status === 401) { window.location.href = 'login.html'; return; }
-            viaturas = await rv.json(); usuarios = await ru.json();
+            if(rv.status === 401) { window.location.href = 'login.html'; return; }
+            viaturas = await rv.json();
             if (sV) {
                 const v = viaturas.find(x => x.id == sV);
                 if (v) document.getElementById('kmD').innerText = Number(v.km).toLocaleString();
@@ -258,7 +242,7 @@
         }
 
         document.getElementById('formKM').onsubmit = async (e) => {
-            e.preventDefault(); if(!sU || !sV) return showToast("Selecione o responsável e a viatura.", "error");
+            e.preventDefault(); if(!sV) return showToast("Selecione a viatura.", "error");
             const nKM = parseInt(document.getElementById('nKM').value), mot = document.getElementById('motivo').value, v = viaturas.find(x => x.id == sV);
             if(nKM < v.km) return showToast("O KM digitado não pode ser menor que o atual.", "error");
             const categoria = document.getElementById('categoriaBaixa').value;
@@ -268,7 +252,7 @@
             const response = await fetch(`/api/operacional/viaturas/${sV}`, {
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({km: nKM, ultimo_usuario: sU, baixa: estaB, motivo: mot, categoria_baixa: estaB ? categoria : null})
+                body: JSON.stringify({km: nKM, baixa: estaB, motivo: mot, categoria_baixa: estaB ? categoria : null})
             });
             if (!response.ok) return showToast((await response.json()).error || "Erro ao salvar o KM.", "error");
             const resultado = await response.json();
@@ -276,8 +260,15 @@
             showToast('✅ Hodômetro atualizado!', 'success', true);
         };
 
-        setInterval(sincronizar, 5000);
-        sincronizar();
+        async function iniciarOperacional() {
+            const res = await fetch('/api/session');
+            if (!res.ok) { window.location.href = 'login.html'; return; }
+            const sessao = await res.json();
+            document.getElementById('operadorLogado').innerText = sessao.role === 'oper' ? `${sessao.nome} (${sessao.re})` : `ADM ${sessao.usuario}`;
+            await sincronizar();
+            setInterval(sincronizar, 5000);
+        }
+        iniciarOperacional();
     </script>
 </body>
 </html>

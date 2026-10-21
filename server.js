@@ -20,8 +20,6 @@ app.use((req, res, next) => {
     res.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data: https://raw.githubusercontent.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
     next();
 });
-const PWD_OPER = process.env.PWD_OPER;
-if (!PWD_OPER) throw new Error('Configure PWD_OPER.');
 const sessions = new Map();
 const attempts = new Map();
 const COOKIE = 'geofrota_session';
@@ -73,14 +71,18 @@ app.use((req, res, next) => {
     if (invalid) return res.status(403).json({ error: 'Origem não autorizada' });
     next();
 });
-function samePassword(given, expected) {
-    const a = crypto.createHash('sha256').update(given).digest();
-    const b = crypto.createHash('sha256').update(expected).digest();
-    return crypto.timingSafeEqual(a, b);
+const reValido = re => typeof re === 'string' && /^[0-9]{6}$/.test(re.trim());
+const senhaOperacionalValida = senha => typeof senha === 'string' && /^[^\s\x00-\x1F\x7F]{4,8}$/u.test(senha);
+function criarSessao(req, res, dadosSessao, now = Date.now()) {
+    if (req.cookies[COOKIE]) sessions.delete(req.cookies[COOKIE]);
+    const token = crypto.randomBytes(32).toString('hex');
+    sessions.set(token, { ...dadosSessao, expires: now + DURATION });
+    res.cookie(COOKIE, token, cookieOptions(req));
 }
 app.post('/api/login', async (req, res) => {
     const { senha, tipo } = req.body || {};
     const usuarioInformado = typeof req.body?.usuario === 'string' ? req.body.usuario.trim().toUpperCase() : '';
+    const reInformado = typeof req.body?.re === 'string' ? req.body.re.trim() : '';
     const now = Date.now(), key = req.ip;
     const a = attempts.get(key) || { count: 0, until: now + 15 * 60 * 1000 };
     if (now > a.until) { a.count = 0; a.until = now + 15 * 60 * 1000; }
@@ -91,10 +93,18 @@ app.post('/api/login', async (req, res) => {
         }
         let dadosSessao, redirect;
         if (tipo === 'oper') {
-            if (!samePassword(senha, PWD_OPER)) {
-                a.count++; attempts.set(key, a); return res.status(401).json({ error: 'Senha incorreta' });
+            if (!reValido(reInformado) || !senhaOperacionalValida(senha)) {
+                a.count++; attempts.set(key, a); return res.status(401).json({ error: 'RE ou senha incorretos' });
             }
-            dadosSessao = { role: 'oper', usuario: 'OPERACIONAL', setor: null, superadmin: false, trocarSenha: false };
+            const conta = (await pool.query('SELECT id, nome, re, setor, senha_hash FROM usuarios WHERE re=$1', [reInformado])).rows[0];
+            if (!conta?.senha_hash) {
+                a.count++; attempts.set(key, a);
+                return res.status(conta ? 403 : 401).json({ error: conta ? 'Faça o primeiro acesso para criar sua senha' : 'RE ou senha incorretos' });
+            }
+            if (!(await verifyPassword(senha, conta.senha_hash))) {
+                a.count++; attempts.set(key, a); return res.status(401).json({ error: 'RE ou senha incorretos' });
+            }
+            dadosSessao = { role: 'oper', operadorId: String(conta.id), usuario: conta.re, nome: conta.nome, re: conta.re, setor: conta.setor, superadmin: false, trocarSenha: false };
             redirect = 'operacional.html';
         } else {
             if (!/^[A-Z0-9_-]{2,30}$/.test(usuarioInformado)) {
@@ -115,11 +125,31 @@ app.post('/api/login', async (req, res) => {
             await pool.query('UPDATE administradores SET ultimo_acesso=CURRENT_TIMESTAMP WHERE id=$1', [conta.id]);
         }
         attempts.delete(key);
-        if (req.cookies[COOKIE]) sessions.delete(req.cookies[COOKIE]);
-        const token = crypto.randomBytes(32).toString('hex');
-        sessions.set(token, { ...dadosSessao, expires: now + DURATION });
-        res.cookie(COOKIE, token, cookieOptions(req));
+        criarSessao(req, res, dadosSessao, now);
         res.json({ success: true, redirect });
+    } catch (e) { erro(res, e); }
+});
+app.post('/api/operadores/primeiro-acesso', async (req, res) => {
+    const re = typeof req.body?.re === 'string' ? req.body.re.trim() : '';
+    const senha = req.body?.senha;
+    const now = Date.now(), key = `${req.ip}:primeiro-acesso`;
+    const a = attempts.get(key) || { count: 0, until: now + 15 * 60 * 1000 };
+    if (now > a.until) { a.count = 0; a.until = now + 15 * 60 * 1000; }
+    if (a.count >= 10) return res.status(429).json({ error: 'Muitas tentativas. Aguarde 15 minutos.' });
+    if (!reValido(re) || !senhaOperacionalValida(senha)) {
+        a.count++; attempts.set(key, a);
+        return res.status(400).json({ error: 'Informe um RE com 6 números e uma senha de 4 a 8 caracteres, sem espaços' });
+    }
+    try {
+        const conta = (await pool.query('SELECT id, nome, re, setor, senha_hash FROM usuarios WHERE re=$1', [re])).rows[0];
+        if (!conta) { a.count++; attempts.set(key, a); return res.status(404).json({ error: 'RE não cadastrado. Procure o administrador da sua subunidade.' }); }
+        if (conta.senha_hash) return res.status(409).json({ error: 'Este RE já possui senha. Entre normalmente ou peça a redefinição ao administrador.' });
+        const senhaHash = await hashPassword(senha, { minLength: 4, maxLength: 8 });
+        const atualizada = await pool.query('UPDATE usuarios SET senha_hash=$1 WHERE id=$2 AND senha_hash IS NULL RETURNING id', [senhaHash, conta.id]);
+        if (!atualizada.rowCount) return res.status(409).json({ error: 'A senha deste RE já foi cadastrada.' });
+        attempts.delete(key);
+        criarSessao(req, res, { role: 'oper', operadorId: String(conta.id), usuario: conta.re, nome: conta.nome, re: conta.re, setor: conta.setor, superadmin: false, trocarSenha: false }, now);
+        res.json({ success: true, redirect: 'operacional.html' });
     } catch (e) { erro(res, e); }
 });
 app.post('/api/logout', (req, res) => {
@@ -130,7 +160,7 @@ app.post('/api/logout', (req, res) => {
 app.get('/api/session', (req, res) => {
     const s = session(req);
     if (!s) return res.status(401).json({ error: 'Acesso não autenticado' });
-    res.json({ role: s.role, usuario: s.usuario, nome: s.nome || null, setor: s.setor, superadmin: Boolean(s.superadmin), trocar_senha: Boolean(s.trocarSenha) });
+    res.json({ role: s.role, usuario: s.usuario, nome: s.nome || null, re: s.re || null, setor: s.setor, superadmin: Boolean(s.superadmin), trocar_senha: Boolean(s.trocarSenha) });
 });
 // Lista explícita: código, banco, documentos e configuração não são arquivos públicos.
 app.get(['/', '/login.html'], (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
@@ -437,7 +467,8 @@ app.get('/api/viaturas', protegerOperacional, async (req, res) => {
 // O operacional registra somente KM, responsável e baixa. A revisão e o setor são imutáveis aqui.
 app.put('/api/operacional/viaturas/:id', protegerOperacional, async (req, res) => {
     const id = inteiro(req.params.id, 1), km = inteiro(req.body.km);
-    const usuario = texto(req.body.ultimo_usuario), baixa = req.body.baixa;
+    const usuario = req.auth.role === 'oper' ? texto(`${req.auth.nome} (${req.auth.re})`) : nomeConta(req);
+    const baixa = req.body.baixa;
     const motivo = baixa ? texto(req.body.motivo, 500) : '';
     const categoria = baixa ? texto(req.body.categoria_baixa, 50) : null;
     // Clientes antigos podem manter o envio sem categoria; valores fornecidos são validados.
@@ -562,20 +593,70 @@ app.delete('/api/viaturas/:id', protegerAdmin, async (req, res) => {
     }
     catch (e) { erro(res, e); }
 });
-app.get('/api/usuarios', protegerOperacional, async (req, res) => {
+app.get('/api/usuarios', protegerAdmin, async (req, res) => {
     try {
-        const rows = (await pool.query('SELECT * FROM usuarios ORDER BY nome ASC')).rows;
-        res.json(rows.map(u => ({ ...u, pode_editar: req.auth.role === 'admin' && (req.auth.superadmin || u.setor === req.auth.setor) })));
+        const rows = (await pool.query('SELECT id, nome, re, setor, (senha_hash IS NOT NULL) AS senha_cadastrada FROM usuarios ORDER BY nome ASC')).rows;
+        res.json(rows.map(u => ({ ...u, pode_editar: req.auth.superadmin || u.setor === req.auth.setor })));
     }
     catch (e) { erro(res, e); }
 });
 app.post('/api/usuarios', protegerAdmin, async (req, res) => {
-    const nome = texto(req.body.nome), cargo = typeof req.body.cargo === 'string' && req.body.cargo.length <= 150 ? req.body.cargo.trim() : null;
+    const nome = texto(req.body.nome), re = typeof req.body.re === 'string' ? req.body.re.trim() : '';
     const setorSolicitado = texto(req.body.setor, 20);
     const setor = req.auth.superadmin ? setorSolicitado : req.auth.setor;
-    if (!nome || cargo === null || !setoresValidos.has(setor)) return res.status(400).json({ error: 'Dados inválidos' });
-    try { await pool.query('INSERT INTO usuarios (nome, cargo, setor) VALUES ($1,$2,$3)', [nome, cargo, setor]); res.json({ success: true }); }
-    catch (e) { erro(res, e); }
+    if (!nome || !reValido(re) || !setoresValidos.has(setor)) return res.status(400).json({ error: 'Informe o QRA, um RE com exatamente 6 números e a subunidade' });
+    try { await pool.query('INSERT INTO usuarios (nome, cargo, re, setor) VALUES ($1,$2,$2,$3)', [nome, re, setor]); res.json({ success: true }); }
+    catch (e) {
+        if (e?.code === '23505') return res.status(409).json({ error: 'Este RE já está cadastrado' });
+        erro(res, e);
+    }
+});
+app.put('/api/usuarios/:id', protegerAdmin, async (req, res) => {
+    const id = inteiro(req.params.id, 1);
+    const nome = texto(req.body?.nome);
+    const setor = texto(req.body?.setor, 20);
+    const reInformado = typeof req.body?.re === 'string' ? req.body.re.trim() : '';
+    if (!id || !nome || !setoresValidos.has(setor)) return res.status(400).json({ error: 'Informe o QRA e uma subunidade válida' });
+    if (reInformado && !reValido(reInformado)) return res.status(400).json({ error: 'O RE deve conter exatamente 6 números' });
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const atual = (await client.query('SELECT id, nome, cargo, re, setor FROM usuarios WHERE id=$1 FOR UPDATE', [id])).rows[0];
+        if (!atual) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Militar não encontrado' }); }
+        if (!podeGerenciarSetor(req, atual.setor)) {
+            await client.query('ROLLBACK');
+            return res.status(403).json({ error: 'Você pode editar somente militares da sua subunidade' });
+        }
+        if (atual.re && reInformado && reInformado !== atual.re) {
+            await client.query('ROLLBACK');
+            return res.status(409).json({ error: 'O RE é o identificador permanente do militar e não pode ser alterado' });
+        }
+        const reFinal = atual.re || reInformado || null;
+        const cargoFinal = atual.re ? atual.cargo : (reFinal || atual.cargo);
+        await client.query('UPDATE usuarios SET nome=$1, setor=$2, re=$3, cargo=$4 WHERE id=$5', [nome, setor, reFinal, cargoFinal, id]);
+        await client.query('COMMIT');
+        for (const [token, s] of sessions) if (String(s.operadorId) === String(id)) sessions.delete(token);
+        res.json({ success: true, transferido: atual.setor !== setor });
+    } catch (e) {
+        await client.query('ROLLBACK').catch(() => {});
+        if (e?.code === '23505') return res.status(409).json({ error: 'Este RE já está cadastrado' });
+        erro(res, e);
+    } finally { client.release(); }
+});
+app.put('/api/usuarios/:id/re', protegerAdmin, async (req, res) => {
+    res.status(409).json({ error: 'O RE é o identificador permanente do militar e não pode ser alterado' });
+});
+app.put('/api/usuarios/:id/redefinir-senha', protegerAdmin, async (req, res) => {
+    const id = inteiro(req.params.id, 1);
+    if (!id) return res.status(400).json({ error: 'Militar inválido' });
+    try {
+        const result = req.auth.superadmin
+            ? await pool.query('UPDATE usuarios SET senha_hash=NULL WHERE id=$1 RETURNING id', [id])
+            : await pool.query('UPDATE usuarios SET senha_hash=NULL WHERE id=$1 AND setor=$2 RETURNING id', [id, req.auth.setor]);
+        if (!result.rowCount) return res.status(404).json({ error: 'Militar não encontrado na sua subunidade' });
+        for (const [token, s] of sessions) if (String(s.operadorId) === String(id)) sessions.delete(token);
+        res.json({ success: true });
+    } catch (e) { erro(res, e); }
 });
 app.put('/api/usuarios/:id/setor', protegerSuperadmin, async (req, res) => {
     const id = inteiro(req.params.id, 1), setor = texto(req.body?.setor, 20);
@@ -583,6 +664,7 @@ app.put('/api/usuarios/:id/setor', protegerSuperadmin, async (req, res) => {
     try {
         const result = await pool.query('UPDATE usuarios SET setor=$1 WHERE id=$2 RETURNING id', [setor, id]);
         if (!result.rowCount) return res.status(404).json({ error: 'Militar não encontrado' });
+        for (const [token, s] of sessions) if (String(s.operadorId) === String(id)) sessions.delete(token);
         res.json({ success: true });
     } catch (e) { erro(res, e); }
 });
@@ -593,6 +675,7 @@ app.delete('/api/usuarios/:id', protegerAdmin, async (req, res) => {
             ? await pool.query('DELETE FROM usuarios WHERE id=$1 RETURNING id', [id])
             : await pool.query('DELETE FROM usuarios WHERE id=$1 AND setor=$2 RETURNING id', [id, req.auth.setor]);
         if (!result.rowCount) return res.status(404).json({ error: 'Militar não encontrado na sua subunidade' });
+        for (const [token, s] of sessions) if (String(s.operadorId) === String(id)) sessions.delete(token);
         res.json({ success: true });
     }
     catch (e) { erro(res, e); }

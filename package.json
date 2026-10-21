@@ -9,6 +9,7 @@
     "migrate:auth": "node --env-file=.env.local migrar-autenticacao.js",
     "verify:auth": "node --env-file=.env.local verificar-autenticacao.js",
     "test:auth": "node --env-file=.env.local testar-login.js",
+    "test:operators": "node --env-file=.env.local testar-operadores.js",
     "test:permissions": "node --env-file=.env.local testar-permissoes.js",
     "test:superadmin": "node --env-file=.env.local testar-superadmin.js"
   },

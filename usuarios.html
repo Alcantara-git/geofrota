@@ -41,7 +41,7 @@
             <h2 class="text-2xl font-black uppercase italic tracking-tighter text-blue-400">Gestão de Efetivo</h2>
             <div class="flex flex-wrap gap-2 w-full md:w-auto">
                 <input type="text" id="un" placeholder="Militar" class="flex-1 bg-slate-800 p-3 rounded-xl border border-slate-700 outline-none text-white focus:border-blue-500">
-                <input type="text" id="ure" placeholder="RE" class="flex-1 bg-slate-800 p-3 rounded-xl border border-slate-700 outline-none text-white focus:border-blue-500 w-32">
+                <input type="text" id="ure" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="RE - 6 números" class="flex-1 bg-slate-800 p-3 rounded-xl border border-slate-700 outline-none text-white focus:border-blue-500 w-40">
                 <select id="usetor" class="bg-slate-800 p-3 rounded-xl border border-slate-700 outline-none text-white focus:border-blue-500"><option>EM</option><option>CTT</option><option>1° CIA</option><option>2° CIA</option><option>3° CIA</option><option>4° CIA</option></select>
                 <button onclick="addU()" class="bg-blue-600 px-6 py-3 rounded-xl font-bold hover:bg-blue-500 uppercase text-xs w-full md:w-auto">Adicionar</button>
             </div>
@@ -63,6 +63,29 @@
         </div>
     </main>
 
+    <div id="modalEditarUser" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[200]">
+        <div class="card w-full max-w-md p-8 rounded-3xl border-t-4 border-blue-500 shadow-2xl">
+            <div class="text-center mb-7">
+                <i class="fas fa-user-pen text-blue-400 text-4xl mb-4"></i>
+                <h3 class="text-xl font-black text-white uppercase tracking-widest">Editar Militar</h3>
+                <p class="text-slate-400 text-xs mt-2">Atualize o QRA ou transfira o militar para outra subunidade.</p>
+            </div>
+            <label for="editarNome" class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">QRA</label>
+            <input id="editarNome" type="text" maxlength="150" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl text-white font-bold outline-none focus:border-blue-500 mb-5">
+            <label for="editarRE" class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">RE</label>
+            <input id="editarRE" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl text-blue-400 font-bold outline-none mb-2">
+            <p id="editarREAjuda" class="text-xs text-slate-500 mb-5"></p>
+            <label for="editarSetor" class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Subunidade</label>
+            <select id="editarSetor" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl text-white font-bold outline-none focus:border-blue-500 mb-7">
+                <option>EM</option><option>CTT</option><option>1° CIA</option><option>2° CIA</option><option>3° CIA</option><option>4° CIA</option>
+            </select>
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="fecharEditarUser()" class="bg-slate-700 p-4 rounded-2xl font-bold uppercase text-xs text-white">Sair</button>
+                <button id="btnSalvarEditarUser" onclick="salvarEdicaoUser()" class="bg-blue-600 p-4 rounded-2xl font-bold uppercase text-xs text-white shadow-lg hover:bg-blue-500">Salvar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Exclusão Usuário (Mantido) -->
     <div id="modalExcluirUser" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[200]">
         <div class="card w-full max-w-sm p-8 rounded-3xl text-center border-t-4 border-red-600 shadow-2xl">
@@ -76,9 +99,22 @@
         </div>
     </div>
 
+    <div id="modalRedefinirSenha" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[200]">
+        <div class="card w-full max-w-sm p-8 rounded-3xl text-center border-t-4 border-blue-500 shadow-2xl">
+            <i class="fas fa-key text-blue-400 text-4xl mb-4"></i>
+            <h3 class="text-xl font-black text-white mb-2 uppercase tracking-widest">Liberar nova senha?</h3>
+            <p class="text-slate-400 text-xs mb-8">A senha atual será removida e o militar deverá usar “Primeiro acesso” novamente.</p>
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="fecharRedefinirSenha()" class="bg-slate-700 p-4 rounded-2xl font-bold uppercase text-xs text-white">Sair</button>
+                <button id="btnConfirmarRedefinirSenha" class="bg-blue-600 p-4 rounded-2xl font-bold uppercase text-xs text-white shadow-lg">Liberar</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         let usuariosLocal = []; // Memória auxiliar para a busca rápida
+        let usuarioEmEdicao = null;
         let adminSetor = null, isSuperadmin = false;
         function showToast(mensagem, tipo = 'success') {
             const toast = document.getElementById('toast');
@@ -108,30 +144,29 @@
             
             const filtrados = usuariosLocal.filter(u => 
                 u.nome.toLowerCase().includes(termo) ||
-                (u.cargo && u.cargo.toLowerCase().includes(termo)) ||
+                (u.re && u.re.includes(termo)) ||
                 (u.setor && u.setor.toLowerCase().includes(termo))
             );
 
             lista.innerHTML = filtrados.map(u => `
                 <tr class="hover:bg-slate-900/50 transition border-b border-slate-900">
                     <td class="p-4 uppercase font-bold text-slate-200 text-center">
-                        ${escapeHTML(u.nome)} <span class="text-xs text-blue-400 ml-1">(${escapeHTML(u.cargo || '---')})</span>
+                        <div>${escapeHTML(u.nome)}</div>
+                        <div class="mt-2 text-xs ${u.re ? 'text-blue-400' : 'text-red-400'}">${escapeHTML(u.re || 'RE pendente')}</div>
+                        <div class="mt-2"><span class="inline-flex px-2 py-1 rounded-full text-[10px] ${u.senha_cadastrada ? 'bg-green-900/40 text-green-400' : 'bg-amber-900/40 text-amber-400'}">${u.senha_cadastrada ? 'Senha cadastrada' : 'Primeiro acesso pendente'}</span></div>
                     </td>
-                    <td class="p-4 text-center text-slate-300">${isSuperadmin ? seletorSetorUsuario(u) : escapeHTML(u.setor || 'Não definida')}</td>
+                    <td class="p-4 text-center text-slate-300">${escapeHTML(u.setor || 'Não definida')}</td>
                     <td class="p-4 text-center">
-                        ${u.pode_editar ? `<button onclick="abrirConfirmarExcluir(${Number(u.id)})" aria-label="Excluir ${escapeHTML(u.nome)}" class="text-slate-500 hover:text-red-500 transition px-4"><i class="fas fa-trash"></i></button>` : '<span class="text-slate-500 text-sm">Somente leitura</span>'}
+                        ${u.pode_editar ? `<button onclick="abrirEditarUser(${Number(u.id)})" aria-label="Editar ${escapeHTML(u.nome)}" title="Editar militar" class="text-slate-500 hover:text-blue-400 transition px-3"><i class="fas fa-pen-to-square"></i></button>${u.senha_cadastrada ? `<button onclick="abrirRedefinirSenha(${Number(u.id)})" aria-label="Liberar nova senha de ${escapeHTML(u.nome)}" title="Liberar nova senha" class="text-slate-500 hover:text-blue-400 transition px-3"><i class="fas fa-key"></i></button>` : ''}<button onclick="abrirConfirmarExcluir(${Number(u.id)})" aria-label="Excluir ${escapeHTML(u.nome)}" title="Excluir militar" class="text-slate-500 hover:text-red-500 transition px-3"><i class="fas fa-trash"></i></button>` : '<span class="text-slate-500 text-sm">Somente leitura</span>'}
                     </td>
                 </tr>`).join('');
-        }
-        function seletorSetorUsuario(u) {
-            const setores=['EM','CTT','1° CIA','2° CIA','3° CIA','4° CIA'];
-            return `<select aria-label="Subunidade de ${escapeHTML(u.nome)}" onchange="alterarSetor(${Number(u.id)},this.value)" class="bg-slate-900 border border-slate-700 p-2 rounded-lg text-white"><option value="">Não definida</option>${setores.map(s=>`<option value="${s}" ${u.setor===s?'selected':''}>${s}</option>`).join('')}</select>`;
         }
 
         async function addU() {
             const nome=document.getElementById('un').value, re=document.getElementById('ure').value, setor=document.getElementById('usetor').value;
             if(!nome.trim()) return showToast("Informe o nome do militar.", "error");
-            const res = await fetch('/api/usuarios', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({nome, cargo: re, setor})});
+            if(!/^[0-9]{6}$/.test(re)) return showToast("O RE deve conter exatamente 6 números.", "error");
+            const res = await fetch('/api/usuarios', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({nome, re, setor})});
             if(res.ok) { document.getElementById('un').value=''; document.getElementById('ure').value=''; showToast('Militar adicionado com sucesso.'); carregar(); }
             else showToast((await res.json()).error || 'Erro ao adicionar o militar.', 'error');
         }
@@ -139,7 +174,40 @@
         function abrirConfirmarExcluir(id) { document.getElementById('modalExcluirUser').classList.remove('hidden'); document.getElementById('btnConfirmarExcluirUser').onclick = () => deletarUser(id); }
         function fecharExcluirUser() { document.getElementById('modalExcluirUser').classList.add('hidden'); }
         async function deletarUser(id) { const res = await fetch('/api/usuarios/'+id, {method:'DELETE'}); if (!res.ok) return showToast('Erro ao remover o militar.', 'error'); fecharExcluirUser(); showToast('Militar removido com sucesso.'); carregar(); }
-        async function alterarSetor(id, setor) { if(!setor) return showToast('Selecione uma subunidade válida.', 'error'); const res=await fetch('/api/usuarios/'+id+'/setor',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({setor})}); const data=await res.json(); if(!res.ok)return showToast(data.error||'Erro ao alterar a subunidade.','error'); showToast('Subunidade atualizada.'); carregar(); }
+        function abrirEditarUser(id) {
+            const u = usuariosLocal.find(item => Number(item.id) === Number(id));
+            if (!u || !u.pode_editar) return showToast('Militar não disponível para edição.', 'error');
+            usuarioEmEdicao = Number(id);
+            document.getElementById('editarNome').value = u.nome || '';
+            const campoRE = document.getElementById('editarRE');
+            campoRE.value = u.re || '';
+            campoRE.disabled = Boolean(u.re);
+            campoRE.classList.toggle('opacity-60', Boolean(u.re));
+            document.getElementById('editarREAjuda').textContent = u.re ? 'Identificador permanente: o RE não pode ser alterado.' : 'Registro antigo: informe um RE de 6 números para vinculá-lo permanentemente.';
+            document.getElementById('editarSetor').value = u.setor || adminSetor || 'EM';
+            document.getElementById('modalEditarUser').classList.remove('hidden');
+        }
+        function fecharEditarUser() { usuarioEmEdicao = null; document.getElementById('modalEditarUser').classList.add('hidden'); }
+        async function salvarEdicaoUser() {
+            if (!usuarioEmEdicao) return;
+            const nome = document.getElementById('editarNome').value.trim();
+            const re = document.getElementById('editarRE').value.trim();
+            const setor = document.getElementById('editarSetor').value;
+            if (!nome) return showToast('Informe o QRA do militar.', 'error');
+            if (re && !/^[0-9]{6}$/.test(re)) return showToast('O RE deve conter exatamente 6 números.', 'error');
+            const botao = document.getElementById('btnSalvarEditarUser');
+            botao.disabled = true;
+            const res = await fetch('/api/usuarios/'+usuarioEmEdicao,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome,re,setor})});
+            const data = await res.json();
+            botao.disabled = false;
+            if(!res.ok) return showToast(data.error||'Erro ao editar o militar.','error');
+            fecharEditarUser();
+            showToast(data.transferido ? 'Militar transferido com sucesso.' : 'Cadastro atualizado com sucesso.');
+            carregar();
+        }
+        function abrirRedefinirSenha(id) { document.getElementById('modalRedefinirSenha').classList.remove('hidden'); document.getElementById('btnConfirmarRedefinirSenha').onclick=()=>redefinirSenha(id); }
+        function fecharRedefinirSenha() { document.getElementById('modalRedefinirSenha').classList.add('hidden'); }
+        async function redefinirSenha(id) { const res=await fetch('/api/usuarios/'+id+'/redefinir-senha',{method:'PUT'}); const data=await res.json(); if(!res.ok)return showToast(data.error||'Erro ao liberar a nova senha.','error'); fecharRedefinirSenha(); showToast('Nova senha liberada. O militar deverá fazer o primeiro acesso.'); carregar(); }
 
         async function logout() { await fetch('/api/logout', {method:'POST'}); window.location.href = 'login.html'; }
         

@@ -1,0 +1,72 @@
+GEOFROTA GPT — cópia de segurança para testes locais
+
+O servidor usa sessões aleatórias, expira a sessão após 12 horas, limita
+tentativas de login e aplica permissões no servidor. As senhas administrativas
+e operacionais são individuais. A configuração original está em .env,
+que NÃO deve ser enviada para repositórios nem publicada junto do site.
+
+O arquivo geofrota.db é um banco SQLite antigo. O servidor atual usa PostgreSQL;
+não basta abrir esse .db para testar o sistema. O documento de links também
+contém uma credencial e deve ficar privado.
+
+Para testar SEM mexer no banco do site:
+1. Instale Node.js 20.6+ e PostgreSQL.
+2. Crie um banco PostgreSQL de teste e execute esquema-local.sql nele.
+3. Copie .env.local.example para .env.local. Coloque a URL desse banco LOCAL e
+   use PWD_ADMIN somente para os testes e migrações administrativas.
+   Nunca use a URL do banco online em .env.local.
+4. No terminal, dentro desta pasta: npm ci; npm run start:local
+5. Acesse http://localhost:3000/login.html.
+
+Na hospedagem futura, configure DATABASE_URL. PWD_ADMIN é necessária somente
+para rotinas antigas de migração e testes administrativos. Não existe mais
+senha operacional compartilhada. A configuração .env não deve ser publicada.
+Se o banco local não tiver TLS, DATABASE_SSL=false em .env.local. No banco online,
+use a verificação TLS padrão (não configure DATABASE_SSL=false).
+
+As sessões ficam em memória: reiniciar o servidor desconecta os usuários.
+Uma hospedagem com várias instâncias exigirá armazenamento compartilhado de
+sessões antes da publicação. O acesso operacional usa RE e senha individual.
+Credenciais antigas que tenham aparecido em código ou documentos devem ser
+substituídas antes da publicação definitiva.
+
+AUTENTICAÇÃO ADMINISTRATIVA INDIVIDUAL
+--------------------------------------
+O acesso administrativo agora usa uma seleção de acesso e senha. As contas iniciais são:
+1BPTRAN, EM, CTT, 1CIA, 2CIA, 3CIA e 4CIA. Na primeira entrada, todas usam a
+senha temporária definida em PWD_ADMIN e precisam cadastrar uma nova senha.
+
+1BPTRAN é o administrador-geral: gerencia todas as subunidades e as contas.
+As demais contas visualizam toda a frota, mas só podem cadastrar, alterar e
+excluir registros da própria subunidade. O servidor aplica essa restrição;
+ela não depende apenas da interface.
+
+Para preparar um banco ainda não migrado:
+  npm run migrate:auth
+
+Para verificar contas, RLS e colunas de auditoria:
+  npm run verify:auth
+
+Testes automatizados disponíveis:
+  npm run test:auth
+  npm run test:operators
+  npm run test:permissions
+  npm run test:superadmin
+
+O teste de permissões cria apenas registros identificados como teste e os
+remove automaticamente ao final.
+
+AUTENTICAÇÃO OPERACIONAL INDIVIDUAL
+-----------------------------------
+O administrador cadastra previamente QRA, RE com seis números e subunidade.
+No primeiro acesso, o militar informa o RE e cria uma senha pessoal de 4 a 8
+caracteres, sem espaços. A senha fica armazenada somente como hash scrypt.
+
+O operador autenticado é o único responsável disponível no lançamento. O
+servidor registra QRA e RE a partir da sessão e não aceita a escolha de outro
+responsável pelo navegador. Em caso de esquecimento, o administrador pode
+liberar um novo primeiro acesso na tela Usuários.
+
+Esta pasta contém todos os 11 arquivos fornecidos, além da configuração,
+orientações e esquema local. A pasta node_modules não acompanha a cópia,
+pois é recriada com npm ci.

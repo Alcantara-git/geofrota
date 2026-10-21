@@ -32,14 +32,28 @@
                 <i class="fas fa-mobile-alt text-4xl text-blue-500 mb-4"></i>
                 <h2 class="text-2xl font-black uppercase italic">Operacional</h2>
                 <form id="form-oper" onsubmit="fazerLogin('oper', event)" class="hidden mt-6 w-full animate-pulse">
-                    <label for="senha-oper" class="sr-only">Senha da unidade</label>
+                    <label for="re-oper" class="sr-only">RE</label>
+                    <input type="text" id="re-oper" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" required placeholder="RE - 6 números" autocomplete="username" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-center text-white outline-none focus:ring-2 ring-blue-600 font-bold mb-3">
+                    <label for="senha-oper" class="sr-only">Senha pessoal</label>
                     <div class="relative mb-4">
-                        <input type="password" id="senha-oper" placeholder="Senha Unidade" aria-label="Senha da unidade" autocomplete="current-password" class="w-full bg-slate-900 border border-slate-700 p-4 pr-14 rounded-2xl text-center text-white outline-none focus:ring-2 ring-blue-600 font-bold">
-                        <button type="button" id="olho-oper" onclick="toggleSenha('oper', event)" aria-label="Mostrar senha da unidade" aria-pressed="false" class="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-xl text-slate-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="password" id="senha-oper" minlength="4" maxlength="8" required placeholder="Senha pessoal" aria-label="Senha pessoal" autocomplete="current-password" class="w-full bg-slate-900 border border-slate-700 p-4 pr-14 rounded-2xl text-center text-white outline-none focus:ring-2 ring-blue-600 font-bold">
+                        <button type="button" id="olho-oper" onclick="toggleSenha('oper', event)" aria-label="Mostrar senha pessoal" aria-pressed="false" class="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-xl text-slate-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <i class="fas fa-eye" aria-hidden="true"></i>
                         </button>
                     </div>
                     <button type="submit" class="w-full bg-blue-600 p-4 rounded-2xl font-bold uppercase text-xs">Acessar</button>
+                    <button type="button" onclick="abrirPrimeiroAcesso(event)" class="mt-4 text-blue-400 hover:text-blue-300 text-xs font-bold uppercase tracking-wider">Primeiro acesso / criar senha</button>
+                </form>
+                <form id="form-primeiro-oper" onsubmit="criarSenhaOperador(event)" class="hidden mt-6 w-full animate-pulse">
+                    <p class="text-slate-400 text-xs mb-4">Disponível somente para RE previamente cadastrado pelo administrador.</p>
+                    <label for="re-primeiro-oper" class="sr-only">RE</label>
+                    <input type="text" id="re-primeiro-oper" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" required placeholder="RE - 6 números" autocomplete="username" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-center text-white outline-none focus:ring-2 ring-blue-600 font-bold mb-3">
+                    <label for="senha-primeiro-oper" class="sr-only">Nova senha</label>
+                    <input type="password" id="senha-primeiro-oper" minlength="4" maxlength="8" required placeholder="Nova senha - 4 a 8 caracteres" autocomplete="new-password" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-center text-white outline-none focus:ring-2 ring-blue-600 font-bold mb-3">
+                    <label for="confirmar-primeiro-oper" class="sr-only">Confirmar senha</label>
+                    <input type="password" id="confirmar-primeiro-oper" minlength="4" maxlength="8" required placeholder="Confirme a nova senha" autocomplete="new-password" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-2xl text-center text-white outline-none focus:ring-2 ring-blue-600 font-bold mb-4">
+                    <button type="submit" class="w-full bg-blue-600 p-4 rounded-2xl font-bold uppercase text-xs">Criar senha e entrar</button>
+                    <button type="button" onclick="voltarLoginOperador(event)" class="mt-4 text-slate-400 hover:text-white text-xs font-bold uppercase tracking-wider">Voltar</button>
                 </form>
             </div>
 
@@ -71,11 +85,26 @@
         </div>
     </div>
     <script>
+        const CHAVE_ULTIMO_RE = 'geofrota_ultimo_re';
+        function salvarUltimoRE(re) {
+            if (!/^[0-9]{6}$/.test(re)) return;
+            try { localStorage.setItem(CHAVE_ULTIMO_RE, re); } catch (_) {}
+        }
+        function preencherUltimoRE() {
+            try {
+                const re = localStorage.getItem(CHAVE_ULTIMO_RE) || '';
+                if (/^[0-9]{6}$/.test(re)) {
+                    document.getElementById('re-oper').value = re;
+                    document.getElementById('re-primeiro-oper').value = re;
+                }
+            } catch (_) {}
+        }
         function abrirLogin(t) { 
             document.getElementById('form-oper').classList.add('hidden'); 
+            document.getElementById('form-primeiro-oper').classList.add('hidden');
             document.getElementById('form-admin').classList.add('hidden'); 
             document.getElementById('form-'+t).classList.remove('hidden'); 
-            document.getElementById(t === 'admin' ? 'usuario-admin' : 'senha-oper').focus();
+            document.getElementById(t === 'admin' ? 'usuario-admin' : 're-oper').focus();
         }
         function toggleSenha(t, event) {
             event.stopPropagation();
@@ -84,7 +113,7 @@
             const mostrando = input.type === 'text';
             input.type = mostrando ? 'password' : 'text';
             botao.setAttribute('aria-pressed', String(!mostrando));
-            botao.setAttribute('aria-label', (mostrando ? 'Mostrar ' : 'Ocultar ') + (t === 'admin' ? 'senha do gestor' : 'senha da unidade'));
+            botao.setAttribute('aria-label', (mostrando ? 'Mostrar ' : 'Ocultar ') + (t === 'admin' ? 'senha do gestor' : 'senha pessoal'));
             botao.querySelector('i').className = mostrando ? 'fas fa-eye' : 'fas fa-eye-slash';
             input.focus();
         }
@@ -92,15 +121,47 @@
             if (event) event.preventDefault();
             const senha = document.getElementById('senha-'+t).value;
             const usuario = t === 'admin' ? document.getElementById('usuario-admin').value.trim().toUpperCase() : undefined;
+            const re = t === 'oper' ? document.getElementById('re-oper').value.trim() : undefined;
             if (t === 'admin' && !usuario) return showToast('Informe o usuário administrativo.');
-            const res = await fetch('/api/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ senha, tipo: t, usuario }) });
+            if (t === 'oper' && !/^[0-9]{6}$/.test(re)) return showToast('O RE deve conter exatamente 6 números.');
+            const res = await fetch('/api/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ senha, tipo: t, usuario, re }) });
             const data = await res.json();
             if (res.ok) {
                 localStorage.setItem('role', t); // Grava a função do usuário (admin ou oper)
+                if (t === 'oper') salvarUltimoRE(re);
                 window.location.href = data.redirect; 
             } else {
                 showToast(data.error || "Senha incorreta. Verifique e tente novamente.");
             }
+        }
+        function abrirPrimeiroAcesso(event) {
+            event.stopPropagation();
+            document.getElementById('form-oper').classList.add('hidden');
+            document.getElementById('form-primeiro-oper').classList.remove('hidden');
+            document.getElementById('re-primeiro-oper').value = document.getElementById('re-oper').value;
+            document.getElementById('re-primeiro-oper').focus();
+        }
+        function voltarLoginOperador(event) {
+            event.stopPropagation();
+            document.getElementById('form-primeiro-oper').classList.add('hidden');
+            document.getElementById('form-oper').classList.remove('hidden');
+            document.getElementById('re-oper').value = document.getElementById('re-primeiro-oper').value;
+            document.getElementById('re-oper').focus();
+        }
+        async function criarSenhaOperador(event) {
+            event.preventDefault();
+            const re = document.getElementById('re-primeiro-oper').value.trim();
+            const senha = document.getElementById('senha-primeiro-oper').value;
+            const confirmacao = document.getElementById('confirmar-primeiro-oper').value;
+            if (!/^[0-9]{6}$/.test(re)) return showToast('O RE deve conter exatamente 6 números.');
+            if (senha.length < 4 || senha.length > 8 || /\s/.test(senha)) return showToast('A senha deve ter de 4 a 8 caracteres, sem espaços.');
+            if (senha !== confirmacao) return showToast('As senhas não conferem.');
+            const res = await fetch('/api/operadores/primeiro-acesso', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ re, senha }) });
+            const data = await res.json();
+            if (!res.ok) return showToast(data.error || 'Não foi possível criar a senha.');
+            localStorage.setItem('role', 'oper');
+            salvarUltimoRE(re);
+            window.location.href = data.redirect;
         }
         function showToast(mensagem) {
             const toast = document.getElementById('toast');
@@ -111,6 +172,7 @@
         }
         document.querySelectorAll('input').forEach(i => i.onclick = (e) => e.stopPropagation());
         document.querySelectorAll('form').forEach(f => f.onclick = (e) => e.stopPropagation());
+        preencherUltimoRE();
     </script>
 </body>
 </html>

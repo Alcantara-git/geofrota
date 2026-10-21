@@ -4,9 +4,9 @@ const { promisify } = require('util');
 const scrypt = promisify(crypto.scrypt);
 const PARAMS = { N: 16384, r: 8, p: 1, keylen: 64 };
 
-async function hashPassword(password) {
-    if (typeof password !== 'string' || password.length < 8 || password.length > 256)
-        throw new Error('A senha deve ter entre 8 e 256 caracteres.');
+async function hashPassword(password, { minLength = 8, maxLength = 256 } = {}) {
+    if (typeof password !== 'string' || password.length < minLength || password.length > maxLength)
+        throw new Error(`A senha deve ter entre ${minLength} e ${maxLength} caracteres.`);
     const salt = crypto.randomBytes(16);
     const derived = await scrypt(password, salt, PARAMS.keylen, { N: PARAMS.N, r: PARAMS.r, p: PARAMS.p, maxmem: 64 * 1024 * 1024 });
     return `scrypt$${PARAMS.N}$${PARAMS.r}$${PARAMS.p}$${salt.toString('base64')}$${derived.toString('base64')}`;

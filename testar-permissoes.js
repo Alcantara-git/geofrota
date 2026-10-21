@@ -11,7 +11,11 @@ async function main() {
     const prefixoProprio = `AUTHEM${sufixo}`;
     const prefixoCriado = `AUTHNOVO${sufixo}`;
     const usuarioProprio = `Militar Teste EM ${sufixo}`;
+    const usuarioTransferencia = `Militar Transferencia EM ${sufixo}`;
     const usuarioOutro = `Militar Teste CTT ${sufixo}`;
+    const reProprio = `8${sufixo.slice(-5)}`;
+    const reTransferencia = `7${sufixo.slice(-5)}`;
+    const reOutro = `9${sufixo.slice(-5)}`;
     let server;
     try {
         const senhaHash = await hashPassword(senha);
@@ -19,7 +23,7 @@ async function main() {
             VALUES ($1,'Conta de teste automatizado','EM','admin',$2,TRUE,TRUE)`, [usuario, senhaHash]);
         await pool.query(`INSERT INTO viaturas (prefixo,placa,modelo,km,km_revisao,status,ultimo_usuario,motivo,setor)
             VALUES ($1,'TST-0001','MODELO TESTE',100,5000,'Operante','Teste','','EM')`, [prefixoProprio]);
-        await pool.query(`INSERT INTO usuarios (nome,cargo,setor) VALUES ($1,'TESTE','CTT')`, [usuarioOutro]);
+        await pool.query(`INSERT INTO usuarios (nome,cargo,re,setor) VALUES ($1,$2,$2,'CTT')`, [usuarioOutro, reOutro]);
 
         server = await new Promise((resolve, reject) => { const s=app.listen(0,'127.0.0.1',()=>resolve(s)); s.on('error',reject); });
         const base = `http://127.0.0.1:${server.address().port}`;
@@ -52,7 +56,8 @@ async function main() {
         const propria=frota.find(v=>v.prefixo===prefixoProprio), outra=frota.find(v=>v.setor!=='EM');
         if(!propria||!outra) throw new Error('Viaturas de teste/referência não encontradas');
 
-        const proibido=await fetch(base+`/api/viaturas/${outra.id}`,{method:'PUT',headers,body:JSON.stringify({km:outra.km,km_revisao:outra.km_revisao,status:outra.status,setor:outra.setor})});
+        const dadosOutra={km:outra.km,km_revisao:outra.km_revisao,status:outra.status,setor:outra.setor,...(outra.status==='Baixada'?{motivo:outra.motivo||'Teste de permissão',categoria_baixa:outra.categoria_baixa||'Outros'}:{})};
+        const proibido=await fetch(base+`/api/viaturas/${outra.id}`,{method:'PUT',headers,body:JSON.stringify(dadosOutra)});
         if(proibido.status!==403) throw new Error(`Alteração de outra subunidade retornou ${proibido.status}, esperado 403`);
 
         const permitido=await fetch(base+`/api/viaturas/${propria.id}`,{method:'PUT',headers,body:JSON.stringify({km:101,km_revisao:5000,status:'Operante',setor:'EM'})});
@@ -77,7 +82,7 @@ async function main() {
         if(!criada||criada.setor!=='EM') throw new Error('Servidor não forçou a subunidade EM na criação');
         if(criada.status!=='Troca de Óleo') throw new Error(`BMW em 91% ficou com status incorreto: ${criada.status}`);
 
-        const criarUsuario=await fetch(base+'/api/usuarios',{method:'POST',headers,body:JSON.stringify({nome:usuarioProprio,cargo:'TESTE',setor:'CTT'})});
+        const criarUsuario=await fetch(base+'/api/usuarios',{method:'POST',headers,body:JSON.stringify({nome:usuarioProprio,re:reProprio,setor:'CTT'})});
         if(!criarUsuario.ok) throw new Error(`Criação de militar falhou: ${criarUsuario.status}`);
         const militar=(await pool.query('SELECT id,setor FROM usuarios WHERE nome=$1',[usuarioProprio])).rows[0];
         if(!militar||militar.setor!=='EM') throw new Error('Servidor não forçou a subunidade EM no militar');
@@ -87,21 +92,33 @@ async function main() {
         const excluirProprio=await fetch(base+`/api/usuarios/${militar.id}`,{method:'DELETE',headers:{cookie}});
         if(!excluirProprio.ok) throw new Error('Exclusão do militar da própria subunidade falhou');
 
+        const criarTransferencia=await fetch(base+'/api/usuarios',{method:'POST',headers,body:JSON.stringify({nome:usuarioTransferencia,re:reTransferencia,setor:'EM'})});
+        if(!criarTransferencia.ok) throw new Error('Criação do militar para transferência falhou');
+        const militarTransferencia=(await pool.query('SELECT id,re,setor FROM usuarios WHERE nome=$1',[usuarioTransferencia])).rows[0];
+        const alterarRE=await fetch(base+`/api/usuarios/${militarTransferencia.id}`,{method:'PUT',headers,body:JSON.stringify({nome:usuarioTransferencia,re:'6'+reTransferencia.slice(1),setor:'EM'})});
+        if(alterarRE.status!==409) throw new Error(`Alteração de RE permanente retornou ${alterarRE.status}, esperado 409`);
+        const transferir=await fetch(base+`/api/usuarios/${militarTransferencia.id}`,{method:'PUT',headers,body:JSON.stringify({nome:usuarioTransferencia,re:reTransferencia,setor:'CTT'})});
+        if(!transferir.ok) throw new Error(`Transferência de militar da própria subunidade falhou: ${transferir.status}`);
+        const transferido=(await pool.query('SELECT re,setor FROM usuarios WHERE id=$1',[militarTransferencia.id])).rows[0];
+        if(transferido?.setor!=='CTT'||transferido?.re!==reTransferencia) throw new Error('Transferência alterou o RE ou não salvou a nova subunidade');
+        const puxarDeVolta=await fetch(base+`/api/usuarios/${militarTransferencia.id}`,{method:'PUT',headers,body:JSON.stringify({nome:usuarioTransferencia,re:reTransferencia,setor:'EM'})});
+        if(puxarDeVolta.status!==403) throw new Error(`Administrador conseguiu puxar militar de outra subunidade: ${puxarDeVolta.status}`);
+
         const admins=await fetch(base+'/api/administradores',{headers:{cookie}});
         if(admins.status!==403) throw new Error(`Gestão de administradores retornou ${admins.status}, esperado 403`);
-        console.log('Teste concluído: troca obrigatória validada; status de troca de óleo ativado quando a barra entra em 91% nos ciclos de 5.000 e 3.000 km; leitura global permitida; escrita limitada à subunidade; criação forçada no setor; gestão de contas bloqueada para admin comum.');
+        console.log('Teste concluído: troca obrigatória validada; RE permanente; transferência de militar permitida somente para envio; leitura global permitida; escrita limitada à subunidade; gestão de contas bloqueada para admin comum.');
     } finally {
         if(server) await new Promise(resolve=>server.close(resolve));
         await pool.query('DELETE FROM historico WHERE prefixo IN ($1,$2)',[prefixoProprio,prefixoCriado]).catch(()=>{});
         await pool.query('DELETE FROM viaturas WHERE prefixo IN ($1,$2)',[prefixoProprio,prefixoCriado]).catch(()=>{});
-        await pool.query('DELETE FROM usuarios WHERE nome IN ($1,$2)',[usuarioProprio,usuarioOutro]).catch(()=>{});
+        await pool.query('DELETE FROM usuarios WHERE nome IN ($1,$2,$3)',[usuarioProprio,usuarioOutro,usuarioTransferencia]).catch(()=>{});
         await pool.query('DELETE FROM administradores WHERE usuario=$1',[usuario]).catch(()=>{});
         const restos = (await pool.query(`SELECT
             (SELECT count(*) FROM administradores WHERE usuario=$1)::int AS administradores,
             (SELECT count(*) FROM viaturas WHERE prefixo IN ($2,$3))::int AS viaturas,
-            (SELECT count(*) FROM usuarios WHERE nome IN ($4,$5))::int AS usuarios,
+            (SELECT count(*) FROM usuarios WHERE nome IN ($4,$5,$6))::int AS usuarios,
             (SELECT count(*) FROM historico WHERE prefixo IN ($2,$3))::int AS historico`,
-            [usuario,prefixoProprio,prefixoCriado,usuarioProprio,usuarioOutro])).rows[0];
+            [usuario,prefixoProprio,prefixoCriado,usuarioProprio,usuarioOutro,usuarioTransferencia])).rows[0];
         if (Object.values(restos).some(Number)) throw new Error(`Limpeza incompleta: ${JSON.stringify(restos)}`);
         console.log('Limpeza verificada: nenhum registro temporário permaneceu no banco.');
         await pool.end();
@@ -109,4 +126,3 @@ async function main() {
 }
 
 main().catch(error=>{console.error('Falha no teste de permissões:',error.message);process.exitCode=1;});
-
