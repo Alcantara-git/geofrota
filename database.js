@@ -19,6 +19,7 @@ async function inicializarBanco() {
         await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS setor TEXT;`);
         await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS re TEXT;`);
         await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS senha_hash TEXT;`);
+        await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS servico_dia BOOLEAN NOT NULL DEFAULT FALSE;`);
         await pool.query(`DO $$ BEGIN ALTER TABLE usuarios ADD CONSTRAINT usuarios_re_formato_chk CHECK (re IS NULL OR re ~ '^[0-9]{6}$'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;`);
         await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS usuarios_re_uidx ON usuarios (re) WHERE re IS NOT NULL;`);
         await pool.query(`CREATE TABLE IF NOT EXISTS historico (id SERIAL PRIMARY KEY, prefixo TEXT, km_anterior INTEGER, km_novo INTEGER, status TEXT, motivo TEXT, usuario TEXT, setor TEXT, data_hora TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP);`);

@@ -96,7 +96,7 @@ app.post('/api/login', async (req, res) => {
             if (!reValido(reInformado) || !senhaOperacionalValida(senha)) {
                 a.count++; attempts.set(key, a); return res.status(401).json({ error: 'RE ou senha incorretos' });
             }
-            const conta = (await pool.query('SELECT id, nome, re, setor, senha_hash FROM usuarios WHERE re=$1', [reInformado])).rows[0];
+            const conta = (await pool.query('SELECT id, nome, re, setor, senha_hash, servico_dia FROM usuarios WHERE re=$1', [reInformado])).rows[0];
             if (!conta?.senha_hash) {
                 a.count++; attempts.set(key, a);
                 return res.status(conta ? 403 : 401).json({ error: conta ? 'Faça o primeiro acesso para criar sua senha' : 'RE ou senha incorretos' });
@@ -104,7 +104,7 @@ app.post('/api/login', async (req, res) => {
             if (!(await verifyPassword(senha, conta.senha_hash))) {
                 a.count++; attempts.set(key, a); return res.status(401).json({ error: 'RE ou senha incorretos' });
             }
-            dadosSessao = { role: 'oper', operadorId: String(conta.id), usuario: conta.re, nome: conta.nome, re: conta.re, setor: conta.setor, superadmin: false, trocarSenha: false };
+            dadosSessao = { role: 'oper', operadorId: String(conta.id), usuario: conta.re, nome: conta.nome, re: conta.re, setor: conta.setor, servicoDia: Boolean(conta.servico_dia), superadmin: false, trocarSenha: false };
             redirect = 'operacional.html';
         } else {
             if (!/^[A-Z0-9_-]{2,30}$/.test(usuarioInformado)) {
@@ -141,14 +141,14 @@ app.post('/api/operadores/primeiro-acesso', async (req, res) => {
         return res.status(400).json({ error: 'Informe um RE com 6 números e uma senha de 4 a 8 caracteres, sem espaços' });
     }
     try {
-        const conta = (await pool.query('SELECT id, nome, re, setor, senha_hash FROM usuarios WHERE re=$1', [re])).rows[0];
+        const conta = (await pool.query('SELECT id, nome, re, setor, senha_hash, servico_dia FROM usuarios WHERE re=$1', [re])).rows[0];
         if (!conta) { a.count++; attempts.set(key, a); return res.status(404).json({ error: 'RE não cadastrado. Procure o administrador da sua subunidade.' }); }
         if (conta.senha_hash) return res.status(409).json({ error: 'Este RE já possui senha. Entre normalmente ou peça a redefinição ao administrador.' });
         const senhaHash = await hashPassword(senha, { minLength: 4, maxLength: 8 });
         const atualizada = await pool.query('UPDATE usuarios SET senha_hash=$1 WHERE id=$2 AND senha_hash IS NULL RETURNING id', [senhaHash, conta.id]);
         if (!atualizada.rowCount) return res.status(409).json({ error: 'A senha deste RE já foi cadastrada.' });
         attempts.delete(key);
-        criarSessao(req, res, { role: 'oper', operadorId: String(conta.id), usuario: conta.re, nome: conta.nome, re: conta.re, setor: conta.setor, superadmin: false, trocarSenha: false }, now);
+        criarSessao(req, res, { role: 'oper', operadorId: String(conta.id), usuario: conta.re, nome: conta.nome, re: conta.re, setor: conta.setor, servicoDia: Boolean(conta.servico_dia), superadmin: false, trocarSenha: false }, now);
         res.json({ success: true, redirect: 'operacional.html' });
     } catch (e) { erro(res, e); }
 });
@@ -160,7 +160,7 @@ app.post('/api/logout', (req, res) => {
 app.get('/api/session', (req, res) => {
     const s = session(req);
     if (!s) return res.status(401).json({ error: 'Acesso não autenticado' });
-    res.json({ role: s.role, usuario: s.usuario, nome: s.nome || null, re: s.re || null, setor: s.setor, superadmin: Boolean(s.superadmin), trocar_senha: Boolean(s.trocarSenha) });
+    res.json({ role: s.role, usuario: s.usuario, nome: s.nome || null, re: s.re || null, setor: s.setor, servico_dia: Boolean(s.servicoDia), superadmin: Boolean(s.superadmin), trocar_senha: Boolean(s.trocarSenha) });
 });
 // Lista explícita: código, banco, documentos e configuração não são arquivos públicos.
 app.get(['/', '/login.html'], (req, res) => res.sendFile(path.join(__dirname, 'login.html')));
@@ -268,7 +268,7 @@ app.get('/api/alteracoes-recentes', protegerOperacional, async (req, res) => {
         let where = '';
         if (setor && setor !== 'Todos') { where = 'WHERE setor = $1'; params.push(setor); }
         const result = await pool.query(`SELECT id, prefixo, km_anterior, km_novo, status,
-            motivo, categoria_baixa, usuario, setor, data_hora,
+            motivo, categoria_baixa, usuario, autor_conta, setor, data_hora,
             TO_CHAR((data_hora AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI') AS hora
             FROM historico ${where} ORDER BY data_hora DESC, id DESC LIMIT 10`, params);
         res.json(result.rows);
@@ -464,10 +464,24 @@ app.get('/api/viaturas', protegerOperacional, async (req, res) => {
     }
     catch (e) { erro(res, e); }
 });
+app.get('/api/operacional/responsaveis', protegerOperacional, async (req, res) => {
+    if (req.auth.role !== 'oper' || !req.auth.servicoDia)
+        return res.status(403).json({ error: 'Seleção disponível somente para policiais de serviço de dia' });
+    try {
+        const rows = (await pool.query(`SELECT id, nome, re
+            FROM usuarios WHERE re IS NOT NULL ORDER BY nome ASC`)).rows;
+        res.json(rows);
+    } catch (e) { erro(res, e); }
+});
 // O operacional registra somente KM, responsável e baixa. A revisão e o setor são imutáveis aqui.
 app.put('/api/operacional/viaturas/:id', protegerOperacional, async (req, res) => {
     const id = inteiro(req.params.id, 1), km = inteiro(req.body.km);
-    const usuario = req.auth.role === 'oper' ? texto(`${req.auth.nome} (${req.auth.re})`) : nomeConta(req);
+    const responsavelInformado = req.body?.responsavel_id;
+    const responsavelId = responsavelInformado === undefined || responsavelInformado === null ? null : inteiro(responsavelInformado, 1);
+    if (responsavelInformado !== undefined && responsavelInformado !== null && !responsavelId)
+        return res.status(400).json({ error: 'Policial responsável inválido' });
+    let usuario = req.auth.role === 'oper' ? `${req.auth.nome} (${req.auth.re})` : nomeConta(req);
+    let autorConta = null;
     const baixa = req.body.baixa;
     const motivo = baixa ? texto(req.body.motivo, 500) : '';
     const categoria = baixa ? texto(req.body.categoria_baixa, 50) : null;
@@ -480,6 +494,13 @@ app.put('/api/operacional/viaturas/:id', protegerOperacional, async (req, res) =
     try {
         client = await pool.connect();
         await client.query('BEGIN');
+        if (req.auth.role === 'oper' && responsavelId && String(responsavelId) !== String(req.auth.operadorId)) {
+            if (!req.auth.servicoDia) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'Somente policiais de serviço de dia podem selecionar outro responsável' }); }
+            const responsavel = (await client.query('SELECT id, nome, re, setor FROM usuarios WHERE id=$1 AND re IS NOT NULL', [responsavelId])).rows[0];
+            if (!responsavel) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Policial responsável não encontrado' }); }
+            usuario = `${responsavel.nome} (${responsavel.re})`;
+            autorConta = `${req.auth.nome} (${req.auth.re})`;
+        }
         const old = (await client.query('SELECT prefixo, modelo, placa, km, setor, km_revisao, status, motivo, categoria_baixa FROM viaturas WHERE id=$1 FOR UPDATE', [id])).rows[0];
         if (!old) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Viatura não encontrada' }); }
         if (req.auth.role === 'admin' && !podeGerenciarSetor(req, old.setor)) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'Você pode alterar somente viaturas da sua subunidade' }); }
@@ -488,7 +509,7 @@ app.put('/api/operacional/viaturas/:id', protegerOperacional, async (req, res) =
         const finalMotivo = baixa ? motivo : status === 'Baixada' ? old.motivo : '';
         const finalCategoria = baixa ? (categoria || (old.status === 'Baixada' ? old.categoria_baixa : null)) : status === 'Baixada' ? old.categoria_baixa : null;
         await client.query('UPDATE viaturas SET km=$1, status=$2, ultimo_usuario=$3, motivo=$4, categoria_baixa=$5 WHERE id=$6', [km, status, usuario, finalMotivo, finalCategoria, id]);
-        await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor, categoria_baixa) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)', [old.prefixo, old.km, km, status, finalMotivo, usuario, old.setor, finalCategoria]);
+        await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor, categoria_baixa, autor_conta) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [old.prefixo, old.km, km, status, finalMotivo, usuario, old.setor, finalCategoria, autorConta]);
         await client.query('COMMIT');
         let aviso;
         try {
@@ -595,7 +616,7 @@ app.delete('/api/viaturas/:id', protegerAdmin, async (req, res) => {
 });
 app.get('/api/usuarios', protegerAdmin, async (req, res) => {
     try {
-        const rows = (await pool.query('SELECT id, nome, re, setor, (senha_hash IS NOT NULL) AS senha_cadastrada FROM usuarios ORDER BY nome ASC')).rows;
+        const rows = (await pool.query('SELECT id, nome, re, setor, servico_dia, (senha_hash IS NOT NULL) AS senha_cadastrada FROM usuarios ORDER BY nome ASC')).rows;
         res.json(rows.map(u => ({ ...u, pode_editar: req.auth.superadmin || u.setor === req.auth.setor })));
     }
     catch (e) { erro(res, e); }
@@ -616,12 +637,14 @@ app.put('/api/usuarios/:id', protegerAdmin, async (req, res) => {
     const nome = texto(req.body?.nome);
     const setor = texto(req.body?.setor, 20);
     const reInformado = typeof req.body?.re === 'string' ? req.body.re.trim() : '';
+    const servicoDiaInformado = req.body?.servico_dia;
     if (!id || !nome || !setoresValidos.has(setor)) return res.status(400).json({ error: 'Informe o QRA e uma subunidade válida' });
     if (reInformado && !reValido(reInformado)) return res.status(400).json({ error: 'O RE deve conter exatamente 6 números' });
+    if (servicoDiaInformado !== undefined && typeof servicoDiaInformado !== 'boolean') return res.status(400).json({ error: 'Configuração de serviço de dia inválida' });
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        const atual = (await client.query('SELECT id, nome, cargo, re, setor FROM usuarios WHERE id=$1 FOR UPDATE', [id])).rows[0];
+        const atual = (await client.query('SELECT id, nome, cargo, re, setor, servico_dia FROM usuarios WHERE id=$1 FOR UPDATE', [id])).rows[0];
         if (!atual) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Militar não encontrado' }); }
         if (!podeGerenciarSetor(req, atual.setor)) {
             await client.query('ROLLBACK');
@@ -633,7 +656,8 @@ app.put('/api/usuarios/:id', protegerAdmin, async (req, res) => {
         }
         const reFinal = atual.re || reInformado || null;
         const cargoFinal = atual.re ? atual.cargo : (reFinal || atual.cargo);
-        await client.query('UPDATE usuarios SET nome=$1, setor=$2, re=$3, cargo=$4 WHERE id=$5', [nome, setor, reFinal, cargoFinal, id]);
+        const servicoDiaFinal = typeof servicoDiaInformado === 'boolean' ? servicoDiaInformado : Boolean(atual.servico_dia);
+        await client.query('UPDATE usuarios SET nome=$1, setor=$2, re=$3, cargo=$4, servico_dia=$5 WHERE id=$6', [nome, setor, reFinal, cargoFinal, servicoDiaFinal, id]);
         await client.query('COMMIT');
         for (const [token, s] of sessions) if (String(s.operadorId) === String(id)) sessions.delete(token);
         res.json({ success: true, transferido: atual.setor !== setor });

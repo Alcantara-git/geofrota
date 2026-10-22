@@ -50,6 +50,14 @@
                     <div class="custom-select cursor-default border-blue-500/40"><span id="operadorLogado" class="text-blue-400">Identificando operador...</span><i class="fas fa-user-check text-blue-400 text-xs"></i></div>
                 </div>
 
+                <div id="painelResponsavel" class="hidden">
+                    <div class="flex items-center justify-between gap-3 mb-1">
+                        <label class="text-[10px] font-black text-slate-500 ml-1 uppercase text-left block">Policial responsável</label>
+                        <span class="text-[9px] font-black uppercase text-blue-400"><i class="fas fa-user-clock mr-1" aria-hidden="true"></i>Serviço de dia</span>
+                    </div>
+                    <div onclick="abrirBuscaResponsavel()" class="custom-select border-blue-500/40"><span id="labelResponsavel" class="text-blue-400">Selecionando o próprio policial...</span><i class="fas fa-chevron-down text-xs"></i></div>
+                </div>
+
                 <!-- Viatura -->
                 <div>
                     <label class="text-[10px] font-black text-slate-500 ml-1 uppercase text-left block">Viatura</label>
@@ -115,7 +123,7 @@
     <script>
         const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         const categoriasBaixa = ["Mecânico", "Pneu", "Bateria", "Freios", "Troca de óleo", "Iluminação e/ou sonoro", "Sindicância", "Avaria", "Elétrica", "Outros"];
-        let viaturas = [], estaB = false, sV = null;
+        let viaturas = [], responsaveis = [], estaB = false, sV = null, responsavelSelecionadoId = null, modoBusca = 'viatura', sessaoAtual = null;
 
         function definirCategoriaBaixa(valor = '') {
             const categoria = categoriasBaixa.includes(valor) ? valor : '';
@@ -168,7 +176,17 @@
         }
 
         function abrirBusca() {
+            modoBusca = 'viatura';
             document.getElementById('mTit').innerText = 'Selecionar Viatura';
+            document.getElementById('iBusca').value = '';
+            document.getElementById('mBusca').classList.remove('hidden');
+            document.getElementById('iBusca').focus();
+            renderLista('');
+        }
+
+        function abrirBuscaResponsavel() {
+            modoBusca = 'responsavel';
+            document.getElementById('mTit').innerText = 'Selecionar Policial Responsável';
             document.getElementById('iBusca').value = '';
             document.getElementById('mBusca').classList.remove('hidden');
             document.getElementById('iBusca').focus();
@@ -181,6 +199,17 @@
             const l = document.getElementById('lRes');
             l.replaceChildren();
             termo = termo.toLowerCase();
+            if (modoBusca === 'responsavel') {
+                const items = responsaveis.filter(p => `${p.nome} ${p.re}`.toLowerCase().includes(termo));
+                items.forEach(item => {
+                    const entry = document.createElement('div');
+                    entry.className = 'list-item';
+                    entry.innerHTML = `<div class="font-bold">${escapeHTML(item.nome)}</div><div class="text-xs text-slate-500">RE ${escapeHTML(item.re)}</div>`;
+                    entry.addEventListener('click', () => selecionarResponsavel(item));
+                    l.appendChild(entry);
+                });
+                return;
+            }
             const items = viaturas.filter(v => v.prefixo.toLowerCase().includes(termo) || v.placa.toLowerCase().includes(termo));
             items.forEach(item => {
                 const entry = document.createElement('div');
@@ -190,6 +219,12 @@
                 entry.addEventListener('click', () => sel(item.id, label));
                 l.appendChild(entry);
             });
+        }
+
+        function selecionarResponsavel(item) {
+            responsavelSelecionadoId = Number(item.id);
+            document.getElementById('labelResponsavel').innerText = `${item.nome} (${item.re})`;
+            fecharB();
         }
 
         function sel(id, display) {
@@ -252,7 +287,7 @@
             const response = await fetch(`/api/operacional/viaturas/${sV}`, {
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({km: nKM, baixa: estaB, motivo: mot, categoria_baixa: estaB ? categoria : null})
+                body: JSON.stringify({km: nKM, baixa: estaB, motivo: mot, categoria_baixa: estaB ? categoria : null, ...(sessaoAtual?.role === 'oper' && sessaoAtual.servico_dia ? {responsavel_id: responsavelSelecionadoId} : {})})
             });
             if (!response.ok) return showToast((await response.json()).error || "Erro ao salvar o KM.", "error");
             const resultado = await response.json();
@@ -264,7 +299,17 @@
             const res = await fetch('/api/session');
             if (!res.ok) { window.location.href = 'login.html'; return; }
             const sessao = await res.json();
+            sessaoAtual = sessao;
             document.getElementById('operadorLogado').innerText = sessao.role === 'oper' ? `${sessao.nome} (${sessao.re})` : `ADM ${sessao.usuario}`;
+            if (sessao.role === 'oper' && sessao.servico_dia) {
+                const respostaResponsaveis = await fetch('/api/operacional/responsaveis?t='+Date.now());
+                if (!respostaResponsaveis.ok) return showToast((await respostaResponsaveis.json()).error || 'Não foi possível carregar os policiais.', 'error');
+                responsaveis = await respostaResponsaveis.json();
+                const proprio = responsaveis.find(p => p.re === sessao.re);
+                if (proprio) selecionarResponsavel(proprio);
+                else document.getElementById('labelResponsavel').innerText = `${sessao.nome} (${sessao.re})`;
+                document.getElementById('painelResponsavel').classList.remove('hidden');
+            }
             await sincronizar();
             setInterval(sincronizar, 5000);
         }

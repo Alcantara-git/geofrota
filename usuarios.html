@@ -76,9 +76,16 @@
             <input id="editarRE" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl text-blue-400 font-bold outline-none mb-2">
             <p id="editarREAjuda" class="text-xs text-slate-500 mb-5"></p>
             <label for="editarSetor" class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Subunidade</label>
-            <select id="editarSetor" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl text-white font-bold outline-none focus:border-blue-500 mb-7">
+            <select id="editarSetor" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl text-white font-bold outline-none focus:border-blue-500 mb-5">
                 <option>EM</option><option>CTT</option><option>1° CIA</option><option>2° CIA</option><option>3° CIA</option><option>4° CIA</option>
             </select>
+            <label for="editarServicoDia" class="flex items-center justify-between gap-4 bg-slate-900 border border-slate-700 p-4 rounded-xl cursor-pointer mb-7 hover:border-blue-500 transition">
+                <span>
+                    <strong class="block text-sm font-black text-white uppercase tracking-wide">Serviço de dia</strong>
+                    <span class="block text-xs text-slate-500 mt-1">Pode registrar lançamentos para outro policial.</span>
+                </span>
+                <input id="editarServicoDia" type="checkbox" class="w-6 h-6 accent-blue-600 shrink-0">
+            </label>
             <div class="grid grid-cols-2 gap-4">
                 <button onclick="fecharEditarUser()" class="bg-slate-700 p-4 rounded-2xl font-bold uppercase text-xs text-white">Sair</button>
                 <button id="btnSalvarEditarUser" onclick="salvarEdicaoUser()" class="bg-blue-600 p-4 rounded-2xl font-bold uppercase text-xs text-white shadow-lg hover:bg-blue-500">Salvar</button>
@@ -154,6 +161,7 @@
                         <div>${escapeHTML(u.nome)}</div>
                         <div class="mt-2 text-xs ${u.re ? 'text-blue-400' : 'text-red-400'}">${escapeHTML(u.re || 'RE pendente')}</div>
                         <div class="mt-2"><span class="inline-flex px-2 py-1 rounded-full text-[10px] ${u.senha_cadastrada ? 'bg-green-900/40 text-green-400' : 'bg-amber-900/40 text-amber-400'}">${u.senha_cadastrada ? 'Senha cadastrada' : 'Primeiro acesso pendente'}</span></div>
+                        ${u.servico_dia ? '<div class="mt-2"><span class="inline-flex px-2 py-1 rounded-full text-[10px] bg-blue-900/40 text-blue-400"><i class="fas fa-user-clock mr-1" aria-hidden="true"></i>Serviço de dia</span></div>' : ''}
                     </td>
                     <td class="p-4 text-center text-slate-300">${escapeHTML(u.setor || 'Não definida')}</td>
                     <td class="p-4 text-center">
@@ -185,6 +193,7 @@
             campoRE.classList.toggle('opacity-60', Boolean(u.re));
             document.getElementById('editarREAjuda').textContent = u.re ? 'Identificador permanente: o RE não pode ser alterado.' : 'Registro antigo: informe um RE de 6 números para vinculá-lo permanentemente.';
             document.getElementById('editarSetor').value = u.setor || adminSetor || 'EM';
+            document.getElementById('editarServicoDia').checked = Boolean(u.servico_dia);
             document.getElementById('modalEditarUser').classList.remove('hidden');
         }
         function fecharEditarUser() { usuarioEmEdicao = null; document.getElementById('modalEditarUser').classList.add('hidden'); }
@@ -193,11 +202,12 @@
             const nome = document.getElementById('editarNome').value.trim();
             const re = document.getElementById('editarRE').value.trim();
             const setor = document.getElementById('editarSetor').value;
+            const servico_dia = document.getElementById('editarServicoDia').checked;
             if (!nome) return showToast('Informe o QRA do militar.', 'error');
             if (re && !/^[0-9]{6}$/.test(re)) return showToast('O RE deve conter exatamente 6 números.', 'error');
             const botao = document.getElementById('btnSalvarEditarUser');
             botao.disabled = true;
-            const res = await fetch('/api/usuarios/'+usuarioEmEdicao,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome,re,setor})});
+            const res = await fetch('/api/usuarios/'+usuarioEmEdicao,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome,re,setor,servico_dia})});
             const data = await res.json();
             botao.disabled = false;
             if(!res.ok) return showToast(data.error||'Erro ao editar o militar.','error');

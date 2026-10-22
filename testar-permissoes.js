@@ -97,10 +97,10 @@ async function main() {
         const militarTransferencia=(await pool.query('SELECT id,re,setor FROM usuarios WHERE nome=$1',[usuarioTransferencia])).rows[0];
         const alterarRE=await fetch(base+`/api/usuarios/${militarTransferencia.id}`,{method:'PUT',headers,body:JSON.stringify({nome:usuarioTransferencia,re:'6'+reTransferencia.slice(1),setor:'EM'})});
         if(alterarRE.status!==409) throw new Error(`Alteração de RE permanente retornou ${alterarRE.status}, esperado 409`);
-        const transferir=await fetch(base+`/api/usuarios/${militarTransferencia.id}`,{method:'PUT',headers,body:JSON.stringify({nome:usuarioTransferencia,re:reTransferencia,setor:'CTT'})});
+        const transferir=await fetch(base+`/api/usuarios/${militarTransferencia.id}`,{method:'PUT',headers,body:JSON.stringify({nome:usuarioTransferencia,re:reTransferencia,setor:'CTT',servico_dia:true})});
         if(!transferir.ok) throw new Error(`Transferência de militar da própria subunidade falhou: ${transferir.status}`);
-        const transferido=(await pool.query('SELECT re,setor FROM usuarios WHERE id=$1',[militarTransferencia.id])).rows[0];
-        if(transferido?.setor!=='CTT'||transferido?.re!==reTransferencia) throw new Error('Transferência alterou o RE ou não salvou a nova subunidade');
+        const transferido=(await pool.query('SELECT re,setor,servico_dia FROM usuarios WHERE id=$1',[militarTransferencia.id])).rows[0];
+        if(transferido?.setor!=='CTT'||transferido?.re!==reTransferencia||transferido?.servico_dia!==true) throw new Error('Transferência alterou o RE ou não salvou subunidade/permissão de serviço de dia');
         const puxarDeVolta=await fetch(base+`/api/usuarios/${militarTransferencia.id}`,{method:'PUT',headers,body:JSON.stringify({nome:usuarioTransferencia,re:reTransferencia,setor:'EM'})});
         if(puxarDeVolta.status!==403) throw new Error(`Administrador conseguiu puxar militar de outra subunidade: ${puxarDeVolta.status}`);
 

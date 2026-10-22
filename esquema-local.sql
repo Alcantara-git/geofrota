@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
     cargo TEXT,
     setor TEXT,
     re TEXT CHECK (re IS NULL OR re ~ '^[0-9]{6}$'),
-    senha_hash TEXT
+    senha_hash TEXT,
+    servico_dia BOOLEAN NOT NULL DEFAULT FALSE
 );
 CREATE UNIQUE INDEX IF NOT EXISTS usuarios_re_uidx ON usuarios (re) WHERE re IS NOT NULL;
 -- historico e configuracoes são criados automaticamente pelo servidor.
