@@ -7,6 +7,12 @@ const { hashPassword, verifyPassword } = require('./auth');
 const { sincronizarViaturaPlanilha, excluirViaturaPlanilha } = require('./planilha-ctt');
 const app = express();
 
+function sincronizarPlanilhaEmSegundoPlano(descricao, tarefa) {
+    Promise.resolve()
+        .then(tarefa)
+        .catch(e => console.error(`Falha ao ${descricao} na planilha da frota:`, e.message));
+}
+
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '32kb' }));
@@ -372,14 +378,10 @@ app.post('/api/viaturas/:id/troca-oleo', protegerAdmin, async (req, res) => {
         await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor, autor_conta) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
             [old.prefixo, kmEsperado, kmEsperado, 'Operante', registro, nomeConta(req), old.setor, req.auth.usuario]);
         await client.query('COMMIT');
-        let aviso;
-        try {
-            await sincronizarViaturaPlanilha({ prefixo: old.prefixo, responsavel: nomeConta(req), modelo: old.modelo, placa: old.placa, km: kmEsperado, km_revisao: novaRevisao, status: 'Operante', setor: old.setor });
-        } catch (e) {
-            console.error('Falha ao sincronizar a troca de óleo com a planilha da frota:', e.message);
-            aviso = 'Troca salva no GEOFROTA, mas não foi possível sincronizar a planilha da frota.';
-        }
-        res.json({ success: true, km_revisao: novaRevisao, status: 'Operante', aviso });
+        sincronizarPlanilhaEmSegundoPlano('sincronizar a troca de óleo', () =>
+            sincronizarViaturaPlanilha({ prefixo: old.prefixo, responsavel: nomeConta(req), modelo: old.modelo, placa: old.placa, km: kmEsperado, km_revisao: novaRevisao, status: 'Operante', setor: old.setor })
+        );
+        res.json({ success: true, km_revisao: novaRevisao, status: 'Operante' });
     } catch (e) { if (client) await client.query('ROLLBACK').catch(() => {}); erro(res, e); }
     finally { if (client) client.release(); }
 });
@@ -511,14 +513,10 @@ app.put('/api/operacional/viaturas/:id', protegerOperacional, async (req, res) =
         await client.query('UPDATE viaturas SET km=$1, status=$2, ultimo_usuario=$3, motivo=$4, categoria_baixa=$5 WHERE id=$6', [km, status, usuario, finalMotivo, finalCategoria, id]);
         await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor, categoria_baixa, autor_conta) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [old.prefixo, old.km, km, status, finalMotivo, usuario, old.setor, finalCategoria, autorConta]);
         await client.query('COMMIT');
-        let aviso;
-        try {
-            await sincronizarViaturaPlanilha({ prefixo: old.prefixo, responsavel: usuario, modelo: old.modelo, placa: old.placa, km, km_revisao: old.km_revisao, status, setor: old.setor });
-        } catch (e) {
-            console.error('Falha ao sincronizar o KM com a planilha da frota:', e.message);
-            aviso = 'KM salvo no GEOFROTA, mas não foi possível sincronizar a planilha da frota.';
-        }
-        res.json({ success: true, aviso });
+        sincronizarPlanilhaEmSegundoPlano('sincronizar o KM', () =>
+            sincronizarViaturaPlanilha({ prefixo: old.prefixo, responsavel: usuario, modelo: old.modelo, placa: old.placa, km, km_revisao: old.km_revisao, status, setor: old.setor })
+        );
+        res.json({ success: true });
     } catch (e) { if (client) await client.query('ROLLBACK').catch(() => {}); erro(res, e); }
     finally { if (client) client.release(); }
 });
@@ -556,14 +554,10 @@ app.put('/api/viaturas/:id', protegerAdmin, async (req, res) => {
         await client.query('UPDATE viaturas SET placa=$1, modelo=$2, km=$3, km_revisao=$4, status=$5, ultimo_usuario=$6, motivo=$7, setor=$8, categoria_baixa=$9 WHERE id=$10', [placa, modelo, km, revisao, status, usuario, motivo, setor, categoria, id]);
         await client.query('INSERT INTO historico (prefixo, km_anterior, km_novo, status, motivo, usuario, setor, categoria_baixa, autor_conta) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [old.prefixo, old.km, km, status, registroHistorico, usuario, setor, categoria, req.auth.usuario]);
         await client.query('COMMIT');
-        let aviso;
-        try {
-            await sincronizarViaturaPlanilha({ prefixo: old.prefixo, responsavel: usuario, modelo, placa, km, km_revisao: revisao, status, setor, setor_anterior: old.setor });
-        } catch (e) {
-            console.error('Falha ao sincronizar o KM com a planilha da frota:', e.message);
-            aviso = 'KM salvo no GEOFROTA, mas não foi possível sincronizar a planilha da frota.';
-        }
-        res.json({ success: true, aviso });
+        sincronizarPlanilhaEmSegundoPlano('sincronizar a edição da viatura', () =>
+            sincronizarViaturaPlanilha({ prefixo: old.prefixo, responsavel: usuario, modelo, placa, km, km_revisao: revisao, status, setor, setor_anterior: old.setor })
+        );
+        res.json({ success: true });
     } catch (e) { if (client) await client.query('ROLLBACK').catch(() => {}); erro(res, e); }
     finally { if (client) client.release(); }
 });
@@ -581,14 +575,10 @@ app.post('/api/viaturas', protegerAdmin, async (req, res) => {
     try {
         const st = status === 'Baixada' ? 'Baixada' : atingiuTrocaOleo(km, revisao, modelo) ? 'Troca de Óleo' : 'Operante';
         await pool.query('INSERT INTO viaturas (prefixo, placa, modelo, km, km_revisao, status, ultimo_usuario, motivo, setor, categoria_baixa) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [prefixoNormalizado, placa.trim(), modelo.trim(), km, revisao, st, nomeConta(req), motivo, setor, categoria]);
-        let aviso;
-        try {
-            await sincronizarViaturaPlanilha({ prefixo: prefixoNormalizado, responsavel: nomeConta(req), modelo: modelo.trim(), placa: placa.trim(), km, km_revisao: revisao, status: st, setor });
-        } catch (e) {
-            console.error('Falha ao cadastrar a viatura na planilha da frota:', e.message);
-            aviso = 'Viatura cadastrada no GEOFROTA, mas não foi possível incluí-la na planilha da frota.';
-        }
-        res.json({ success: true, aviso });
+        sincronizarPlanilhaEmSegundoPlano('cadastrar a viatura', () =>
+            sincronizarViaturaPlanilha({ prefixo: prefixoNormalizado, responsavel: nomeConta(req), modelo: modelo.trim(), placa: placa.trim(), km, km_revisao: revisao, status: st, setor })
+        );
+        res.json({ success: true });
     } catch (e) {
         if (e?.code === '23505' && e?.constraint === 'viaturas_prefixo_normalizado_uidx')
             return res.status(409).json({ error: `A viatura ${prefixoNormalizado} já está cadastrada.` });
@@ -602,15 +592,11 @@ app.delete('/api/viaturas/:id', protegerAdmin, async (req, res) => {
             ? await pool.query('DELETE FROM viaturas WHERE id=$1 RETURNING id, prefixo, setor', [id])
             : await pool.query('DELETE FROM viaturas WHERE id=$1 AND setor=$2 RETURNING id, prefixo, setor', [id, req.auth.setor]);
         if (!result.rowCount) return res.status(404).json({ error: 'Viatura não encontrada na sua subunidade' });
-        let aviso;
         const removida = result.rows[0];
-        try {
-            await excluirViaturaPlanilha({ prefixo: removida.prefixo, responsavel: nomeConta(req), setor: removida.setor });
-        } catch (e) {
-            console.error('Falha ao excluir a viatura da planilha da frota:', e.message);
-            aviso = 'Viatura excluída do GEOFROTA, mas não foi possível removê-la da planilha da frota.';
-        }
-        res.json({ success: true, aviso });
+        sincronizarPlanilhaEmSegundoPlano('excluir a viatura', () =>
+            excluirViaturaPlanilha({ prefixo: removida.prefixo, responsavel: nomeConta(req), setor: removida.setor })
+        );
+        res.json({ success: true });
     }
     catch (e) { erro(res, e); }
 });
