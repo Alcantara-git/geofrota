@@ -27,6 +27,26 @@
         .down-reason-option { display: block; width: 100%; padding: 10px 12px; border-radius: 8px; color: #e2e8f0; font-family: inherit; font-size: .875rem; line-height: 1.25rem; font-weight: 600; text-align: left; }
         .down-reason-option:hover, .down-reason-option:focus-visible, .down-reason-option[aria-selected="true"] { background: #2563eb; color: #fff; outline: none; }
 
+        /* Confirmação de hodômetro */
+        .confirm-card { position: relative; width: min(94vw, 460px); padding: 46px 24px 24px; border: 2px solid #3b82f6; border-radius: 30px; background: radial-gradient(circle at 50% 0%, rgba(37,99,235,.18), transparent 34%), #1e293b; box-shadow: 0 0 0 1px rgba(96,165,250,.12), 0 28px 80px rgba(0,0,0,.65), 0 0 32px rgba(37,99,235,.2); }
+        .confirm-vehicle-badge { position: absolute; top: -38px; left: 50%; width: 76px; height: 76px; transform: translateX(-50%); display: grid; place-items: center; border: 4px solid #0f172a; border-radius: 50%; background: linear-gradient(145deg, #3b82f6, #1d4ed8); box-shadow: 0 0 0 2px #60a5fa, 0 0 24px rgba(59,130,246,.65); }
+        .confirm-vehicle-badge i { color: #fff; font-size: 30px; }
+        .confirm-vehicle { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 20px 0 18px; padding: 14px 16px; border: 1px solid #334155; border-radius: 18px; background: rgba(15,23,42,.72); }
+        .confirm-vehicle::before { content: ''; width: 4px; height: 28px; border-radius: 99px; background: #3b82f6; box-shadow: 0 0 12px rgba(59,130,246,.8); }
+        .confirm-route { display: grid; grid-template-columns: minmax(0,1fr) 78px minmax(0,1fr); align-items: center; gap: 8px; }
+        .confirm-km-box { min-width: 0; padding: 14px 8px; border: 1px solid #475569; border-radius: 18px; background: rgba(15,23,42,.78); text-align: center; }
+        .confirm-km-box.new { border-color: #3b82f6; background: rgba(37,99,235,.14); box-shadow: inset 0 0 20px rgba(37,99,235,.08); }
+        .confirm-km-label { color: #94a3b8; font-size: 10px; line-height: 1rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+        .confirm-km-box.new .confirm-km-label { color: #60a5fa; }
+        .confirm-km-value { overflow: hidden; margin-top: 5px; color: #f8fafc; font-size: clamp(18px, 5vw, 25px); line-height: 1.1; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
+        .confirm-road { position: relative; height: 50px; overflow: hidden; }
+        .confirm-road::before { content: ''; position: absolute; left: -7px; right: -7px; top: 15px; height: 20px; transform: rotate(-5deg); border-top: 1px solid #475569; border-bottom: 1px solid #475569; background: #273449; box-shadow: 0 0 14px rgba(59,130,246,.2); }
+        .confirm-road::after { content: ''; position: absolute; left: 4px; right: 4px; top: 24px; transform: rotate(-5deg); border-top: 2px dashed #60a5fa; }
+        .confirm-road i { position: absolute; z-index: 1; right: 3px; top: 14px; color: #60a5fa; font-size: 20px; filter: drop-shadow(0 0 5px rgba(96,165,250,.8)); }
+        .confirm-note { display: flex; align-items: center; justify-content: center; gap: 7px; margin: 17px 0; color: #94a3b8; font-size: 12px; font-weight: 700; text-align: center; }
+        .confirm-note i { color: #22c55e; }
+        @media (max-width: 380px) { .confirm-card { padding-inline: 16px; } .confirm-route { grid-template-columns: minmax(0,1fr) 54px minmax(0,1fr); gap: 5px; } }
+
         /* Cores de Alerta de Status */
         .status-operante { border: 1px solid #22c55e; background: rgba(34, 197, 94, 0.1); color: #4ade80; }
         .status-oleo { border: 1px solid #eab308; background: rgba(234, 179, 8, 0.1); color: #facc15; }
@@ -115,35 +135,37 @@
 
     <!-- Confirmação do lançamento de hodômetro -->
     <div id="modalConfirmarKM" class="hidden fixed inset-0 z-[110] bg-slate-950/95 backdrop-blur-sm p-4 flex items-center justify-center">
-        <div class="w-full max-w-sm bg-slate-800 border-2 border-blue-500 rounded-[2rem] p-6 shadow-2xl">
-            <div class="text-center mb-5">
-                <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center">
-                    <i id="iconeViaturaConfirmacao" class="fas fa-car-side text-blue-400 text-2xl"></i>
-                </div>
+        <div class="confirm-card">
+            <div class="confirm-vehicle-badge" aria-hidden="true">
+                <i id="iconeViaturaConfirmacao" class="fas fa-car-side"></i>
+            </div>
+
+            <div class="text-center">
                 <h2 class="text-xl font-black italic uppercase tracking-wide text-white">Confirmar atualização</h2>
-                <p class="text-xs text-slate-400 mt-1">Confira os dados antes de registrar.</p>
+                <p class="text-xs text-slate-400 mt-1">Lançamento de hodômetro</p>
             </div>
 
-            <div class="bg-slate-900/70 border border-slate-700 rounded-2xl p-4 mb-4">
-                <p class="text-[9px] font-black uppercase tracking-widest text-slate-500">Viatura</p>
-                <p id="viaturaConfirmacao" class="text-blue-400 font-black mt-1"></p>
+            <div class="confirm-vehicle">
+                <p id="viaturaConfirmacao" class="text-blue-400 font-black text-center tracking-wide"></p>
             </div>
 
-            <div class="grid grid-cols-[1fr_auto_1fr] gap-3 items-center mb-6">
-                <div class="bg-slate-900/70 border border-slate-700 rounded-2xl p-3 text-center">
-                    <p class="text-[9px] font-black uppercase tracking-widest text-slate-500">KM anterior</p>
-                    <p id="kmAnteriorConfirmacao" class="text-lg font-black text-slate-200 mt-1"></p>
+            <div class="confirm-route">
+                <div class="confirm-km-box">
+                    <p class="confirm-km-label">KM anterior</p>
+                    <p id="kmAnteriorConfirmacao" class="confirm-km-value"></p>
                 </div>
-                <i class="fas fa-arrow-right text-blue-400"></i>
-                <div class="bg-blue-600/10 border border-blue-500/50 rounded-2xl p-3 text-center">
-                    <p class="text-[9px] font-black uppercase tracking-widest text-blue-400">Novo KM</p>
-                    <p id="kmNovoConfirmacao" class="text-lg font-black text-white mt-1"></p>
+                <div class="confirm-road" aria-hidden="true"><i class="fas fa-location-dot"></i></div>
+                <div class="confirm-km-box new">
+                    <p class="confirm-km-label">Novo KM</p>
+                    <p id="kmNovoConfirmacao" class="confirm-km-value"></p>
                 </div>
             </div>
+
+            <p class="confirm-note"><i class="fas fa-circle-check" aria-hidden="true"></i>Confira os dados antes de registrar</p>
 
             <div class="grid grid-cols-2 gap-3">
-                <button type="button" onclick="editarLancamento()" class="bg-slate-600 hover:bg-slate-500 p-4 rounded-2xl font-black text-[10px] uppercase transition">Editar</button>
-                <button type="button" id="btnConfirmarKM" onclick="confirmarLancamento()" class="bg-blue-600 hover:bg-blue-500 p-4 rounded-2xl font-black text-[10px] uppercase transition shadow-lg">Confirmar</button>
+                <button type="button" onclick="editarLancamento()" class="bg-slate-600 hover:bg-slate-500 p-4 rounded-2xl font-black text-[10px] uppercase transition"><i class="fas fa-pen mr-2" aria-hidden="true"></i>Editar</button>
+                <button type="button" id="btnConfirmarKM" onclick="confirmarLancamento()" class="bg-blue-600 hover:bg-blue-500 p-4 rounded-2xl font-black text-[10px] uppercase transition shadow-lg"><i class="fas fa-check mr-2" aria-hidden="true"></i>Confirmar</button>
             </div>
         </div>
     </div>
@@ -351,6 +373,7 @@
 
                 const viaturaAtualizada = viaturas.find(item => item.id == dados.viaturaId);
                 if (viaturaAtualizada) sel(viaturaAtualizada.id, `${viaturaAtualizada.prefixo} (${viaturaAtualizada.placa})`);
+                if (dados.payload.baixa && estaB) toggleB();
 
                 if (resultado.aviso) showToast('⚠️ ' + resultado.aviso, 'error');
                 else showToast('✅ Hodômetro atualizado!', 'success');
@@ -358,7 +381,7 @@
                 showToast('Falha de conexão ao salvar o KM.', 'error');
             } finally {
                 botao.disabled = false;
-                botao.innerText = 'Confirmar';
+                botao.innerHTML = '<i class="fas fa-check mr-2" aria-hidden="true"></i>Confirmar';
             }
         }
 
