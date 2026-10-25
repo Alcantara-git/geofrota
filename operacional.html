@@ -113,6 +113,41 @@
         </div>
     </div>
 
+    <!-- Confirmação do lançamento de hodômetro -->
+    <div id="modalConfirmarKM" class="hidden fixed inset-0 z-[110] bg-slate-950/95 backdrop-blur-sm p-4 flex items-center justify-center">
+        <div class="w-full max-w-sm bg-slate-800 border-2 border-blue-500 rounded-[2rem] p-6 shadow-2xl">
+            <div class="text-center mb-5">
+                <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center">
+                    <i id="iconeViaturaConfirmacao" class="fas fa-car-side text-blue-400 text-2xl"></i>
+                </div>
+                <h2 class="text-xl font-black italic uppercase tracking-wide text-white">Confirmar atualização</h2>
+                <p class="text-xs text-slate-400 mt-1">Confira os dados antes de registrar.</p>
+            </div>
+
+            <div class="bg-slate-900/70 border border-slate-700 rounded-2xl p-4 mb-4">
+                <p class="text-[9px] font-black uppercase tracking-widest text-slate-500">Viatura</p>
+                <p id="viaturaConfirmacao" class="text-blue-400 font-black mt-1"></p>
+            </div>
+
+            <div class="grid grid-cols-[1fr_auto_1fr] gap-3 items-center mb-6">
+                <div class="bg-slate-900/70 border border-slate-700 rounded-2xl p-3 text-center">
+                    <p class="text-[9px] font-black uppercase tracking-widest text-slate-500">KM anterior</p>
+                    <p id="kmAnteriorConfirmacao" class="text-lg font-black text-slate-200 mt-1"></p>
+                </div>
+                <i class="fas fa-arrow-right text-blue-400"></i>
+                <div class="bg-blue-600/10 border border-blue-500/50 rounded-2xl p-3 text-center">
+                    <p class="text-[9px] font-black uppercase tracking-widest text-blue-400">Novo KM</p>
+                    <p id="kmNovoConfirmacao" class="text-lg font-black text-white mt-1"></p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <button type="button" onclick="editarLancamento()" class="bg-slate-600 hover:bg-slate-500 p-4 rounded-2xl font-black text-[10px] uppercase transition">Editar</button>
+                <button type="button" id="btnConfirmarKM" onclick="confirmarLancamento()" class="bg-blue-600 hover:bg-blue-500 p-4 rounded-2xl font-black text-[10px] uppercase transition shadow-lg">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal de Busca -->
     <div id="mBusca" class="hidden fixed inset-0 z-[100] bg-slate-950/98 backdrop-blur-md p-4 flex flex-col">
         <div class="flex justify-between items-center mb-4"><h2 id="mTit" class="text-blue-400 font-black uppercase text-sm">Pesquisar</h2><button onclick="fecharB()" class="text-white text-2xl">&times;</button></div>
@@ -123,7 +158,7 @@
     <script>
         const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         const categoriasBaixa = ["Mecânico", "Pneu", "Bateria", "Freios", "Troca de óleo", "Iluminação e/ou sonoro", "Sindicância", "Avaria", "Elétrica", "Outros"];
-        let viaturas = [], responsaveis = [], estaB = false, sV = null, responsavelSelecionadoId = null, modoBusca = 'viatura', sessaoAtual = null;
+        let viaturas = [], responsaveis = [], estaB = false, sV = null, responsavelSelecionadoId = null, modoBusca = 'viatura', sessaoAtual = null, lancamentoPendente = null;
 
         function definirCategoriaBaixa(valor = '') {
             const categoria = categoriasBaixa.includes(valor) ? valor : '';
@@ -276,6 +311,57 @@
             }
         }
 
+        function abrirConfirmacaoKM(dados, viatura) {
+            lancamentoPendente = dados;
+            const prefixo = String(viatura.prefixo || '').trim();
+            const icone = document.getElementById('iconeViaturaConfirmacao');
+            icone.className = `fas ${prefixo.toUpperCase().endsWith('-11') ? 'fa-motorcycle' : 'fa-car-side'} text-blue-400 text-2xl`;
+            document.getElementById('viaturaConfirmacao').innerText = `${prefixo} • ${viatura.placa || 'Sem placa'}`;
+            document.getElementById('kmAnteriorConfirmacao').innerText = Number(viatura.km).toLocaleString('pt-BR');
+            document.getElementById('kmNovoConfirmacao').innerText = Number(dados.km).toLocaleString('pt-BR');
+            document.getElementById('modalConfirmarKM').classList.remove('hidden');
+        }
+
+        function editarLancamento() {
+            document.getElementById('modalConfirmarKM').classList.add('hidden');
+            const campoKM = document.getElementById('nKM');
+            campoKM.focus();
+            campoKM.select();
+        }
+
+        async function confirmarLancamento() {
+            if (!lancamentoPendente) return;
+            const dados = lancamentoPendente;
+            const botao = document.getElementById('btnConfirmarKM');
+            botao.disabled = true;
+            botao.innerText = 'Salvando...';
+
+            try {
+                const response = await fetch(`/api/operacional/viaturas/${dados.viaturaId}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(dados.payload)
+                });
+                const resultado = await response.json();
+                if (!response.ok) return showToast(resultado.error || 'Erro ao salvar o KM.', 'error');
+
+                document.getElementById('modalConfirmarKM').classList.add('hidden');
+                lancamentoPendente = null;
+                await sincronizar();
+
+                const viaturaAtualizada = viaturas.find(item => item.id == dados.viaturaId);
+                if (viaturaAtualizada) sel(viaturaAtualizada.id, `${viaturaAtualizada.prefixo} (${viaturaAtualizada.placa})`);
+
+                if (resultado.aviso) showToast('⚠️ ' + resultado.aviso, 'error');
+                else showToast('✅ Hodômetro atualizado!', 'success');
+            } catch (erro) {
+                showToast('Falha de conexão ao salvar o KM.', 'error');
+            } finally {
+                botao.disabled = false;
+                botao.innerText = 'Confirmar';
+            }
+        }
+
         document.getElementById('formKM').onsubmit = async (e) => {
             e.preventDefault(); if(!sV) return showToast("Selecione a viatura.", "error");
             const nKM = parseInt(document.getElementById('nKM').value), mot = document.getElementById('motivo').value, v = viaturas.find(x => x.id == sV);
@@ -284,15 +370,11 @@
             if(estaB && !categoria) return showToast("Selecione o motivo da baixa.", "error");
             if(estaB && !mot.trim()) return showToast("Descreva o problema da viatura.", "error");
 
-            const response = await fetch(`/api/operacional/viaturas/${sV}`, {
-                method: 'PUT',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({km: nKM, baixa: estaB, motivo: mot, categoria_baixa: estaB ? categoria : null, ...(sessaoAtual?.role === 'oper' && sessaoAtual.servico_dia ? {responsavel_id: responsavelSelecionadoId} : {})})
-            });
-            if (!response.ok) return showToast((await response.json()).error || "Erro ao salvar o KM.", "error");
-            const resultado = await response.json();
-            if (resultado.aviso) return showToast('⚠️ ' + resultado.aviso, 'error', true);
-            showToast('✅ Hodômetro atualizado!', 'success', true);
+            abrirConfirmacaoKM({
+                viaturaId: sV,
+                km: nKM,
+                payload: {km: nKM, baixa: estaB, motivo: mot, categoria_baixa: estaB ? categoria : null, ...(sessaoAtual?.role === 'oper' && sessaoAtual.servico_dia ? {responsavel_id: responsavelSelecionadoId} : {})}
+            }, v);
         };
 
         async function iniciarOperacional() {
