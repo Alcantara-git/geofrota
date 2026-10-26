@@ -11,6 +11,20 @@
         .custom-select { background-color: #0f172a; border: 1px solid #334155; padding: 1rem; border-radius: 1rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
         .list-item { padding: 1rem; border-bottom: 1px solid #1e293b; cursor: pointer; transition: 0.2s; }
         .list-item:hover { background-color: #1e293b; color: #3b82f6; }
+        .vehicle-search { position: relative; }
+        .vehicle-search-control { display: grid; grid-template-columns: minmax(0,1fr) 54px; overflow: hidden; border: 1px solid #334155; border-radius: 1rem; background: #0f172a; transition: border-color .2s, box-shadow .2s; }
+        .vehicle-search-control:focus-within { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.12); }
+        .vehicle-search-input { min-width: 0; padding: 1rem; border: 0; outline: 0; background: transparent; color: #f8fafc; font-family: inherit; font-size: .875rem; font-weight: 800; }
+        .vehicle-search-input::placeholder { color: #cbd5e1; opacity: 1; }
+        .vehicle-search-input.selected { color: #60a5fa; }
+        .vehicle-search-open { display: grid; place-items: center; border-left: 1px solid #334155; color: #94a3b8; transition: color .2s, background .2s; }
+        .vehicle-search-open:hover, .vehicle-search-open:focus-visible { outline: 0; background: rgba(37,99,235,.18); color: #60a5fa; }
+        .vehicle-search-results { position: absolute; z-index: 60; top: calc(100% + 7px); left: 0; right: 0; max-height: 230px; overflow-y: auto; padding: 6px; border: 1px solid #475569; border-radius: 14px; background: #0f172a; box-shadow: 0 20px 45px rgba(0,0,0,.62); }
+        .vehicle-search-result { display: block; width: 100%; padding: 11px 12px; border-radius: 9px; color: #e2e8f0; text-align: left; transition: background .15s, color .15s; }
+        .vehicle-search-result:hover, .vehicle-search-result:focus-visible { outline: 0; background: #2563eb; color: #fff; }
+        .vehicle-search-result + .vehicle-search-result { margin-top: 2px; }
+        .vehicle-search-result small { display: block; margin-top: 2px; color: #64748b; font-size: .75rem; font-weight: 600; }
+        .vehicle-search-result:hover small, .vehicle-search-result:focus-visible small { color: #dbeafe; }
         #toast { position: fixed; bottom: -140px; left: 50%; transform: translateX(-50%); width: min(92vw, 480px); padding: 16px 20px; font-size: 0.875rem !important; line-height: 1.35rem; transition: 0.4s ease; z-index: 9999; }
         #toast.show { bottom: 30px; }
         #toast.toast-success { background: #15803d; border-color: #4ade80; }
@@ -107,8 +121,14 @@
 
                 <!-- Viatura -->
                 <div>
-                    <label class="text-[10px] font-black text-slate-500 ml-1 uppercase text-left block">Viatura</label>
-                    <div onclick="abrirBusca()" class="custom-select"><span id="labelV">-- Selecione a VTR --</span><i class="fas fa-chevron-down text-xs"></i></div>
+                    <label for="buscaViaturaDireta" class="text-[10px] font-black text-slate-500 ml-1 uppercase text-left block">Viatura</label>
+                    <div class="vehicle-search">
+                        <div class="vehicle-search-control">
+                            <input type="text" id="buscaViaturaDireta" class="vehicle-search-input" placeholder="-- Pesquise a VTR --" autocomplete="off" spellcheck="false" onfocus="focarBuscaViatura(this)" oninput="aoDigitarBuscaViatura(this.value)" onkeydown="controlarTeclaBuscaViatura(event)" aria-autocomplete="list" aria-controls="listaViaturaDireta">
+                            <button type="button" class="vehicle-search-open" onclick="abrirBusca()" aria-label="Abrir lista completa de viaturas" title="Abrir lista completa"><i class="fas fa-chevron-down text-xs" aria-hidden="true"></i></button>
+                        </div>
+                        <div id="listaViaturaDireta" class="vehicle-search-results hidden" role="listbox" aria-label="Resultados da pesquisa de viaturas"></div>
+                    </div>
                 </div>
 
                 <!-- NOVO: Display de Alerta de Status -->
@@ -149,13 +169,13 @@
             </form>
         </div>
 
-        <!-- Novo Rodapé Operacional -->
-        <div class="flex flex-col items-center mt-8 space-y-4">
-            <a href="index.html" class="bg-blue-600/20 text-blue-400 border border-blue-500/30 px-6 py-2 rounded-xl uppercase text-[10px] font-black hover:bg-blue-600/40 transition tracking-widest italic flex items-center gap-2 shadow-lg">
-                <i class="fas fa-chart-line"></i> Ver Dashboard (Leitura)
+        <!-- Rodapé Operacional -->
+        <div class="grid grid-cols-2 gap-3 mt-7">
+            <a href="index.html" class="min-h-14 bg-slate-900/70 text-blue-400 border border-blue-500 rounded-2xl uppercase text-[10px] font-black hover:bg-blue-600/20 transition tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-blue-950/20">
+                <i class="fas fa-chart-line text-base" aria-hidden="true"></i> Dashboard
             </a>
-            <button type="button" onclick="logout()" class="text-red-500/70 hover:text-red-500 uppercase text-[10px] font-black transition tracking-widest flex items-center gap-1">
-                <i class="fas fa-sign-out-alt"></i> Sair
+            <button type="button" onclick="logout()" class="min-h-14 bg-slate-900/70 text-red-400 border border-red-500 rounded-2xl uppercase text-[10px] font-black hover:bg-red-600/15 transition tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-red-950/20">
+                <i class="fas fa-right-from-bracket text-base" aria-hidden="true"></i> Sair
             </button>
         </div>
     </div>
@@ -250,6 +270,7 @@
         document.getElementById('categoriaBaixaButton').addEventListener('click', alternarCategoriasBaixa);
         document.getElementById('categoriaBaixaButton').addEventListener('keydown', evento => { if (evento.key === 'Escape') { fecharCategoriasBaixa(); evento.currentTarget.focus(); } });
         document.addEventListener('click', evento => { if (!evento.target.closest('.down-reason-select')) fecharCategoriasBaixa(); });
+        document.addEventListener('click', evento => { if (!evento.target.closest('.vehicle-search')) fecharBuscaViaturaDireta(); });
 
         async function logout() {
             await fetch('/api/logout', {method:'POST'});
@@ -285,7 +306,80 @@
             if(!estaB) { document.getElementById('motivo').value = ''; definirCategoriaBaixa(''); fecharCategoriasBaixa(); }
         }
 
+        function normalizarBuscaViatura(valor = '') {
+            return String(valor).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+        }
+
+        function filtrarViaturas(termo = '') {
+            const busca = normalizarBuscaViatura(termo);
+            if (!busca) return viaturas;
+            return viaturas.filter(v => normalizarBuscaViatura(`${v.prefixo || ''} ${v.placa || ''} ${v.modelo || ''}`).includes(busca));
+        }
+
+        function fecharBuscaViaturaDireta() {
+            document.getElementById('listaViaturaDireta').classList.add('hidden');
+            document.getElementById('buscaViaturaDireta').setAttribute('aria-expanded', 'false');
+        }
+
+        function limparSelecaoViatura() {
+            sV = null;
+            document.getElementById('info').classList.add('hidden');
+            document.getElementById('statusVtrContainer').classList.add('hidden');
+            document.getElementById('nKM').value = '';
+        }
+
+        function aoDigitarBuscaViatura(valor) {
+            const selecionada = viaturas.find(v => v.id == sV);
+            const rotuloSelecionado = selecionada ? `${selecionada.prefixo} (${selecionada.placa})` : '';
+            if (selecionada && valor !== rotuloSelecionado) limparSelecaoViatura();
+            document.getElementById('buscaViaturaDireta').classList.remove('selected');
+            pesquisarViaturaDireta(valor);
+        }
+
+        function focarBuscaViatura(campo) {
+            if (sV) campo.select();
+            pesquisarViaturaDireta(campo.value);
+        }
+
+        function pesquisarViaturaDireta(termo = '') {
+            const lista = document.getElementById('listaViaturaDireta');
+            const items = filtrarViaturas(termo);
+            lista.replaceChildren();
+
+            if (!items.length) {
+                const vazio = document.createElement('p');
+                vazio.className = 'px-3 py-4 text-center text-xs font-bold text-slate-500';
+                vazio.innerText = 'Nenhuma viatura encontrada';
+                lista.appendChild(vazio);
+            } else {
+                items.forEach(item => {
+                    const opcao = document.createElement('button');
+                    opcao.type = 'button';
+                    opcao.className = 'vehicle-search-result';
+                    opcao.setAttribute('role', 'option');
+                    const rotulo = `${item.prefixo} (${item.placa})`;
+                    opcao.innerHTML = `<strong>${escapeHTML(item.prefixo)}</strong><small>${escapeHTML(item.placa)} - ${escapeHTML(item.modelo || '')}</small>`;
+                    opcao.addEventListener('click', () => sel(item.id, rotulo));
+                    lista.appendChild(opcao);
+                });
+            }
+
+            lista.classList.remove('hidden');
+            document.getElementById('buscaViaturaDireta').setAttribute('aria-expanded', 'true');
+        }
+
+        function controlarTeclaBuscaViatura(evento) {
+            if (evento.key === 'Escape') {
+                fecharBuscaViaturaDireta();
+                evento.currentTarget.blur();
+            } else if (evento.key === 'Enter') {
+                evento.preventDefault();
+                document.querySelector('#listaViaturaDireta .vehicle-search-result')?.click();
+            }
+        }
+
         function abrirBusca() {
+            fecharBuscaViaturaDireta();
             modoBusca = 'viatura';
             document.getElementById('mTit').innerText = 'Selecionar Viatura';
             document.getElementById('iBusca').value = '';
@@ -320,7 +414,7 @@
                 });
                 return;
             }
-            const items = viaturas.filter(v => v.prefixo.toLowerCase().includes(termo) || v.placa.toLowerCase().includes(termo));
+            const items = filtrarViaturas(termo);
             items.forEach(item => {
                 const entry = document.createElement('div');
                 entry.className = 'list-item';
@@ -339,8 +433,10 @@
 
         function sel(id, display) {
             sV = id;
-            document.getElementById('labelV').innerText = display;
-            document.getElementById('labelV').classList.add('text-blue-400');
+            const campoBusca = document.getElementById('buscaViaturaDireta');
+            campoBusca.value = display;
+            campoBusca.classList.add('selected');
+            fecharBuscaViaturaDireta();
 
             const v = viaturas.find(x => x.id == id);
             if (estaB) {
