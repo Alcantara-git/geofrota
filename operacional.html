@@ -31,6 +31,8 @@
         .confirm-card { position: relative; width: min(94vw, 460px); padding: 46px 24px 24px; border: 2px solid #3b82f6; border-radius: 30px; background: radial-gradient(circle at 50% 0%, rgba(37,99,235,.18), transparent 34%), #1e293b; box-shadow: 0 0 0 1px rgba(96,165,250,.12), 0 28px 80px rgba(0,0,0,.65), 0 0 32px rgba(37,99,235,.2); }
         .confirm-vehicle-badge { position: absolute; top: -38px; left: 50%; width: 76px; height: 76px; transform: translateX(-50%); display: grid; place-items: center; border: 4px solid #0f172a; border-radius: 50%; background: linear-gradient(145deg, #3b82f6, #1d4ed8); box-shadow: 0 0 0 2px #60a5fa, 0 0 24px rgba(59,130,246,.65); }
         .confirm-vehicle-badge i { color: #fff; font-size: 30px; }
+        .confirm-alert-badge { display: none; position: absolute; right: -4px; bottom: -2px; width: 25px; height: 25px; place-items: center; border: 3px solid #0f172a; border-radius: 50%; background: #fff; }
+        .confirm-alert-badge i { color: #ef4444; font-size: 12px; }
         .confirm-vehicle { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 20px 0 18px; padding: 14px 16px; border: 1px solid #334155; border-radius: 18px; background: rgba(15,23,42,.72); }
         .confirm-vehicle::before { content: ''; width: 4px; height: 28px; border-radius: 99px; background: #3b82f6; box-shadow: 0 0 12px rgba(59,130,246,.8); }
         .confirm-route { display: grid; grid-template-columns: minmax(0,1fr) 78px minmax(0,1fr); align-items: center; gap: 8px; }
@@ -45,7 +47,32 @@
         .confirm-road i { position: absolute; z-index: 1; right: 3px; top: 14px; color: #60a5fa; font-size: 20px; filter: drop-shadow(0 0 5px rgba(96,165,250,.8)); }
         .confirm-note { display: flex; align-items: center; justify-content: center; gap: 7px; margin: 17px 0; color: #94a3b8; font-size: 12px; font-weight: 700; text-align: center; }
         .confirm-note i { color: #22c55e; }
-        @media (max-width: 380px) { .confirm-card { padding-inline: 16px; } .confirm-route { grid-template-columns: minmax(0,1fr) 54px minmax(0,1fr); gap: 5px; } }
+        .confirm-route.hidden, .confirm-note.hidden { display: none; }
+        .confirm-down-statuses { display: grid; grid-template-columns: minmax(0,1fr) 78px minmax(0,1fr); align-items: end; gap: 8px; }
+        .confirm-down-status-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 3px 6px; min-height: 24px; margin-bottom: 7px; color: #94a3b8; font-size: 9px; line-height: .85rem; font-weight: 900; letter-spacing: .07em; text-align: center; text-transform: uppercase; }
+        .confirm-down-status-meta strong { color: #f8fafc; font-size: 11px; }
+        .confirm-down-status-meta.new, .confirm-down-status-meta.new strong { color: #f87171; }
+        .confirm-down-box { padding: 15px 8px; border: 1px solid #475569; border-radius: 18px; background: rgba(15,23,42,.78); text-align: center; }
+        .confirm-down-box.new { border-color: #ef4444; background: rgba(239,68,68,.11); box-shadow: inset 0 0 22px rgba(239,68,68,.07); }
+        .confirm-down-km-label { color: #94a3b8; font-size: 9px; line-height: 1rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+        .confirm-down-box.new .confirm-down-km-label { color: #f87171; }
+        .confirm-down-km-value { overflow: hidden; margin-top: 5px; color: #f8fafc; font-size: clamp(18px, 5vw, 25px); line-height: 1.1; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
+        .confirm-down-road { align-self: end; margin-bottom: 10px; }
+        .confirm-down-details { margin: 16px 0; padding: 13px 15px; border: 1px solid #334155; border-radius: 16px; background: rgba(15,23,42,.72); }
+        .confirm-down-detail { display: grid; grid-template-columns: 92px minmax(0,1fr); gap: 8px; color: #e2e8f0; font-size: 12px; line-height: 1.25rem; }
+        .confirm-down-detail + .confirm-down-detail { margin-top: 8px; padding-top: 8px; border-top: 1px solid #334155; }
+        .confirm-down-detail strong { color: #94a3b8; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+        .confirm-card.baixa-mode { border-color: #ef4444; background: radial-gradient(circle at 50% 0%, rgba(239,68,68,.17), transparent 34%), #1e293b; box-shadow: 0 0 0 1px rgba(248,113,113,.12), 0 28px 80px rgba(0,0,0,.65), 0 0 32px rgba(239,68,68,.2); }
+        .baixa-mode .confirm-vehicle-badge { background: linear-gradient(145deg, #f87171, #dc2626); box-shadow: 0 0 0 2px #f87171, 0 0 24px rgba(239,68,68,.6); }
+        .baixa-mode .confirm-alert-badge { display: grid; }
+        .baixa-mode .confirm-vehicle::before { background: #ef4444; box-shadow: 0 0 12px rgba(239,68,68,.8); }
+        .baixa-mode #viaturaConfirmacao { color: #f87171; }
+        .baixa-mode .confirm-down-road::before { box-shadow: 0 0 14px rgba(239,68,68,.25); }
+        .baixa-mode .confirm-down-road::after { border-color: #f87171; }
+        .baixa-mode .confirm-down-road i { color: #f87171; filter: drop-shadow(0 0 5px rgba(248,113,113,.8)); }
+        .baixa-mode #btnConfirmarKM { background: #ef4444; }
+        .baixa-mode #btnConfirmarKM:hover { background: #dc2626; }
+        @media (max-width: 380px) { .confirm-card { padding-inline: 16px; } .confirm-route, .confirm-down-statuses { grid-template-columns: minmax(0,1fr) 54px minmax(0,1fr); gap: 5px; } }
 
         /* Cores de Alerta de Status */
         .status-operante { border: 1px solid #22c55e; background: rgba(34, 197, 94, 0.1); color: #4ade80; }
@@ -135,21 +162,22 @@
 
     <!-- Confirmação do lançamento de hodômetro -->
     <div id="modalConfirmarKM" class="hidden fixed inset-0 z-[110] bg-slate-950/95 backdrop-blur-sm p-4 flex items-center justify-center">
-        <div class="confirm-card">
+        <div id="confirmacaoCard" class="confirm-card">
             <div class="confirm-vehicle-badge" aria-hidden="true">
                 <i id="iconeViaturaConfirmacao" class="fas fa-car-side"></i>
+                <span class="confirm-alert-badge"><i class="fas fa-triangle-exclamation"></i></span>
             </div>
 
             <div class="text-center">
-                <h2 class="text-xl font-black italic uppercase tracking-wide text-white">Confirmar atualização</h2>
-                <p class="text-xs text-slate-400 mt-1">Lançamento de hodômetro</p>
+                <h2 id="tituloConfirmacao" class="text-xl font-black italic uppercase tracking-wide text-white">Confirmar atualização</h2>
+                <p id="subtituloConfirmacao" class="text-xs text-slate-400 mt-1">Lançamento de hodômetro</p>
             </div>
 
             <div class="confirm-vehicle">
                 <p id="viaturaConfirmacao" class="text-blue-400 font-black text-center tracking-wide"></p>
             </div>
 
-            <div class="confirm-route">
+            <div id="confirmacaoKmNormal" class="confirm-route">
                 <div class="confirm-km-box">
                     <p class="confirm-km-label">KM anterior</p>
                     <p id="kmAnteriorConfirmacao" class="confirm-km-value"></p>
@@ -161,7 +189,32 @@
                 </div>
             </div>
 
-            <p class="confirm-note"><i class="fas fa-circle-check" aria-hidden="true"></i>Confira os dados antes de registrar</p>
+            <div id="confirmacaoBaixa" class="hidden">
+                <div class="confirm-down-statuses">
+                    <div>
+                        <p class="confirm-down-status-meta"><span>Status atual</span><strong id="statusAnteriorBaixaConfirmacao">Operante</strong></p>
+                        <div class="confirm-down-box">
+                            <p class="confirm-down-km-label">KM anterior</p>
+                            <p id="kmAnteriorBaixaConfirmacao" class="confirm-down-km-value"></p>
+                        </div>
+                    </div>
+                    <div class="confirm-road confirm-down-road" aria-hidden="true"><i class="fas fa-location-dot"></i></div>
+                    <div>
+                        <p class="confirm-down-status-meta new"><span>Novo status</span><strong>Baixada</strong></p>
+                        <div class="confirm-down-box new">
+                            <p class="confirm-down-km-label">KM atual</p>
+                            <p id="kmAtualBaixaConfirmacao" class="confirm-down-km-value"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="confirm-down-details">
+                    <p class="confirm-down-detail"><strong>Motivo</strong><span id="categoriaBaixaConfirmacao"></span></p>
+                    <p class="confirm-down-detail"><strong>Observação</strong><span id="motivoBaixaConfirmacao"></span></p>
+                </div>
+            </div>
+
+            <p id="notaConfirmacao" class="confirm-note"><i class="fas fa-circle-check" aria-hidden="true"></i>Confira os dados antes de registrar</p>
 
             <div class="grid grid-cols-2 gap-3">
                 <button type="button" onclick="editarLancamento()" class="bg-slate-600 hover:bg-slate-500 p-4 rounded-2xl font-black text-[10px] uppercase transition"><i class="fas fa-pen mr-2" aria-hidden="true"></i>Editar</button>
@@ -336,11 +389,26 @@
         function abrirConfirmacaoKM(dados, viatura) {
             lancamentoPendente = dados;
             const prefixo = String(viatura.prefixo || '').trim();
+            const confirmarBaixa = Boolean(dados.payload.baixa);
             const icone = document.getElementById('iconeViaturaConfirmacao');
             icone.className = `fas ${prefixo.toUpperCase().endsWith('-11') ? 'fa-motorcycle' : 'fa-car-side'} text-blue-400 text-2xl`;
+            document.getElementById('confirmacaoCard').classList.toggle('baixa-mode', confirmarBaixa);
+            document.getElementById('tituloConfirmacao').innerText = confirmarBaixa ? 'Confirmar baixa' : 'Confirmar atualização';
+            document.getElementById('subtituloConfirmacao').innerText = confirmarBaixa ? 'A viatura ficará indisponível' : 'Lançamento de hodômetro';
             document.getElementById('viaturaConfirmacao').innerText = `${prefixo} • ${viatura.placa || 'Sem placa'}`;
             document.getElementById('kmAnteriorConfirmacao').innerText = Number(viatura.km).toLocaleString('pt-BR');
             document.getElementById('kmNovoConfirmacao').innerText = Number(dados.km).toLocaleString('pt-BR');
+            document.getElementById('confirmacaoKmNormal').classList.toggle('hidden', confirmarBaixa);
+            document.getElementById('confirmacaoBaixa').classList.toggle('hidden', !confirmarBaixa);
+            document.getElementById('notaConfirmacao').classList.toggle('hidden', confirmarBaixa);
+            document.getElementById('kmAnteriorBaixaConfirmacao').innerText = Number(viatura.km).toLocaleString('pt-BR');
+            document.getElementById('kmAtualBaixaConfirmacao').innerText = Number(dados.km).toLocaleString('pt-BR');
+            document.getElementById('statusAnteriorBaixaConfirmacao').innerText = viatura.status || 'Operante';
+            document.getElementById('categoriaBaixaConfirmacao').innerText = dados.payload.categoria_baixa || 'Não informado';
+            document.getElementById('motivoBaixaConfirmacao').innerText = dados.payload.motivo || 'Sem observação';
+            document.getElementById('btnConfirmarKM').innerHTML = confirmarBaixa
+                ? '<i class="fas fa-check mr-2" aria-hidden="true"></i>Confirmar baixa'
+                : '<i class="fas fa-check mr-2" aria-hidden="true"></i>Confirmar';
             document.getElementById('modalConfirmarKM').classList.remove('hidden');
         }
 
@@ -381,7 +449,9 @@
                 showToast('Falha de conexão ao salvar o KM.', 'error');
             } finally {
                 botao.disabled = false;
-                botao.innerHTML = '<i class="fas fa-check mr-2" aria-hidden="true"></i>Confirmar';
+                botao.innerHTML = dados.payload.baixa
+                    ? '<i class="fas fa-check mr-2" aria-hidden="true"></i>Confirmar baixa'
+                    : '<i class="fas fa-check mr-2" aria-hidden="true"></i>Confirmar';
             }
         }
 
