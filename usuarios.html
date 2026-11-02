@@ -14,6 +14,11 @@
         /* Estilo da Barra de Busca igual ao index.html */
         .search-input { background-color: #1e293b; border: 1px solid #334155; transition: 0.3s; }
         .search-input:focus { border-color: #3b82f6; box-shadow: 0 0 10px rgba(59, 130, 246, 0.2); outline: none; }
+        .user-sector-filter { background: linear-gradient(145deg, rgba(30, 41, 59, .92), rgba(15, 23, 42, .92)); border: 1px solid #334155; }
+        .user-sector-options { overflow-x: auto; scrollbar-width: thin; scrollbar-color: #334155 transparent; }
+        .user-sector-button { flex: 1 0 112px; background: #0f172a; border: 1px solid #334155; color: #cbd5e1; transition: .2s ease; white-space: nowrap; }
+        .user-sector-button:hover { border-color: #3b82f6; color: #fff; }
+        .user-sector-button.active { background: #2563eb; border-color: #60a5fa; color: #fff; box-shadow: 0 0 14px rgba(59, 130, 246, .3); }
         .text-\[9px\], .text-\[10px\], .text-\[11px\] { font-size: 0.75rem !important; line-height: 1rem !important; }
         .text-xs { font-size: 0.875rem !important; line-height: 1.25rem !important; }
         #toast { position: fixed; left: 50%; bottom: -140px; transform: translateX(-50%); width: min(92vw, 480px); padding: 16px 20px; border-radius: 16px; color: white; font-size: 0.875rem; line-height: 1.35rem; font-weight: 700; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,.45); transition: bottom .35s ease; z-index: 9999; }
@@ -47,11 +52,26 @@
             </div>
         </div>
 
+        <section class="user-sector-filter rounded-2xl p-4 mb-6" aria-labelledby="tituloFiltroSubunidade">
+            <h3 id="tituloFiltroSubunidade" class="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Filtrar por subunidade</h3>
+            <div class="user-sector-options flex gap-2 pb-1" role="group" aria-label="Filtrar usuários por subunidade">
+                <button type="button" data-user-sector="Todos" onclick="setSetorUser('Todos')" class="user-sector-button active px-4 py-3 rounded-xl font-black uppercase text-xs" aria-pressed="true">1º BPTRAN</button>
+                <button type="button" data-user-sector="EM" onclick="setSetorUser('EM')" class="user-sector-button px-4 py-3 rounded-xl font-black uppercase text-xs" aria-pressed="false">EM</button>
+                <button type="button" data-user-sector="CTT" onclick="setSetorUser('CTT')" class="user-sector-button px-4 py-3 rounded-xl font-black uppercase text-xs" aria-pressed="false">CTT</button>
+                <button type="button" data-user-sector="1° CIA" onclick="setSetorUser('1° CIA')" class="user-sector-button px-4 py-3 rounded-xl font-black uppercase text-xs" aria-pressed="false">1° CIA</button>
+                <button type="button" data-user-sector="2° CIA" onclick="setSetorUser('2° CIA')" class="user-sector-button px-4 py-3 rounded-xl font-black uppercase text-xs" aria-pressed="false">2° CIA</button>
+                <button type="button" data-user-sector="3° CIA" onclick="setSetorUser('3° CIA')" class="user-sector-button px-4 py-3 rounded-xl font-black uppercase text-xs" aria-pressed="false">3° CIA</button>
+                <button type="button" data-user-sector="4° CIA" onclick="setSetorUser('4° CIA')" class="user-sector-button px-4 py-3 rounded-xl font-black uppercase text-xs" aria-pressed="false">4° CIA</button>
+            </div>
+        </section>
+
         <!-- NOVO: Barra de Busca de Usuários -->
         <div class="relative mb-6">
             <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
             <input type="text" id="inputBuscaUser" oninput="renderizarTabela()" placeholder="Pesquisar por nome ou RE..." class="search-input w-full p-4 pl-12 rounded-2xl text-white font-bold text-sm outline-none">
         </div>
+
+        <p id="resumoFiltroUsuarios" class="mb-3 text-sm text-slate-400" aria-live="polite">1º BPTRAN · Carregando usuários...</p>
 
         <div class="bg-slate-800 rounded-2xl overflow-x-auto shadow-2xl">
             <table class="w-full text-left text-sm min-w-[500px]">
@@ -123,6 +143,7 @@
         let usuariosLocal = []; // Memória auxiliar para a busca rápida
         let usuarioEmEdicao = null;
         let adminSetor = null, isSuperadmin = false;
+        let setorFiltroUser = 'Todos';
         function showToast(mensagem, tipo = 'success') {
             const toast = document.getElementById('toast');
             toast.textContent = mensagem;
@@ -146,14 +167,20 @@
 
         // Função que filtra e desenha a tabela na tela
         function renderizarTabela() {
-            const termo = document.getElementById('inputBuscaUser').value.toLowerCase();
+            const termo = document.getElementById('inputBuscaUser').value.trim().toLowerCase();
             const lista = document.getElementById('listaU');
             
-            const filtrados = usuariosLocal.filter(u => 
-                u.nome.toLowerCase().includes(termo) ||
-                (u.re && u.re.includes(termo)) ||
-                (u.setor && u.setor.toLowerCase().includes(termo))
-            );
+            const filtrados = usuariosLocal.filter(u => {
+                const correspondeSetor = setorFiltroUser === 'Todos' || u.setor === setorFiltroUser;
+                const correspondeBusca = !termo ||
+                    String(u.nome || '').toLowerCase().includes(termo) ||
+                    String(u.re || '').includes(termo);
+                return correspondeSetor && correspondeBusca;
+            });
+
+            const escopo = setorFiltroUser === 'Todos' ? '1º BPTRAN' : setorFiltroUser;
+            const quantidade = filtrados.length;
+            document.getElementById('resumoFiltroUsuarios').textContent = `${escopo} · ${quantidade} ${quantidade === 1 ? 'usuário encontrado' : 'usuários encontrados'}${termo ? ' · Busca: ' + document.getElementById('inputBuscaUser').value.trim() : ''}`;
 
             lista.innerHTML = filtrados.map(u => `
                 <tr class="hover:bg-slate-900/50 transition border-b border-slate-900">
@@ -167,7 +194,17 @@
                     <td class="p-4 text-center">
                         ${u.pode_editar ? `<button onclick="abrirEditarUser(${Number(u.id)})" aria-label="Editar ${escapeHTML(u.nome)}" title="Editar militar" class="text-slate-500 hover:text-blue-400 transition px-3"><i class="fas fa-pen-to-square"></i></button>${u.senha_cadastrada ? `<button onclick="abrirRedefinirSenha(${Number(u.id)})" aria-label="Liberar nova senha de ${escapeHTML(u.nome)}" title="Liberar nova senha" class="text-slate-500 hover:text-blue-400 transition px-3"><i class="fas fa-key"></i></button>` : ''}<button onclick="abrirConfirmarExcluir(${Number(u.id)})" aria-label="Excluir ${escapeHTML(u.nome)}" title="Excluir militar" class="text-slate-500 hover:text-red-500 transition px-3"><i class="fas fa-trash"></i></button>` : '<span class="text-slate-500 text-sm">Somente leitura</span>'}
                     </td>
-                </tr>`).join('');
+                </tr>`).join('') || '<tr><td colspan="3" class="p-10 text-center text-slate-400">Nenhum usuário encontrado com os filtros selecionados.</td></tr>';
+        }
+
+        function setSetorUser(setor) {
+            setorFiltroUser = setor;
+            document.querySelectorAll('[data-user-sector]').forEach(botao => {
+                const ativo = botao.dataset.userSector === setor;
+                botao.classList.toggle('active', ativo);
+                botao.setAttribute('aria-pressed', String(ativo));
+            });
+            renderizarTabela();
         }
 
         async function addU() {
