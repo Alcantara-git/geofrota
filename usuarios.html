@@ -35,6 +35,7 @@
             <a href="index.html" class="block p-3 text-slate-400 hover:bg-slate-800 rounded-xl transition font-medium">Dashboard</a>
             <a href="operacional.html" class="block p-3 text-slate-400 hover:bg-slate-800 rounded-xl transition font-medium">Operacional</a>
             <a href="usuarios.html" class="block p-3 bg-blue-600 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest">Usuários</a>
+            <a href="materiais.html" class="block p-3 text-slate-400 hover:bg-slate-800 rounded-xl transition font-medium">Materiais</a>
             <a id="linkAdministradores" hidden href="administradores.html" class="block p-3 text-slate-400 hover:bg-slate-800 rounded-xl transition font-medium">Administradores</a>
             <button onclick="logout()" class="flex items-center p-3 text-red-500 mt-10 hover:bg-red-500/10 w-full text-left rounded-xl transition font-bold uppercase text-xs"><i class="fas fa-sign-out-alt mr-2"></i> Sair</button>
         </nav>
@@ -84,7 +85,7 @@
     </main>
 
     <div id="modalEditarUser" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[200]">
-        <div class="card w-full max-w-md p-8 rounded-3xl border-t-4 border-blue-500 shadow-2xl">
+        <div class="card w-full max-w-md max-h-[94vh] overflow-y-auto p-8 rounded-3xl border-t-4 border-blue-500 shadow-2xl">
             <div class="text-center mb-7">
                 <i class="fas fa-user-pen text-blue-400 text-4xl mb-4"></i>
                 <h3 class="text-xl font-black text-white uppercase tracking-widest">Editar Militar</h3>
@@ -96,16 +97,21 @@
             <input id="editarRE" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl text-blue-400 font-bold outline-none mb-2">
             <p id="editarREAjuda" class="text-xs text-slate-500 mb-5"></p>
             <label for="editarSetor" class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Subunidade</label>
-            <select id="editarSetor" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl text-white font-bold outline-none focus:border-blue-500 mb-5">
+            <select id="editarSetor" onchange="alterarSetorPrincipalEdicao()" class="w-full bg-slate-900 border border-slate-700 p-4 rounded-xl text-white font-bold outline-none focus:border-blue-500 mb-5">
                 <option>EM</option><option>CTT</option><option>1° CIA</option><option>2° CIA</option><option>3° CIA</option><option>4° CIA</option>
             </select>
-            <label for="editarServicoDia" class="flex items-center justify-between gap-4 bg-slate-900 border border-slate-700 p-4 rounded-xl cursor-pointer mb-7 hover:border-blue-500 transition">
+            <label for="editarServicoDia" class="flex items-center justify-between gap-4 bg-slate-900 border border-slate-700 p-4 rounded-xl cursor-pointer mb-4 hover:border-blue-500 transition">
                 <span>
                     <strong class="block text-sm font-black text-white uppercase tracking-wide">Serviço de dia</strong>
                     <span class="block text-xs text-slate-500 mt-1">Pode registrar lançamentos para outro policial.</span>
                 </span>
-                <input id="editarServicoDia" type="checkbox" class="w-6 h-6 accent-blue-600 shrink-0">
+                <input id="editarServicoDia" type="checkbox" onchange="atualizarCampoAbrangenciaMateriais()" class="w-6 h-6 accent-blue-600 shrink-0">
             </label>
+            <div id="campoAbrangenciaMateriais" class="hidden mb-7 p-4 rounded-2xl border border-blue-500/30 bg-blue-500/5">
+                <div class="mb-3"><strong class="block text-xs font-black uppercase tracking-widest text-blue-300">Subunidades representadas</strong><span class="block text-xs text-slate-500 mt-1">Define quais materiais poderão ser entregues, recebidos e consultados.</span></div>
+                <div id="opcoesAbrangenciaMateriais" class="grid grid-cols-2 gap-2"></div>
+                <p id="ajudaAbrangenciaMateriais" class="text-[11px] leading-relaxed text-slate-500 mt-3"></p>
+            </div>
             <div class="grid grid-cols-2 gap-4">
                 <button onclick="fecharEditarUser()" class="bg-slate-700 p-4 rounded-2xl font-bold uppercase text-xs text-white">Sair</button>
                 <button id="btnSalvarEditarUser" onclick="salvarEdicaoUser()" class="bg-blue-600 p-4 rounded-2xl font-bold uppercase text-xs text-white shadow-lg hover:bg-blue-500">Salvar</button>
@@ -140,8 +146,10 @@
 
     <script>
         const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const setoresUsuarios = ['EM','CTT','1° CIA','2° CIA','3° CIA','4° CIA'];
         let usuariosLocal = []; // Memória auxiliar para a busca rápida
         let usuarioEmEdicao = null;
+        let abrangenciaEmEdicao = new Set(), setorPrincipalEdicao = null;
         let adminSetor = null, isSuperadmin = false;
         let setorFiltroUser = 'Todos';
         function showToast(mensagem, tipo = 'success') {
@@ -188,7 +196,7 @@
                         <div>${escapeHTML(u.nome)}</div>
                         <div class="mt-2 text-xs ${u.re ? 'text-blue-400' : 'text-red-400'}">${escapeHTML(u.re || 'RE pendente')}</div>
                         <div class="mt-2"><span class="inline-flex px-2 py-1 rounded-full text-[10px] ${u.senha_cadastrada ? 'bg-green-900/40 text-green-400' : 'bg-amber-900/40 text-amber-400'}">${u.senha_cadastrada ? 'Senha cadastrada' : 'Primeiro acesso pendente'}</span></div>
-                        ${u.servico_dia ? '<div class="mt-2"><span class="inline-flex px-2 py-1 rounded-full text-[10px] bg-blue-900/40 text-blue-400"><i class="fas fa-user-clock mr-1" aria-hidden="true"></i>Serviço de dia</span></div>' : ''}
+                        ${u.servico_dia ? `<div class="mt-2"><span class="inline-flex px-2 py-1 rounded-full text-[10px] bg-blue-900/40 text-blue-400"><i class="fas fa-user-clock mr-1" aria-hidden="true"></i>Serviço de dia</span><span class="block mt-1 text-[10px] text-slate-500">Materiais: ${escapeHTML((u.setores_materiais||[u.setor]).join(' · '))}</span></div>` : ''}
                     </td>
                     <td class="p-4 text-center text-slate-300">${escapeHTML(u.setor || 'Não definida')}</td>
                     <td class="p-4 text-center">
@@ -231,9 +239,27 @@
             document.getElementById('editarREAjuda').textContent = u.re ? 'Identificador permanente: o RE não pode ser alterado.' : 'Registro antigo: informe um RE de 6 números para vinculá-lo permanentemente.';
             document.getElementById('editarSetor').value = u.setor || adminSetor || 'EM';
             document.getElementById('editarServicoDia').checked = Boolean(u.servico_dia);
+            setorPrincipalEdicao = u.setor || adminSetor || 'EM';
+            abrangenciaEmEdicao = new Set(u.servico_dia ? (u.setores_materiais || [setorPrincipalEdicao]) : [setorPrincipalEdicao]);
+            abrangenciaEmEdicao.add(setorPrincipalEdicao);
+            atualizarCampoAbrangenciaMateriais();
             document.getElementById('modalEditarUser').classList.remove('hidden');
         }
-        function fecharEditarUser() { usuarioEmEdicao = null; document.getElementById('modalEditarUser').classList.add('hidden'); }
+        function atualizarCampoAbrangenciaMateriais() {
+            const ativo = document.getElementById('editarServicoDia').checked, campo = document.getElementById('campoAbrangenciaMateriais');
+            campo.classList.toggle('hidden', !ativo);
+            if (!ativo) return;
+            const setorPrincipal = document.getElementById('editarSetor').value;
+            abrangenciaEmEdicao.add(setorPrincipal);
+            document.getElementById('opcoesAbrangenciaMateriais').innerHTML = setoresUsuarios.map(setor => {
+                const obrigatorio = setor === setorPrincipal, marcado = obrigatorio || abrangenciaEmEdicao.has(setor), bloqueado = obrigatorio || !isSuperadmin;
+                return `<label class="flex items-center gap-2 p-3 rounded-xl border ${marcado?'border-blue-500/40 bg-blue-500/10':'border-slate-700 bg-slate-900'} ${bloqueado&&!obrigatorio?'opacity-60':''}"><input type="checkbox" data-setor-materiais="${escapeHTML(setor)}" ${marcado?'checked':''} ${bloqueado?'disabled':''} onchange="alternarAbrangenciaMateriais('${setor}',this.checked)" class="w-4 h-4 accent-blue-600"><span class="text-xs font-bold text-slate-200">${escapeHTML(setor)}</span>${obrigatorio?'<i class="fas fa-lock ml-auto text-[9px] text-blue-400" title="Subunidade principal"></i>':''}</label>`;
+            }).join('');
+            document.getElementById('ajudaAbrangenciaMateriais').textContent = isSuperadmin ? 'A subunidade principal é obrigatória. Somente o administrador-geral pode conceder acesso às demais.' : 'A abrangência adicional é definida exclusivamente pelo administrador-geral.';
+        }
+        function alternarAbrangenciaMateriais(setor, marcado) { if (!isSuperadmin || setor === document.getElementById('editarSetor').value) return; if (marcado) abrangenciaEmEdicao.add(setor); else abrangenciaEmEdicao.delete(setor); atualizarCampoAbrangenciaMateriais(); }
+        function alterarSetorPrincipalEdicao() { const novo = document.getElementById('editarSetor').value; if (setorPrincipalEdicao && setorPrincipalEdicao !== novo) abrangenciaEmEdicao.delete(setorPrincipalEdicao); abrangenciaEmEdicao.add(novo); setorPrincipalEdicao = novo; atualizarCampoAbrangenciaMateriais(); }
+        function fecharEditarUser() { usuarioEmEdicao = null; abrangenciaEmEdicao = new Set(); setorPrincipalEdicao = null; document.getElementById('modalEditarUser').classList.add('hidden'); }
         async function salvarEdicaoUser() {
             if (!usuarioEmEdicao) return;
             const nome = document.getElementById('editarNome').value.trim();
@@ -244,7 +270,9 @@
             if (re && !/^[0-9]{6}$/.test(re)) return showToast('O RE deve conter exatamente 6 números.', 'error');
             const botao = document.getElementById('btnSalvarEditarUser');
             botao.disabled = true;
-            const res = await fetch('/api/usuarios/'+usuarioEmEdicao,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome,re,setor,servico_dia})});
+            const body = {nome,re,setor,servico_dia};
+            if (isSuperadmin) body.setores_materiais = servico_dia ? [...abrangenciaEmEdicao] : [];
+            const res = await fetch('/api/usuarios/'+usuarioEmEdicao,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
             const data = await res.json();
             botao.disabled = false;
             if(!res.ok) return showToast(data.error||'Erro ao editar o militar.','error');

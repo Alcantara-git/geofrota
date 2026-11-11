@@ -170,9 +170,12 @@
         </div>
 
         <!-- Rodapé Operacional -->
-        <div class="grid grid-cols-2 gap-3 mt-7">
+        <div id="rodapeOperacional" class="grid grid-cols-2 gap-3 mt-7">
             <a href="index.html" class="min-h-14 bg-slate-900/70 text-blue-400 border border-blue-500 rounded-2xl uppercase text-[10px] font-black hover:bg-blue-600/20 transition tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-blue-950/20">
                 <i class="fas fa-chart-line text-base" aria-hidden="true"></i> Dashboard
+            </a>
+            <a id="linkMateriais" hidden href="materiais.html" class="min-h-14 bg-slate-900/70 text-emerald-400 border border-emerald-500 rounded-2xl uppercase text-[10px] font-black hover:bg-emerald-600/15 transition tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/20">
+                <i class="fas fa-boxes-stacked text-base" aria-hidden="true"></i> Materiais
             </a>
             <button type="button" onclick="logout()" class="min-h-14 bg-slate-900/70 text-red-400 border border-red-500 rounded-2xl uppercase text-[10px] font-black hover:bg-red-600/15 transition tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-red-950/20">
                 <i class="fas fa-right-from-bracket text-base" aria-hidden="true"></i> Sair
@@ -572,6 +575,10 @@
             const sessao = await res.json();
             sessaoAtual = sessao;
             document.getElementById('operadorLogado').innerText = sessao.role === 'oper' ? `${sessao.nome} (${sessao.re})` : `ADM ${sessao.usuario}`;
+            const podeMateriais = sessao.role === 'admin' || sessao.servico_dia;
+            document.getElementById('linkMateriais').hidden = !podeMateriais;
+            document.getElementById('rodapeOperacional').classList.toggle('grid-cols-3', podeMateriais);
+            document.getElementById('rodapeOperacional').classList.toggle('grid-cols-2', !podeMateriais);
             if (sessao.role === 'oper' && sessao.servico_dia) {
                 const respostaResponsaveis = await fetch('/api/operacional/responsaveis?t='+Date.now());
                 if (!respostaResponsaveis.ok) return showToast((await respostaResponsaveis.json()).error || 'Não foi possível carregar os policiais.', 'error');

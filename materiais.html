@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GEOFROTA | Materiais</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background:#0f172a; color:#f8fafc; min-height:100vh; }
+        [hidden], .hidden { display:none !important; }
+        .sidebar { background:#0f172a; border-right:1px solid #1e293b; }
+        .panel { background:#1e293b; border:1px solid #334155; }
+        .input { width:100%; padding:12px 14px; border:1px solid #334155; border-radius:12px; background:#0f172a; color:#f8fafc; outline:none; }
+        .input:focus { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.12); }
+        .sector-btn { flex:0 0 auto; padding:9px 14px; border:1px solid #334155; border-radius:10px; background:#1e293b; color:#94a3b8; font-size:.75rem; font-weight:900; white-space:nowrap; }
+        .sector-btn.active { border-color:#60a5fa; background:#2563eb; color:#fff; box-shadow:0 0 14px rgba(59,130,246,.25); }
+        .list-btn { display:block; width:100%; padding:14px; border:1px solid #334155; border-radius:14px; background:#0f172a; text-align:left; transition:.2s; }
+        .list-btn:hover { border-color:#3b82f6; }
+        .list-btn.active { border-color:#60a5fa; background:linear-gradient(135deg,#2563eb,#1d4ed8); box-shadow:0 10px 24px rgba(37,99,235,.22); }
+        .list-unit { color:#93c5fd; font-size:.7rem; font-weight:800; white-space:nowrap; }
+        .list-metrics { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; margin-top:9px; font-size:.675rem; line-height:1rem; font-weight:800; }
+        .list-metric { display:inline-flex; align-items:center; gap:4px; white-space:nowrap; }
+        .list-metric::before { width:6px; height:6px; flex:0 0 auto; border-radius:999px; background:currentColor; content:""; box-shadow:0 0 7px currentColor; }
+        .list-metric.available-count { color:#4ade80; }
+        .list-metric.used-count { color:#fbbf24; }
+        .list-metric.maintenance-count { color:#f87171; }
+        .list-btn.active .list-unit { color:#dbeafe; }
+        .list-btn.active .list-metric { filter:brightness(1.15); }
+        .badge { display:inline-flex; align-items:center; gap:6px; padding:5px 9px; border:1px solid; border-radius:999px; font-size:.7rem; line-height:1rem; font-weight:900; text-transform:uppercase; white-space:nowrap; }
+        .available { border-color:rgba(34,197,94,.35); background:rgba(34,197,94,.12); color:#4ade80; }
+        .used { border-color:rgba(245,158,11,.35); background:rgba(245,158,11,.12); color:#fbbf24; }
+        .maintenance { border-color:rgba(239,68,68,.35); background:rgba(239,68,68,.12); color:#f87171; }
+        .inactive { border-color:#475569; background:rgba(71,85,105,.18); color:#94a3b8; }
+        .action { width:38px; height:38px; border:1px solid #334155; border-radius:10px; background:#0f172a; color:#94a3b8; transition:.2s; }
+        .action:hover { border-color:#3b82f6; color:#60a5fa; }
+        .action.green:hover { border-color:#22c55e; color:#4ade80; }
+        .action.amber:hover { border-color:#f59e0b; color:#fbbf24; }
+        .action.red:hover { border-color:#ef4444; color:#f87171; }
+        .modal { position:fixed; inset:0; z-index:200; display:flex; align-items:center; justify-content:center; padding:16px; background:rgba(2,6,23,.94); }
+        body.encerramento-aberto { overflow:hidden; }
+        #modalEncerramento { z-index:1000; width:100vw; height:100dvh; padding:0; align-items:stretch; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; scrollbar-width:thin; scrollbar-color:#3b82f6 #0f172a; background:#0f172a; }
+        #modalEncerramento::-webkit-scrollbar { width:10px; }
+        #modalEncerramento::-webkit-scrollbar-track { background:#0f172a; }
+        #modalEncerramento::-webkit-scrollbar-thumb { border:2px solid #0f172a; border-radius:999px; background:#3b82f6; }
+        .modal-card { width:min(94vw,520px); max-height:92vh; overflow:auto; padding:28px; border:1px solid #3b82f6; border-radius:28px; background:#1e293b; box-shadow:0 30px 90px rgba(0,0,0,.65); }
+        .responsible-search { position:relative; margin-bottom:16px; }
+        .responsible-search-control { display:grid; grid-template-columns:42px minmax(0,1fr) 50px; overflow:hidden; border:1px solid #334155; border-radius:14px; background:#0f172a; transition:border-color .2s,box-shadow .2s; }
+        .responsible-search-control:focus-within { border-color:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,.12); }
+        .responsible-search-input { min-width:0; padding:14px 4px; border:0; outline:0; background:transparent; color:#f8fafc; font-family:inherit; font-size:.875rem; font-weight:700; }
+        .responsible-search-input::placeholder { color:#94a3b8; opacity:1; }
+        .responsible-search-icon { display:grid; place-items:center; color:#64748b; }
+        .responsible-search-open { display:grid; place-items:center; border-left:1px solid #334155; color:#94a3b8; transition:color .2s,background .2s; }
+        .responsible-search-open:hover,.responsible-search-open:focus-visible { outline:0; color:#4ade80; background:rgba(34,197,94,.12); }
+        .responsible-search-results { position:absolute; z-index:260; top:calc(100% + 6px); left:0; right:0; max-height:220px; overflow-y:auto; padding:6px; border:1px solid #22c55e; border-radius:14px; background:#0f172a; box-shadow:0 22px 50px rgba(0,0,0,.7); }
+        .responsible-search-result { display:block; width:100%; padding:11px 12px; border-radius:9px; text-align:left; color:#e2e8f0; transition:background .15s,color .15s; }
+        .responsible-search-result:hover,.responsible-search-result:focus-visible { outline:0; color:#fff; background:#16a34a; }
+        .responsible-search-result small { display:block; margin-top:2px; color:#60a5fa; font-size:.75rem; font-weight:800; }
+        .responsible-search-result:hover small,.responsible-search-result:focus-visible small { color:#dcfce7; }
+        #controleEntregaViatura .responsible-search-control { grid-template-columns:42px minmax(0,1fr) auto 50px; }
+        #controleEntregaViatura .responsible-search-open { grid-column:4; }
+        .vehicle-result-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+        .vehicle-status { display:inline-flex; flex:0 0 auto; align-items:center; justify-content:center; padding:4px 9px; border:1px solid; border-radius:999px; font-size:.65rem; line-height:1rem; font-weight:900; text-transform:uppercase; white-space:nowrap; }
+        .vehicle-status.operante { border-color:rgba(34,197,94,.4); background:rgba(34,197,94,.14); color:#4ade80; }
+        .vehicle-status.troca-oleo { border-color:rgba(245,158,11,.45); background:rgba(245,158,11,.14); color:#fbbf24; }
+        .vehicle-status.baixada { border-color:rgba(239,68,68,.45); background:rgba(239,68,68,.14); color:#f87171; }
+        .vehicle-selected-status { align-self:center; margin-right:8px; }
+        .material-check { width:20px; height:20px; cursor:pointer; accent-color:#22c55e; }
+        .material-check:disabled { cursor:not-allowed; opacity:.25; }
+        .return-check { width:20px; height:20px; flex:0 0 auto; cursor:pointer; accent-color:#f59e0b; }
+        .return-card { display:flex; align-items:flex-start; gap:12px; padding:14px; border:1px solid #334155; border-radius:14px; background:#0f172a; transition:border-color .2s,background .2s; }
+        .return-card:has(.return-check:checked) { border-color:rgba(245,158,11,.55); background:rgba(245,158,11,.08); }
+        .return-modal-card { position:relative; width:min(94vw,760px) !important; padding:clamp(18px,3vw,28px); scrollbar-gutter:stable; scrollbar-width:thin; scrollbar-color:#b45309 #0f172a; }
+        .return-modal-card::-webkit-scrollbar, #listaDevolucaoResponsaveis::-webkit-scrollbar, #cautelasPolicial::-webkit-scrollbar { width:8px; }
+        .return-modal-card::-webkit-scrollbar-track, #listaDevolucaoResponsaveis::-webkit-scrollbar-track, #cautelasPolicial::-webkit-scrollbar-track { border-radius:999px; background:#0f172a; }
+        .return-modal-card::-webkit-scrollbar-thumb, #listaDevolucaoResponsaveis::-webkit-scrollbar-thumb, #cautelasPolicial::-webkit-scrollbar-thumb { border:2px solid #0f172a; border-radius:999px; background:#b45309; }
+        .return-modal-close { position:absolute; top:16px; right:16px; width:38px; height:38px; border:1px solid #475569; border-radius:11px; color:#94a3b8; background:#0f172a; transition:.2s; }
+        .return-modal-close:hover { border-color:#f59e0b; color:#fbbf24; }
+        #listaDevolucaoResponsaveis { position:static; max-height:min(210px,34vh); margin-top:6px; overflow-y:auto; scrollbar-gutter:stable; }
+        #cautelasPolicial { max-height:min(260px,32vh); scrollbar-gutter:stable; scrollbar-width:thin; scrollbar-color:#b45309 #0f172a; }
+        #modalReceberPolicial.has-selection .return-modal-intro { display:none; }
+        #modalReceberPolicial:has(#listaDevolucaoResponsaveis:not(.hidden)) #estadoDevolucaoPolicial,
+        #modalReceberPolicial:has(#listaDevolucaoResponsaveis:not(.hidden)) #btnFecharRecebimentoVazio { display:none !important; }
+        @media(max-height:650px) {
+            .return-modal-card { max-height:94vh; padding-top:18px; padding-bottom:18px; }
+            .return-modal-intro i { display:none; }
+            .return-modal-intro { margin-bottom:14px !important; padding-right:36px; }
+            .return-modal-intro p { margin-top:4px !important; }
+            #cautelasPolicial { max-height:26vh; }
+        }
+        .material-number { display:inline-flex; align-items:center; padding:6px 10px; border:1px solid rgba(59,130,246,.38); border-radius:9px; background:rgba(37,99,235,.12); color:#60a5fa; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:1rem; line-height:1rem; font-weight:900; letter-spacing:.04em; white-space:nowrap; }
+        .report-material-number { display:inline-block; margin-top:3px; color:#2563eb; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:.8rem; line-height:1rem; font-weight:900; letter-spacing:.03em; white-space:nowrap; }
+        #resumoMateriaisLote { padding-right:12px; scrollbar-gutter:stable; scrollbar-width:thin; scrollbar-color:#64748b transparent; }
+        #resumoMateriaisLote::-webkit-scrollbar { width:8px; }
+        #resumoMateriaisLote::-webkit-scrollbar-track { background:transparent; }
+        #resumoMateriaisLote::-webkit-scrollbar-thumb { border-radius:999px; background:#64748b; }
+        .delivery-note { max-width:260px; overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-height:1.25rem; cursor:help; }
+        .movement-summary { display:grid; grid-template-columns:150px minmax(0,1fr) auto; gap:16px; align-items:center; padding:16px 20px; cursor:pointer; list-style:none; transition:background .2s; }
+        .movement-summary::-webkit-details-marker { display:none; }
+        .movement-summary:hover { background:rgba(51,65,85,.35); }
+        .movement-materials { color:#93c5fd; font-size:.875rem; line-height:1.35rem; font-weight:900; }
+        .movement-chevron { transition:transform .2s; }
+        .movement-group[open] .movement-chevron { transform:rotate(180deg); }
+        .movement-details { padding:0 20px 16px 186px; }
+        .movement-detail-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; padding:9px 12px; border-top:1px solid rgba(51,65,85,.7); color:#94a3b8; font-size:.75rem; }
+        @media(max-width:767px) {
+            .movement-summary { grid-template-columns:1fr auto; gap:9px 12px; padding:15px; }
+            .movement-summary time { grid-column:1/-1; }
+            .movement-details { padding:0 15px 15px; }
+        }
+        #toast { position:fixed; z-index:500; left:50%; bottom:-150px; width:min(92vw,520px); transform:translateX(-50%); padding:15px 20px; border-radius:16px; color:#fff; text-align:center; font-weight:800; transition:bottom .35s; }
+        #toast.show { bottom:24px; }
+        #toast.success { border:1px solid #4ade80; background:#15803d; }
+        #toast.error { border:1px solid #f87171; background:#b91c1c; }
+        @media(min-width:768px) { .sidebar { position:sticky; top:0; height:100vh; overflow:auto; } }
+        @page { size:A4 landscape; margin:10mm; }
+        @media print {
+            html, body { width:auto !important; min-height:0 !important; background:white !important; color:black !important; }
+            body { display:block !important; }
+            .no-print { display:none !important; }
+            #toast, #toast.show { display:none !important; visibility:hidden !important; opacity:0 !important; }
+            main { margin:0 !important; padding:0 !important; }
+            #modalResultado { position:static !important; inset:auto !important; z-index:auto !important; display:block !important; padding:0 !important; background:white !important; }
+            #modalResultado > div { width:100% !important; max-width:none !important; max-height:none !important; overflow:visible !important; padding:0 !important; border-radius:0 !important; }
+            #conteudoRelatorio { width:100% !important; color:black !important; }
+            #conteudoRelatorio .overflow-x-auto { overflow:visible !important; }
+            #conteudoRelatorio table { width:100% !important; min-width:0 !important; table-layout:fixed !important; font-size:8pt !important; }
+            #conteudoRelatorio thead { display:table-header-group; }
+            #conteudoRelatorio tr { break-inside:avoid; page-break-inside:avoid; }
+            #conteudoRelatorio th, #conteudoRelatorio td { padding:4px !important; overflow-wrap:anywhere; }
+            #conteudoRelatorio th { background:#1e293b !important; color:white !important; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+            #conteudoRelatorio .report-material-number { color:#1d4ed8 !important; font-size:9pt !important; line-height:11pt !important; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+            #conteudoRelatorio th:nth-child(1) { width:12%; }
+            #conteudoRelatorio th:nth-child(2) { width:16%; }
+            #conteudoRelatorio th:nth-child(3) { width:17%; }
+            #conteudoRelatorio th:nth-child(4) { width:16%; }
+            #conteudoRelatorio th:nth-child(5) { width:11%; }
+            #conteudoRelatorio th:nth-child(6) { width:14%; }
+            #conteudoRelatorio th:nth-child(7) { width:14%; }
+            #conteudoRelatorio .closure-report th:nth-child(1) { width:20%; }
+            #conteudoRelatorio .closure-report th:nth-child(2) { width:15%; }
+            #conteudoRelatorio .closure-report th:nth-child(3) { width:45%; }
+            #conteudoRelatorio .closure-report th:nth-child(4) { width:20%; }
+        }
+    </style>
+</head>
+<body class="flex flex-col md:flex-row">
+    <div id="toast" class="success no-print" role="status" aria-live="polite"></div>
+
+    <aside class="sidebar no-print w-full md:w-64 p-6 flex flex-col md:min-h-screen">
+        <div class="text-2xl font-black text-blue-500 mb-8 uppercase text-center italic">Geo<span class="text-white">Frota</span></div>
+        <nav class="space-y-3 flex-1">
+            <a href="index.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 rounded-xl transition font-medium"><i class="fas fa-chart-line w-7"></i>Dashboard</a>
+            <a href="operacional.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 rounded-xl transition font-medium"><i class="fas fa-mobile-alt w-7"></i>Operacional</a>
+            <a data-admin-only hidden href="usuarios.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 rounded-xl transition font-medium"><i class="fas fa-users w-7"></i>Usuários</a>
+            <a href="materiais.html" class="flex items-center p-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg"><i class="fas fa-boxes-stacked w-7"></i>Materiais</a>
+            <a data-superadmin-only hidden href="administradores.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 rounded-xl transition font-medium"><i class="fas fa-user-shield w-7"></i>Administradores</a>
+            <button onclick="logout()" class="flex items-center p-3 mt-8 text-red-400 hover:bg-red-500/10 w-full rounded-xl transition font-bold uppercase text-xs"><i class="fas fa-right-from-bracket w-7"></i>Sair</button>
+        </nav>
+    </aside>
+
+    <main class="flex-1 min-w-0 p-4 md:p-8">
+        <header class="no-print flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-black uppercase italic tracking-tight text-blue-400"><i class="fas fa-cube mr-3"></i>Gestão de materiais</h1>
+                <p id="perfilAcesso" class="mt-1 text-sm text-slate-400">Verificando acesso...</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button id="btnEncerrarServico" hidden onclick="abrirEncerramentoServico()" class="px-5 py-3 rounded-xl border border-blue-500/40 bg-blue-500/10 text-blue-300 font-black uppercase text-xs hover:bg-blue-600 hover:text-white transition"><i class="fas fa-power-off mr-2"></i>Encerrar serviço</button>
+                <button onclick="abrirRecebimentoPolicial()" class="px-5 py-3 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-300 font-black uppercase text-xs hover:bg-amber-600 hover:text-white transition"><i class="fas fa-box-open mr-2"></i>Receber materiais</button>
+                <button onclick="abrirRelatorios()" class="px-5 py-3 rounded-xl border border-blue-500/40 bg-blue-500/10 text-blue-300 font-black uppercase text-xs hover:bg-blue-600 hover:text-white transition"><i class="fas fa-file-lines mr-2"></i>Relatórios</button>
+                <button data-admin-only hidden onclick="abrirLista()" class="px-5 py-3 rounded-xl bg-blue-600 text-white font-black uppercase text-xs hover:bg-blue-500 transition"><i class="fas fa-plus mr-2"></i>Nova lista</button>
+            </div>
+        </header>
+
+        <section class="no-print panel rounded-2xl p-4 md:p-5 mb-4 border border-emerald-500/30">
+            <div class="max-w-5xl mx-auto space-y-4">
+                <div>
+                    <label for="buscaEntregaResponsavel" class="block text-xs font-black uppercase text-slate-400 mb-2"><i class="fas fa-user-check text-emerald-400 mr-2"></i>Policial que receberá os materiais</label>
+                    <div id="controleEntregaResponsavel" class="responsible-search !mb-0">
+                        <input id="entregaResponsavel" type="hidden" value="">
+                        <div class="responsible-search-control">
+                            <span class="responsible-search-icon" aria-hidden="true"><i class="fas fa-search"></i></span>
+                            <input id="buscaEntregaResponsavel" type="search" class="responsible-search-input" placeholder="Pesquisar nome ou RE..." autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-controls="listaEntregaResponsaveis" aria-expanded="false" onfocus="abrirListaResponsaveis()" oninput="pesquisarResponsaveis()" onkeydown="teclaPesquisaResponsavel(event)">
+                            <button id="btnListaEntregaResponsaveis" type="button" class="responsible-search-open" onclick="alternarListaResponsaveis(event)" aria-label="Abrir lista completa de policiais" aria-controls="listaEntregaResponsaveis" aria-expanded="false"><i class="fas fa-chevron-down transition-transform" aria-hidden="true"></i></button>
+                        </div>
+                        <div id="listaEntregaResponsaveis" class="responsible-search-results hidden" role="listbox" aria-label="Policiais disponíveis"></div>
+                    </div>
+                </div>
+                <div>
+                    <label for="buscaEntregaViatura" class="block text-xs font-black uppercase text-slate-400 mb-2"><i class="fas fa-car-side text-emerald-400 mr-2"></i>Viatura vinculada à entrega <span class="normal-case font-normal">(opcional)</span></label>
+                    <div id="controleEntregaViatura" class="responsible-search !mb-0">
+                        <input id="entregaViatura" type="hidden" value="">
+                        <div class="responsible-search-control">
+                            <span class="responsible-search-icon" aria-hidden="true"><i class="fas fa-search"></i></span>
+                            <input id="buscaEntregaViatura" type="search" class="responsible-search-input" placeholder="Pesquisar prefixo, placa ou modelo..." autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-controls="listaEntregaViaturas" aria-expanded="false" onfocus="abrirListaViaturas()" oninput="pesquisarViaturasEntrega()" onkeydown="teclaPesquisaViatura(event)">
+                            <span id="statusEntregaViatura" class="vehicle-selected-status vehicle-status hidden" aria-live="polite"></span>
+                            <button id="btnListaEntregaViaturas" type="button" class="responsible-search-open" onclick="alternarListaViaturas(event)" aria-label="Abrir lista completa de viaturas" aria-controls="listaEntregaViaturas" aria-expanded="false"><i class="fas fa-chevron-down transition-transform" aria-hidden="true"></i></button>
+                        </div>
+                        <div id="listaEntregaViaturas" class="responsible-search-results hidden" role="listbox" aria-label="Viaturas disponíveis"></div>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-3 justify-end pt-1">
+                    <span id="resumoSelecaoLote" class="text-sm font-bold text-slate-400">Nenhum material selecionado</span>
+                    <button id="btnLimparSelecaoLote" type="button" onclick="limparSelecaoLote()" class="hidden px-4 py-3 rounded-xl bg-slate-700 text-slate-200 font-black uppercase text-xs"><i class="fas fa-xmark mr-2"></i>Limpar</button>
+                    <button id="btnPagarLote" type="button" onclick="abrirConfirmacaoLote()" disabled class="px-5 py-3 rounded-xl bg-emerald-600 text-white font-black uppercase text-xs hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed"><i class="fas fa-arrow-right-arrow-left mr-2"></i>Pagar materiais</button>
+                </div>
+            </div>
+        </section>
+
+        <div id="filtroSetores" class="no-print flex gap-2 overflow-x-auto pb-3 mb-4"></div>
+
+        <section class="no-print grid grid-cols-1 xl:grid-cols-[310px_minmax(0,1fr)] gap-5">
+            <aside class="panel rounded-2xl p-4 self-start">
+                <div class="flex items-center justify-between gap-3 mb-4">
+                    <div><h2 class="font-black uppercase tracking-wide">Listas de materiais</h2><p id="resumoListas" class="text-xs text-slate-500 mt-1"></p></div>
+                </div>
+                <div id="listaCategorias" class="space-y-2"></div>
+            </aside>
+
+            <section class="panel rounded-2xl min-w-0 overflow-hidden">
+                <div class="p-4 md:p-5 border-b border-slate-700">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div><h2 id="tituloItens" class="font-black uppercase tracking-wide text-blue-300">Selecione uma lista</h2><p id="subtituloItens" class="text-xs text-slate-500 mt-1">Os materiais aparecerão aqui.</p></div>
+                        <button id="btnNovoMaterial" data-admin-only hidden onclick="abrirMaterial()" class="px-4 py-3 rounded-xl bg-blue-600 text-white font-black uppercase text-xs hover:bg-blue-500"><i class="fas fa-plus mr-2"></i>Cadastrar material</button>
+                    </div>
+                    <div class="relative mt-4"><i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i><input id="buscaMaterial" oninput="renderizarItens()" class="input pl-11" placeholder="Pesquisar por material, número ou responsável..."></div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[1050px] text-sm">
+                        <thead class="bg-slate-900/70 text-slate-400 uppercase text-xs"><tr><th class="p-4 text-center w-14"><input id="selecionarTodosMateriais" type="checkbox" class="material-check" onchange="selecionarTodosVisiveis(this.checked)" aria-label="Selecionar todos os materiais disponíveis desta lista"></th><th class="p-4 text-left">Material</th><th class="p-4 text-left">Número</th><th class="p-4 text-center">Situação</th><th class="p-4 text-left">Responsável atual</th><th class="p-4 text-left">Observação da entrega</th><th class="p-4 text-center">Ações</th></tr></thead>
+                        <tbody id="corpoMateriais" class="divide-y divide-slate-700"></tbody>
+                    </table>
+                </div>
+            </section>
+        </section>
+
+        <section class="no-print panel rounded-2xl mt-5 overflow-hidden">
+            <button id="btnAlternarMovimentacoes" type="button" onclick="alternarMovimentacoes()" class="w-full p-5 flex items-center justify-between gap-4 text-left hover:bg-slate-800/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 transition" aria-expanded="false" aria-controls="painelMovimentacoes">
+                <span><span class="block font-black uppercase tracking-wide"><i class="far fa-clock text-blue-400 mr-2"></i>Últimas movimentações</span><span class="block text-xs text-slate-500 mt-1">Entregas e devoluções registradas no sistema</span></span>
+                <span class="flex items-center gap-3 shrink-0"><span id="resumoMovimentacoes" class="hidden sm:inline text-[10px] font-black uppercase tracking-wider text-slate-500" aria-live="polite">Carregando...</span><i id="setaMovimentacoes" class="fas fa-chevron-right text-blue-400 transition-transform duration-200" aria-hidden="true"></i></span>
+            </button>
+            <div id="painelMovimentacoes" class="hidden border-t border-slate-700">
+                <div id="movimentacoes" class="divide-y divide-slate-700"></div>
+            </div>
+        </section>
+    </main>
+
+    <div id="modalLista" class="modal hidden no-print">
+        <form id="formLista" class="modal-card" onsubmit="salvarLista(event)">
+            <h3 id="tituloModalLista" class="text-xl font-black uppercase text-center mb-6">Nova lista</h3>
+            <label class="block text-xs font-black uppercase text-slate-400 mb-2">Nome da lista/categoria</label>
+            <input id="listaNome" maxlength="80" class="input mb-4" placeholder="Ex.: HT, TPD, Etilômetro" required>
+            <label class="block text-xs font-black uppercase text-slate-400 mb-2">Subunidade</label>
+            <select id="listaSetor" class="input mb-4"><option>EM</option><option>CTT</option><option>1° CIA</option><option>2° CIA</option><option>3° CIA</option><option>4° CIA</option></select>
+            <label id="campoListaAtiva" class="hidden items-center justify-between gap-3 p-4 rounded-xl bg-slate-900 border border-slate-700 mb-6"><span class="font-bold">Lista ativa</span><input id="listaAtiva" type="checkbox" class="w-5 h-5 accent-blue-600"></label>
+            <div class="grid grid-cols-2 gap-3"><button type="button" onclick="fechar('modalLista')" class="p-4 rounded-xl bg-slate-700 font-bold uppercase text-xs">Cancelar</button><button class="p-4 rounded-xl bg-blue-600 font-bold uppercase text-xs">Salvar</button></div>
+        </form>
+    </div>
+
+    <div id="modalExcluirLista" class="modal hidden no-print">
+        <div class="modal-card border-red-500 shadow-2xl shadow-red-950/30">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 mx-auto mb-4 rounded-full border-2 border-red-500 bg-red-500/10 flex items-center justify-center"><i class="fas fa-trash-can text-red-400 text-2xl"></i></div>
+                <h3 class="text-xl font-black uppercase italic">Excluir lista?</h3>
+                <p class="text-sm text-slate-400 mt-2">Esta ação não poderá ser desfeita.</p>
+            </div>
+            <div class="p-4 rounded-2xl bg-slate-900 border border-red-500/30 mb-4 text-center">
+                <strong id="excluirListaNome" class="block text-lg text-red-300 uppercase"></strong>
+                <span id="excluirListaDetalhes" class="block text-xs text-slate-400 mt-2"></span>
+            </div>
+            <p id="textoExcluirLista" class="text-xs leading-relaxed text-slate-400 mb-5 text-center">A lista e seus materiais sem movimentações serão apagados. Listas com histórico ou materiais entregues são protegidas pelo sistema.</p>
+            <div id="confirmacaoExclusaoGeral" class="hidden mb-6 p-4 rounded-2xl border border-red-500/40 bg-red-950/30">
+                <p class="text-xs font-black uppercase text-red-300 text-center mb-3"><i class="fas fa-triangle-exclamation mr-2"></i>Exclusão definitiva</p>
+                <label for="confirmarNomeLista" class="block text-xs text-slate-300 mb-2">Digite exatamente <strong id="nomeListaParaConfirmar" class="text-white"></strong>:</label>
+                <input id="confirmarNomeLista" class="input border-red-500/50 focus:border-red-400" autocomplete="off" oninput="validarConfirmacaoExclusao()" placeholder="Nome exato da lista">
+            </div>
+            <div class="grid grid-cols-2 gap-3"><button type="button" onclick="fechar('modalExcluirLista')" class="p-4 rounded-xl bg-slate-700 font-bold uppercase text-xs">Cancelar</button><button id="btnConfirmarExcluirLista" type="button" onclick="confirmarExcluirLista()" class="p-4 rounded-xl bg-red-600 hover:bg-red-500 font-black uppercase text-xs"><i class="fas fa-trash-can mr-2"></i>Excluir</button></div>
+        </div>
+    </div>
+
+    <div id="modalMaterial" class="modal hidden no-print">
+        <form id="formMaterial" class="modal-card" onsubmit="salvarMaterial(event)">
+            <h3 id="tituloModalMaterial" class="text-xl font-black uppercase text-center mb-6">Cadastrar material</h3>
+            <label class="block text-xs font-black uppercase text-slate-400 mb-2">Material</label>
+            <input id="materialNome" maxlength="120" class="input mb-4" placeholder="Ex.: Rádio portátil" required>
+            <label class="block text-xs font-black uppercase text-slate-400 mb-2">Número/identificador <span class="normal-case font-normal">(opcional)</span></label>
+            <input id="materialNumero" maxlength="80" class="input mb-4" placeholder="Ex.: 0412">
+            <div id="campoListaMaterial" class="hidden">
+                <label for="materialLista" class="block text-xs font-black uppercase text-slate-400 mb-2">Lista/categoria</label>
+                <select id="materialLista" class="input mb-4"></select>
+                <p class="text-xs text-slate-500 -mt-2 mb-4">Ao mover, o histórico anterior permanece vinculado à lista original.</p>
+            </div>
+            <label class="block text-xs font-black uppercase text-slate-400 mb-2">Situação</label>
+            <select id="materialStatus" class="input mb-4"><option value="disponivel">Disponível</option><option value="manutencao">Manutenção</option></select>
+            <label class="block text-xs font-black uppercase text-slate-400 mb-2">Observações <span class="normal-case font-normal">(opcional)</span></label>
+            <textarea id="materialObservacoes" maxlength="1000" rows="3" class="input mb-4"></textarea>
+            <label id="campoMaterialAtivo" class="hidden items-center justify-between gap-3 p-4 rounded-xl bg-slate-900 border border-slate-700 mb-6"><span class="font-bold">Material ativo</span><input id="materialAtivo" type="checkbox" class="w-5 h-5 accent-blue-600"></label>
+            <div class="grid grid-cols-2 gap-3"><button type="button" onclick="fechar('modalMaterial')" class="p-4 rounded-xl bg-slate-700 font-bold uppercase text-xs">Cancelar</button><button class="p-4 rounded-xl bg-blue-600 font-bold uppercase text-xs">Salvar</button></div>
+        </form>
+    </div>
+
+    <div id="modalExcluirMaterial" class="modal hidden no-print">
+        <div class="modal-card border-red-500 shadow-2xl shadow-red-950/30">
+            <div class="text-center mb-6"><div class="w-16 h-16 mx-auto mb-4 rounded-full border-2 border-red-500 bg-red-500/10 flex items-center justify-center"><i class="fas fa-trash-can text-red-400 text-2xl"></i></div><h3 class="text-xl font-black uppercase italic">Excluir material?</h3><p class="text-sm text-slate-400 mt-2">Somente este cadastro será removido.</p></div>
+            <div class="p-4 rounded-2xl bg-slate-900 border border-red-500/30 mb-4 text-center"><strong id="excluirMaterialNome" class="block text-lg text-red-300"></strong><span id="excluirMaterialLista" class="block text-xs text-slate-400 mt-2"></span></div>
+            <p id="textoExcluirMaterial" class="text-xs leading-relaxed text-slate-400 mb-5 text-center"></p>
+            <div id="confirmacaoExclusaoMaterialGeral" class="hidden mb-6 p-4 rounded-2xl border border-red-500/40 bg-red-950/30"><p class="text-xs font-black uppercase text-red-300 text-center mb-3"><i class="fas fa-triangle-exclamation mr-2"></i>Exclusão definitiva</p><label for="confirmarMaterial" class="block text-xs text-slate-300 mb-2">Digite exatamente <strong id="materialParaConfirmar" class="text-white"></strong>:</label><input id="confirmarMaterial" class="input border-red-500/50" autocomplete="off" oninput="validarConfirmacaoMaterial()" placeholder="Identificação exata do material"></div>
+            <div class="grid grid-cols-2 gap-3"><button type="button" onclick="fechar('modalExcluirMaterial')" class="p-4 rounded-xl bg-slate-700 font-bold uppercase text-xs">Cancelar</button><button id="btnConfirmarExcluirMaterial" type="button" onclick="confirmarExcluirMaterial()" class="p-4 rounded-xl bg-red-600 hover:bg-red-500 font-black uppercase text-xs"><i class="fas fa-trash-can mr-2"></i>Excluir</button></div>
+        </div>
+    </div>
+
+    <div id="modalEntrega" class="modal hidden no-print">
+        <form class="modal-card border-green-500" onsubmit="confirmarEntrega(event)">
+            <div class="text-center mb-6"><i class="fas fa-arrow-right-arrow-left text-green-400 text-4xl mb-3"></i><h3 class="text-xl font-black uppercase">Pagar material</h3><p id="materialEntregaNome" class="text-blue-300 font-bold mt-2"></p></div>
+            <div class="p-4 rounded-2xl bg-slate-900 border border-emerald-500/30 mb-4 text-center"><span class="block text-xs font-black uppercase text-slate-500 mb-1">Policial responsável</span><strong id="responsavelEntregaNome" class="text-emerald-300"></strong></div>
+            <div class="p-4 rounded-2xl bg-slate-900 border border-slate-700 mb-4 text-center"><span class="block text-xs font-black uppercase text-slate-500 mb-1">Viatura vinculada</span><strong id="viaturaEntregaNome" class="text-blue-300"></strong></div>
+            <label class="block text-xs font-black uppercase text-slate-400 mb-2">Observação <span class="normal-case font-normal">(opcional)</span></label>
+            <textarea id="entregaObservacao" maxlength="1000" rows="3" class="input mb-6" placeholder="Informações adicionais da entrega"></textarea>
+            <div class="grid grid-cols-2 gap-3"><button type="button" onclick="fechar('modalEntrega')" class="p-4 rounded-xl bg-slate-700 font-bold uppercase text-xs">Cancelar</button><button class="p-4 rounded-xl bg-green-600 hover:bg-green-500 font-bold uppercase text-xs">Confirmar entrega</button></div>
+        </form>
+    </div>
+
+    <div id="modalEntregaLote" class="modal hidden no-print">
+        <form class="modal-card border-green-500" onsubmit="confirmarEntregaLote(event)">
+            <div class="text-center mb-5"><i class="fas fa-boxes-packing text-green-400 text-4xl mb-3"></i><h3 class="text-xl font-black uppercase">Confirmar entrega coletiva</h3><p id="responsavelLoteNome" class="text-emerald-300 font-bold mt-2"></p><p id="viaturaLoteNome" class="text-blue-300 text-sm font-bold mt-1"></p></div>
+            <div class="p-3 rounded-2xl bg-slate-900 border border-slate-700 mb-4"><p id="quantidadeLote" class="text-xs font-black uppercase text-blue-300 mb-2"></p><div id="resumoMateriaisLote" class="max-h-48 overflow-y-auto divide-y divide-slate-800"></div></div>
+            <label class="block text-xs font-black uppercase text-slate-400 mb-2">Observação geral <span class="normal-case font-normal">(opcional)</span></label>
+            <textarea id="observacaoEntregaLote" maxlength="1000" rows="3" class="input mb-6" placeholder="A mesma observação será registrada em todos os materiais"></textarea>
+            <div class="grid grid-cols-2 gap-3"><button type="button" onclick="fechar('modalEntregaLote')" class="p-4 rounded-xl bg-slate-700 font-bold uppercase text-xs"><i class="fas fa-pen mr-2"></i>Editar</button><button id="btnConfirmarEntregaLote" class="p-4 rounded-xl bg-green-600 hover:bg-green-500 font-bold uppercase text-xs"><i class="fas fa-check mr-2"></i>Confirmar entrega</button></div>
+        </form>
+    </div>
+
+    <div id="modalDevolucao" class="modal hidden no-print">
+        <form class="modal-card border-amber-500" onsubmit="confirmarDevolucao(event)">
+            <div class="text-center mb-6"><i class="fas fa-rotate-left text-amber-400 text-4xl mb-3"></i><h3 class="text-xl font-black uppercase">Registrar devolução</h3><p id="materialDevolucaoNome" class="text-amber-300 font-bold mt-2"></p></div>
+            <label class="block text-xs font-black uppercase text-slate-400 mb-2">Observação <span class="normal-case font-normal">(opcional)</span></label>
+            <textarea id="devolucaoObservacao" maxlength="1000" rows="3" class="input mb-6" placeholder="Condições do material na devolução"></textarea>
+            <div class="grid grid-cols-2 gap-3"><button type="button" onclick="fechar('modalDevolucao')" class="p-4 rounded-xl bg-slate-700 font-bold uppercase text-xs">Cancelar</button><button class="p-4 rounded-xl bg-amber-600 hover:bg-amber-500 font-bold uppercase text-xs">Confirmar devolução</button></div>
+        </form>
+    </div>
+
+    <div id="modalReceberPolicial" class="modal hidden no-print">
+        <form class="modal-card return-modal-card border-amber-500" onsubmit="confirmarDevolucaoPolicial(event)">
+            <button type="button" class="return-modal-close" onclick="fechar('modalReceberPolicial')" aria-label="Fechar"><i class="fas fa-xmark"></i></button>
+            <div class="return-modal-intro text-center mb-5"><i class="fas fa-box-open text-amber-400 text-4xl mb-3"></i><h3 class="text-xl font-black uppercase">Receber materiais</h3><p class="text-sm text-slate-400 mt-2">Pesquise o policial para visualizar todas as cautelas abertas.</p></div>
+            <label for="buscaDevolucaoResponsavel" class="block text-xs font-black uppercase text-slate-400 mb-2">Policial responsável</label>
+            <div id="controleDevolucaoResponsavel" class="responsible-search">
+                <input id="devolucaoResponsavel" type="hidden" value="">
+                <div class="responsible-search-control">
+                    <span class="responsible-search-icon" aria-hidden="true"><i class="fas fa-search"></i></span>
+                    <input id="buscaDevolucaoResponsavel" type="search" class="responsible-search-input" placeholder="Pesquisar nome ou RE..." autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-controls="listaDevolucaoResponsaveis" aria-expanded="false" onfocus="abrirListaResponsaveisDevolucao()" oninput="pesquisarResponsaveisDevolucao()" onkeydown="teclaPesquisaResponsavelDevolucao(event)">
+                    <button id="btnListaDevolucaoResponsaveis" type="button" class="responsible-search-open" onclick="alternarListaResponsaveisDevolucao(event)" aria-label="Abrir lista completa de policiais" aria-controls="listaDevolucaoResponsaveis" aria-expanded="false"><i class="fas fa-chevron-down transition-transform" aria-hidden="true"></i></button>
+                </div>
+                <div id="listaDevolucaoResponsaveis" class="responsible-search-results hidden" role="listbox" aria-label="Policiais disponíveis"></div>
+            </div>
+            <div id="estadoDevolucaoPolicial" class="p-6 rounded-2xl border border-slate-700 bg-slate-900 text-center text-sm text-slate-400">Selecione um policial para consultar os materiais.</div>
+            <div id="painelCautelasPolicial" class="hidden">
+                <div class="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 mb-4">
+                    <div><strong id="nomeDevolucaoPolicial" class="block text-amber-300"></strong><span id="quantidadeCautelasPolicial" class="text-xs text-slate-400"></span></div>
+                    <label class="flex items-center gap-2 text-xs font-black uppercase text-slate-300 cursor-pointer"><input id="selecionarTodasCautelas" type="checkbox" class="return-check" onchange="selecionarTodasCautelasPolicial(this.checked)">Selecionar todos</label>
+                </div>
+                <div id="cautelasPolicial" class="max-h-72 overflow-y-auto space-y-2 pr-2 mb-4"></div>
+                <label for="observacaoDevolucaoPolicial" class="block text-xs font-black uppercase text-slate-400 mb-2">Observação geral <span class="normal-case font-normal">(opcional)</span></label>
+                <textarea id="observacaoDevolucaoPolicial" maxlength="1000" rows="3" class="input mb-5" placeholder="A mesma observação será registrada nos materiais selecionados"></textarea>
+                <div class="grid grid-cols-2 gap-3"><button type="button" onclick="fechar('modalReceberPolicial')" class="p-4 rounded-xl bg-slate-700 font-bold uppercase text-xs">Cancelar</button><button id="btnConfirmarDevolucaoPolicial" class="p-4 rounded-xl bg-amber-600 hover:bg-amber-500 font-black uppercase text-xs disabled:opacity-40 disabled:cursor-not-allowed"><i class="fas fa-check mr-2"></i>Confirmar devolução</button></div>
+            </div>
+            <button id="btnFecharRecebimentoVazio" type="button" onclick="fechar('modalReceberPolicial')" class="w-full mt-4 p-3 rounded-xl bg-slate-700 font-bold uppercase text-xs">Fechar</button>
+        </form>
+    </div>
+
+    <div id="modalRelatorios" class="modal hidden no-print">
+        <div class="modal-card">
+            <h3 class="text-xl font-black uppercase text-center mb-6">Relatórios de materiais</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                <select id="relSetor" class="input" onchange="atualizarFiltroRelatorio()"><option value="Todos">Todas as subunidades</option><option>EM</option><option>CTT</option><option>1° CIA</option><option>2° CIA</option><option>3° CIA</option><option>4° CIA</option></select>
+                <select id="relLista" class="input" onchange="atualizarMateriaisRelatorio()"><option value="">Todas as categorias</option></select>
+                <select id="relMaterial" class="input"><option value="">Todos os materiais</option></select>
+                <select id="relSituacao" class="input"><option value="">Todas as situações</option><option value="aberta">Em uso</option><option value="devolvida">Devolvidos</option></select>
+            </div>
+            <button onclick="gerarRelatorio('ultimo')" class="w-full p-4 rounded-xl bg-slate-900 border border-blue-500/40 text-blue-300 font-black uppercase mb-3"><i class="fas fa-clock-rotate-left mr-2"></i>Último acesso</button>
+            <div class="p-4 rounded-xl bg-slate-900 border border-slate-700 mb-4"><p class="text-xs font-black uppercase text-slate-400 mb-3">Filtrar período</p><div class="grid grid-cols-2 gap-3"><input id="relInicio" type="date" class="input"><input id="relFim" type="date" class="input"></div><button onclick="gerarRelatorio('periodo')" class="w-full mt-3 p-3 rounded-xl bg-blue-600 font-black uppercase text-xs">Gerar por período</button></div>
+            <button onclick="fechar('modalRelatorios')" class="w-full p-3 rounded-xl bg-slate-700 font-bold uppercase text-xs">Voltar</button>
+        </div>
+    </div>
+
+    <div id="modalEncerramento" class="modal hidden no-print">
+        <div class="w-full min-h-full bg-slate-900 text-white">
+            <header class="sticky top-0 z-20 p-5 md:px-8 md:py-6 border-b border-slate-700 bg-slate-900/95 backdrop-blur flex items-start justify-between gap-4 shadow-lg shadow-slate-950/30">
+                <div>
+                    <h2 class="text-2xl md:text-3xl font-black uppercase italic tracking-tight"><i class="fas fa-power-off text-blue-400 mr-3"></i>Encerramento do serviço</h2>
+                    <p class="text-slate-400 mt-1">Conferência antes da passagem do serviço</p>
+                    <p id="encerramentoPeriodo" class="text-xs text-blue-300 font-bold mt-2">Carregando período...</p>
+                </div>
+                <button type="button" onclick="fechar('modalEncerramento')" class="action shrink-0" aria-label="Fechar encerramento"><i class="fas fa-xmark"></i></button>
+            </header>
+            <div class="w-full max-w-[1800px] mx-auto p-4 md:p-8 space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <article class="panel rounded-2xl p-4 border-emerald-500/30"><div class="flex items-center justify-between gap-2"><span class="text-xs font-black uppercase text-slate-300">Materiais entregues</span><i class="fas fa-cube text-emerald-400 text-xl"></i></div><strong id="encStatEntregues" class="block text-3xl text-emerald-400 mt-3">0</strong></article>
+                    <article class="panel rounded-2xl p-4 border-emerald-500/30"><div class="flex items-center justify-between gap-2"><span class="text-xs font-black uppercase text-slate-300">Devolvidos</span><i class="fas fa-rotate-left text-emerald-400 text-xl"></i></div><strong id="encStatDevolvidos" class="block text-3xl text-emerald-400 mt-3">0</strong></article>
+                    <article class="panel rounded-2xl p-4 border-amber-500/30"><div class="flex items-center justify-between gap-2"><span class="text-xs font-black uppercase text-slate-300">Pendentes</span><i class="fas fa-triangle-exclamation text-amber-400 text-xl"></i></div><strong id="encStatPendentes" class="block text-3xl text-amber-400 mt-3">0</strong></article>
+                </div>
+                <div id="encerramentoSetores" class="flex flex-wrap items-center gap-2"></div>
+                <section class="panel rounded-2xl overflow-hidden">
+                    <div class="p-4 md:p-5 border-b border-slate-700"><h3 class="font-black uppercase text-lg"><i class="fas fa-clipboard-list text-blue-400 mr-2"></i>Pendências para conferência</h3><p class="text-xs text-slate-500 mt-1">Materiais ainda em uso, inclusive os entregues antes deste período.</p></div>
+                    <div id="encerramentoPendencias" class="divide-y divide-slate-700"><p class="p-8 text-center text-slate-500"><i class="fas fa-circle-notch fa-spin mr-2"></i>Consultando...</p></div>
+                </section>
+                <section class="panel rounded-2xl p-4 md:p-5">
+                    <label for="encerramentoObservacao" class="block text-sm font-black uppercase text-slate-200 mb-3"><i class="fas fa-pen-to-square text-blue-400 mr-2"></i>Observações do serviço <span class="normal-case font-normal text-slate-400">(opcional)</span></label>
+                    <textarea id="encerramentoObservacao" maxlength="2000" rows="5" oninput="atualizarContadorObservacaoEncerramento()" class="w-full rounded-2xl border border-slate-600 bg-slate-950 px-5 py-4 text-base md:text-lg leading-relaxed text-slate-100 placeholder:text-slate-500 outline-none focus:border-blue-400 resize-y" placeholder="Registre ocorrências, divergências, materiais com defeito ou orientações para o próximo serviço."></textarea>
+                    <div class="flex justify-between gap-3 mt-2 mb-5 text-sm text-slate-400"><span>Esta informação fará parte do relatório definitivo.</span><span id="encerramentoObservacaoContador" class="font-bold">0 / 2.000</span></div>
+                    <label class="flex items-start gap-3 cursor-pointer"><input id="encerramentoConfirmacao" type="checkbox" class="material-check mt-0.5" onchange="atualizarConfirmacaoEncerramento()"><span><strong class="block text-sm uppercase">Conferi as cautelas e pendências deste serviço.</strong><small class="block text-slate-500 mt-1">O encerramento registra a conferência, mas não devolve materiais automaticamente.</small></span></label>
+                    <div class="mt-5 flex flex-col sm:flex-row justify-end gap-3"><button type="button" onclick="fechar('modalEncerramento')" class="px-5 py-3 rounded-xl bg-slate-700 font-black uppercase text-xs">Voltar aos materiais</button><button id="btnRegistrarEncerramento" type="button" onclick="confirmarEncerramentoServico()" disabled class="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 font-black uppercase text-xs disabled:opacity-40 disabled:cursor-not-allowed"><i class="fas fa-file-circle-check mr-2"></i>Gerar relatório de encerramento</button></div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalResultado" class="modal hidden">
+        <div class="w-[96vw] max-w-6xl max-h-[94vh] overflow-auto rounded-2xl bg-white text-slate-900 p-5 md:p-8">
+            <div class="no-print flex justify-end gap-2 mb-4"><button onclick="imprimirRelatorio()" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold"><i class="fas fa-print mr-2"></i>Imprimir</button><button onclick="fechar('modalResultado')" class="px-4 py-2 rounded-lg bg-slate-700 text-white font-bold">Fechar</button></div>
+            <div id="conteudoRelatorio"></div>
+        </div>
+    </div>
+
+    <script>
+        const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const setores = ['EM','CTT','1° CIA','2° CIA','3° CIA','4° CIA'];
+        let sessaoAtual=null, listas=[], itens=[], responsaveis=[], viaturasMateriais=[], cautelasPolicial=[], listaSelecionada=null, setorFiltro='Todos', encerramentoAtual=null, setorEncerramento='Todos';
+        const materiaisSelecionados=new Map();
+        let listaEditando=null, listaExcluindo=null, materialEditando=null, materialExcluindo=null, materialOperacao=null;
+
+        function showToast(msg,tipo='success') { const t=document.getElementById('toast'); t.textContent=msg; t.className=(tipo==='error'?'error show':'success show')+' no-print'; clearTimeout(showToast.timer); showToast.timer=setTimeout(()=>t.classList.remove('show'),tipo==='error'?4500:3000); }
+        function fechar(id) { document.getElementById(id).classList.add('hidden'); if(id==='modalEncerramento')document.body.classList.remove('encerramento-aberto'); }
+        async function api(url,op={}) { const res=await fetch(url,op); const data=await res.json().catch(()=>({})); if(res.status===401){location.href='login.html';throw new Error('Sessão encerrada');} if(!res.ok)throw new Error(data.error||'Não foi possível concluir a operação'); return data; }
+        const statusTexto=s=>({disponivel:'Disponível',em_uso:'Em uso',manutencao:'Manutenção'}[s]||s);
+        const statusClasse=s=>s==='disponivel'?'available':s==='em_uso'?'used':'maintenance';
+        const nomeMaterial=m=>`${m.nome}${m.numero?' · Nº '+m.numero:''}`;
+        const listaAtual=()=>listas.find(l=>Number(l.id)===Number(listaSelecionada));
+
+        async function carregarListas() {
+            listas=await api('/api/materiais/listas?t='+Date.now()); renderizarSetores(); renderizarListas();
+            if(listaSelecionada&&!listas.some(l=>Number(l.id)===Number(listaSelecionada)))listaSelecionada=null;
+            if(!listaSelecionada){const primeira=listas.find(l=>(setorFiltro==='Todos'||l.setor===setorFiltro)&&l.ativo)||listas.find(l=>setorFiltro==='Todos'||l.setor===setorFiltro);if(primeira)listaSelecionada=primeira.id;}
+            if(listaSelecionada)await carregarItens(); else renderizarItens();
+        }
+        function renderizarSetores() {
+            const box=document.getElementById('filtroSetores');
+            if(sessaoAtual.role==='oper'){const permitidos=Array.isArray(sessaoAtual.setores_materiais)&&sessaoAtual.setores_materiais.length?sessaoAtual.setores_materiais:[sessaoAtual.setor];const opcoes=permitidos.length>1?[['Todos','Todas representadas'],...permitidos.map(s=>[s,s])]:permitidos.map(s=>[s,s]);box.innerHTML=opcoes.map(([v,r])=>`<button onclick="filtrarSetor('${v}')" class="sector-btn ${setorFiltro===v?'active':''}">${escapeHTML(r)}</button>`).join('');return;}
+            box.innerHTML=[['Todos','1º BPTRAN'],...setores.map(s=>[s,s])].map(([v,r])=>`<button onclick="filtrarSetor('${v}')" class="sector-btn ${setorFiltro===v?'active':''}">${escapeHTML(r)}</button>`).join('');
+        }
+        async function filtrarSetor(setor){setorFiltro=setor;listaSelecionada=null;renderizarSetores();renderizarListas();const primeira=listas.find(l=>(setor==='Todos'||l.setor===setor)&&l.ativo)||listas.find(l=>setor==='Todos'||l.setor===setor);if(primeira){listaSelecionada=primeira.id;await carregarItens();}else{itens=[];renderizarItens();}}
+        function renderizarListas(){const visiveis=listas.filter(l=>setorFiltro==='Todos'||l.setor===setorFiltro);document.getElementById('resumoListas').textContent=`${visiveis.length} ${visiveis.length===1?'lista':'listas'}`;document.getElementById('listaCategorias').innerHTML=visiveis.map(l=>`<button class="list-btn ${Number(listaSelecionada)===Number(l.id)?'active':''} ${!l.ativo?'opacity-60':''}" onclick="selecionarLista(${Number(l.id)})"><span class="flex items-center justify-between gap-2"><strong class="uppercase">${escapeHTML(l.nome)}</strong><span class="list-unit">${escapeHTML(l.setor)}</span></span><span class="list-metrics"><span class="list-metric available-count">${l.disponiveis} disponíveis</span><span class="list-metric used-count">${l.em_uso} em uso</span><span class="list-metric maintenance-count">${l.manutencao} manutenção</span></span>${l.pode_administrar?`<span class="mt-3 flex items-center gap-4"><span role="button" tabindex="0" onclick="event.stopPropagation();editarLista(${Number(l.id)})" onkeydown="if(event.key==='Enter'){event.stopPropagation();editarLista(${Number(l.id)})}" class="text-xs font-bold ${Number(listaSelecionada)===Number(l.id)?'text-white':'text-blue-400'}"><i class="fas fa-pen mr-1"></i>Editar</span><span role="button" tabindex="0" onclick="event.stopPropagation();abrirExcluirLista(${Number(l.id)})" onkeydown="if(event.key==='Enter'){event.stopPropagation();abrirExcluirLista(${Number(l.id)})}" class="text-xs font-bold ${Number(listaSelecionada)===Number(l.id)?'text-red-200':'text-red-400'}"><i class="fas fa-trash-can mr-1"></i>Excluir</span></span>`:''}</button>`).join('')||'<p class="p-5 text-center text-sm text-slate-500">Nenhuma lista nesta subunidade.</p>';}
+        async function selecionarLista(id){listaSelecionada=id;renderizarListas();await carregarItens();}
+        async function carregarItens(){if(!listaSelecionada)return;itens=await api(`/api/materiais/itens?lista_id=${listaSelecionada}&t=${Date.now()}`);renderizarListas();renderizarItens();}
+        function materialSelecionavel(m){return Boolean(m.pode_operar&&m.ativo&&m.lista_ativa&&m.status==='disponivel');}
+        function materiaisVisiveis(){const termo=document.getElementById('buscaMaterial').value.trim().toLowerCase();return itens.filter(m=>!termo||[m.nome,m.numero,m.responsavel_nome,m.responsavel_re].some(v=>String(v||'').toLowerCase().includes(termo)));}
+        function renderizarItens(){
+            const l=listaAtual();
+            document.getElementById('tituloItens').textContent=l?`Itens da lista: ${l.nome}`:'Selecione uma lista';
+            document.getElementById('subtituloItens').textContent=l?`${l.setor} · ${itens.length} ${itens.length===1?'material':'materiais'}`:'Os materiais aparecerão aqui.';
+            const novo=document.getElementById('btnNovoMaterial');novo.hidden=!(l&&l.pode_administrar&&l.ativo);
+            itens.forEach(m=>{if(materiaisSelecionados.has(Number(m.id))&&!materialSelecionavel(m))materiaisSelecionados.delete(Number(m.id));});
+            const filtrados=materiaisVisiveis();
+            document.getElementById('corpoMateriais').innerHTML=filtrados.map(m=>{
+                const disponivel=materialSelecionavel(m),marcado=materiaisSelecionados.has(Number(m.id));
+                const selecao=disponivel?`<input type="checkbox" class="material-check" ${marcado?'checked':''} onchange="alternarSelecaoMaterial(${Number(m.id)},this.checked)" aria-label="Selecionar ${escapeHTML(nomeMaterial(m))}">`:'<span class="text-slate-700">—</span>';
+                const situacao=m.ativo?`<span class="badge ${statusClasse(m.status)}"><i class="fas fa-circle text-[7px]"></i>${statusTexto(m.status)}</span>`:'<span class="badge inactive">Desativado</span>';
+                const responsavel=m.status==='em_uso'?`<strong>${escapeHTML(m.responsavel_nome)}</strong><span class="block text-xs text-blue-400 mt-1">${escapeHTML(m.responsavel_re)} · desde ${escapeHTML(m.entregue_em_texto||'')}</span>`:'<span class="text-slate-500">—</span>';
+                const observacaoEntrega=m.status==='em_uso'&&m.observacao_entrega?`<p class="delivery-note text-slate-300" title="${escapeHTML(m.observacao_entrega)}">${escapeHTML(m.observacao_entrega)}</p>`:'<span class="text-slate-500">—</span>';
+                let acoes='';if(disponivel)acoes+=`<button class="action green" title="Pagar somente este material" onclick="abrirEntrega(${Number(m.id)})"><i class="fas fa-arrow-right"></i></button>`;if(m.pode_operar&&m.status==='em_uso')acoes+=`<button class="action amber" title="Registrar devolução" onclick="abrirDevolucao(${Number(m.id)})"><i class="fas fa-rotate-left"></i></button>`;if(m.pode_administrar)acoes+=`<button class="action" title="Editar ou mover material" onclick="editarMaterial(${Number(m.id)})"><i class="fas fa-pen"></i></button><button class="action red" title="Excluir material" onclick="abrirExcluirMaterial(${Number(m.id)})"><i class="fas fa-trash-can"></i></button>`;
+                const numero=m.numero?`<span class="material-number">Nº ${escapeHTML(m.numero)}</span>`:'<span class="text-slate-500">Sem número</span>';
+                return `<tr class="${!m.ativo?'opacity-60':''}"><td class="p-4 text-center">${selecao}</td><td class="p-4"><strong>${escapeHTML(m.nome)}</strong>${m.observacoes?`<span class="block mt-1 text-xs text-slate-500">${escapeHTML(m.observacoes)}</span>`:''}</td><td class="p-4">${numero}</td><td class="p-4 text-center">${situacao}</td><td class="p-4">${responsavel}</td><td class="p-4">${observacaoEntrega}</td><td class="p-4 text-center"><div class="flex justify-center gap-2">${acoes||'<span class="text-slate-500">—</span>'}</div></td></tr>`;
+            }).join('')||'<tr><td colspan="7" class="p-10 text-center text-slate-500">Nenhum material encontrado.</td></tr>';
+            const elegiveis=filtrados.filter(materialSelecionavel),todos=document.getElementById('selecionarTodosMateriais');
+            todos.disabled=!elegiveis.length;todos.checked=Boolean(elegiveis.length&&elegiveis.every(m=>materiaisSelecionados.has(Number(m.id))));todos.indeterminate=Boolean(elegiveis.some(m=>materiaisSelecionados.has(Number(m.id)))&&!todos.checked);
+            atualizarPainelLote();
+        }
+
+        function abrirLista(){listaEditando=null;document.getElementById('tituloModalLista').textContent='Nova lista';document.getElementById('listaNome').value='';document.getElementById('listaSetor').value=setorFiltro!=='Todos'?setorFiltro:(sessaoAtual.setor||'EM');document.getElementById('listaSetor').disabled=!sessaoAtual.superadmin;document.getElementById('campoListaAtiva').classList.add('hidden');document.getElementById('modalLista').classList.remove('hidden');}
+        function editarLista(id){const l=listas.find(x=>Number(x.id)===Number(id));if(!l||!l.pode_administrar)return;listaEditando=id;document.getElementById('tituloModalLista').textContent='Editar lista';document.getElementById('listaNome').value=l.nome;document.getElementById('listaSetor').value=l.setor;document.getElementById('listaSetor').disabled=true;document.getElementById('listaAtiva').checked=l.ativo;document.getElementById('campoListaAtiva').classList.remove('hidden');document.getElementById('campoListaAtiva').classList.add('flex');document.getElementById('modalLista').classList.remove('hidden');}
+        async function salvarLista(e){e.preventDefault();try{const body={nome:document.getElementById('listaNome').value,setor:document.getElementById('listaSetor').value,...(listaEditando?{ativo:document.getElementById('listaAtiva').checked}:{})};await api(listaEditando?`/api/materiais/listas/${listaEditando}`:'/api/materiais/listas',{method:listaEditando?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});fechar('modalLista');showToast(listaEditando?'Lista atualizada.':'Lista criada.');await carregarListas();}catch(e){showToast(e.message,'error');}}
+        function abrirExcluirLista(id){const l=listas.find(x=>Number(x.id)===Number(id));if(!l||!l.pode_administrar)return;listaExcluindo=id;const geral=Boolean(sessaoAtual.superadmin);document.getElementById('excluirListaNome').textContent=l.nome;document.getElementById('excluirListaDetalhes').textContent=`${l.setor} · ${Number(l.total)||0} ${(Number(l.total)||0)===1?'material cadastrado':'materiais cadastrados'}`;document.getElementById('textoExcluirLista').textContent=geral?'A lista, seus materiais e todo o histórico de entregas e devoluções serão apagados definitivamente. Materiais ainda entregues precisam ser devolvidos antes.':'A lista e seus materiais sem movimentações serão apagados. Listas com histórico ou materiais entregues são protegidas pelo sistema.';document.getElementById('confirmacaoExclusaoGeral').classList.toggle('hidden',!geral);document.getElementById('nomeListaParaConfirmar').textContent=l.nome;document.getElementById('confirmarNomeLista').value='';document.getElementById('modalExcluirLista').classList.remove('hidden');validarConfirmacaoExclusao();if(geral)setTimeout(()=>document.getElementById('confirmarNomeLista').focus(),0);}
+        function validarConfirmacaoExclusao(){const botao=document.getElementById('btnConfirmarExcluirLista'),lista=listas.find(x=>Number(x.id)===Number(listaExcluindo));botao.disabled=Boolean(sessaoAtual?.superadmin&&(!lista||document.getElementById('confirmarNomeLista').value!==lista.nome));botao.classList.toggle('opacity-50',botao.disabled);botao.classList.toggle('cursor-not-allowed',botao.disabled);}
+        async function confirmarExcluirLista(){if(!listaExcluindo)return;const lista=listas.find(x=>Number(x.id)===Number(listaExcluindo));if(!lista)return;const botao=document.getElementById('btnConfirmarExcluirLista');if(sessaoAtual.superadmin&&document.getElementById('confirmarNomeLista').value!==lista.nome)return showToast('Digite exatamente o nome da lista.','error');botao.disabled=true;botao.innerHTML='<i class="fas fa-circle-notch fa-spin mr-2"></i>Excluindo';try{const resultado=await api(`/api/materiais/listas/${listaExcluindo}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify(sessaoAtual.superadmin?{confirmacao_nome:lista.nome}:{})});fechar('modalExcluirLista');if(Number(listaSelecionada)===Number(listaExcluindo))listaSelecionada=null;listaExcluindo=null;showToast(resultado.historico_excluido?'Lista e histórico excluídos definitivamente.':'Lista excluída com sucesso.');await carregarListas();}catch(e){showToast(e.message,'error');}finally{botao.disabled=false;botao.innerHTML='<i class="fas fa-trash-can mr-2"></i>Excluir';validarConfirmacaoExclusao();}}
+
+        function abrirMaterial(){const l=listaAtual();if(!l||!l.pode_administrar)return;materialEditando=null;document.getElementById('tituloModalMaterial').textContent='Cadastrar material';document.getElementById('formMaterial').reset();document.getElementById('materialStatus').innerHTML='<option value="disponivel">Disponível</option><option value="manutencao">Manutenção</option>';document.getElementById('materialStatus').disabled=false;document.getElementById('materialAtivo').disabled=false;document.getElementById('campoListaMaterial').classList.add('hidden');document.getElementById('campoMaterialAtivo').classList.add('hidden');document.getElementById('modalMaterial').classList.remove('hidden');}
+        function editarMaterial(id){const m=itens.find(x=>Number(x.id)===Number(id));if(!m||!m.pode_administrar)return;materialEditando=id;document.getElementById('tituloModalMaterial').textContent='Editar ou mover material';document.getElementById('materialNome').value=m.nome;document.getElementById('materialNumero').value=m.numero||'';document.getElementById('materialObservacoes').value=m.observacoes||'';const destinos=listas.filter(l=>l.pode_administrar&&(l.ativo||Number(l.id)===Number(m.lista_id)));document.getElementById('materialLista').innerHTML=destinos.map(l=>`<option value="${Number(l.id)}">${escapeHTML(l.nome)}${sessaoAtual.superadmin?' · '+escapeHTML(l.setor):''}</option>`).join('');document.getElementById('materialLista').value=m.lista_id;document.getElementById('materialLista').disabled=m.status==='em_uso';document.getElementById('campoListaMaterial').classList.remove('hidden');document.getElementById('materialStatus').innerHTML=m.status==='em_uso'?'<option value="em_uso">Em uso — registre a devolução para alterar</option>':'<option value="disponivel">Disponível</option><option value="manutencao">Manutenção</option>';document.getElementById('materialStatus').value=m.status;document.getElementById('materialStatus').disabled=m.status==='em_uso';document.getElementById('materialAtivo').checked=m.ativo;document.getElementById('materialAtivo').disabled=m.status==='em_uso';document.getElementById('campoMaterialAtivo').classList.remove('hidden');document.getElementById('campoMaterialAtivo').classList.add('flex');document.getElementById('modalMaterial').classList.remove('hidden');}
+        async function salvarMaterial(e){e.preventDefault();try{const existente=materialEditando?itens.find(x=>Number(x.id)===Number(materialEditando)):null;const body={lista_id:materialEditando?Number(document.getElementById('materialLista').value):listaSelecionada,nome:document.getElementById('materialNome').value,numero:document.getElementById('materialNumero').value,status:existente?.status==='em_uso'?'em_uso':document.getElementById('materialStatus').value,observacoes:document.getElementById('materialObservacoes').value,...(materialEditando?{ativo:document.getElementById('materialAtivo').checked}:{})};await api(materialEditando?`/api/materiais/itens/${materialEditando}`:'/api/materiais/itens',{method:materialEditando?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(materialEditando)materiaisSelecionados.delete(Number(materialEditando));fechar('modalMaterial');showToast(materialEditando&&Number(body.lista_id)!==Number(listaSelecionada)?'Material movido e atualizado.':materialEditando?'Material atualizado.':'Material cadastrado.');await carregarListas();}catch(e){showToast(e.message,'error');}finally{document.getElementById('materialLista').disabled=false;document.getElementById('materialStatus').disabled=false;document.getElementById('materialAtivo').disabled=false;}}
+        const identificacaoMaterial=m=>`${m.nome}${m.numero?' Nº '+m.numero:''}`;
+        function abrirExcluirMaterial(id){const m=itens.find(x=>Number(x.id)===Number(id));if(!m||!m.pode_administrar)return;materialExcluindo=id;const identificacao=identificacaoMaterial(m),geral=Boolean(sessaoAtual.superadmin);document.getElementById('excluirMaterialNome').textContent=identificacao;document.getElementById('excluirMaterialLista').textContent=`${m.lista_nome} · ${m.setor}`;document.getElementById('textoExcluirMaterial').textContent=geral?'O material e todo o seu histórico serão apagados definitivamente. Se estiver entregue, registre primeiro a devolução.':'Materiais sem histórico podem ser excluídos. Se já houver movimentações, desative o cadastro para preservar os relatórios.';document.getElementById('confirmacaoExclusaoMaterialGeral').classList.toggle('hidden',!geral);document.getElementById('materialParaConfirmar').textContent=identificacao;document.getElementById('confirmarMaterial').value='';document.getElementById('modalExcluirMaterial').classList.remove('hidden');validarConfirmacaoMaterial();if(geral)setTimeout(()=>document.getElementById('confirmarMaterial').focus(),0);}
+        function validarConfirmacaoMaterial(){const m=itens.find(x=>Number(x.id)===Number(materialExcluindo)),botao=document.getElementById('btnConfirmarExcluirMaterial');botao.disabled=Boolean(sessaoAtual?.superadmin&&(!m||document.getElementById('confirmarMaterial').value!==identificacaoMaterial(m)));botao.classList.toggle('opacity-50',botao.disabled);botao.classList.toggle('cursor-not-allowed',botao.disabled);}
+        async function confirmarExcluirMaterial(){const m=itens.find(x=>Number(x.id)===Number(materialExcluindo));if(!m)return;const identificacao=identificacaoMaterial(m),botao=document.getElementById('btnConfirmarExcluirMaterial');if(sessaoAtual.superadmin&&document.getElementById('confirmarMaterial').value!==identificacao)return showToast('Digite exatamente a identificação do material.','error');botao.disabled=true;botao.innerHTML='<i class="fas fa-circle-notch fa-spin mr-2"></i>Excluindo';try{const resultado=await api(`/api/materiais/itens/${materialExcluindo}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify(sessaoAtual.superadmin?{confirmacao_material:identificacao}:{})});materiaisSelecionados.delete(Number(materialExcluindo));fechar('modalExcluirMaterial');materialExcluindo=null;showToast(resultado.historico_excluido?'Material e histórico excluídos definitivamente.':'Material excluído com sucesso.');await carregarListas();}catch(e){showToast(e.message,'error');}finally{botao.disabled=false;botao.innerHTML='<i class="fas fa-trash-can mr-2"></i>Excluir';validarConfirmacaoMaterial();}}
+
+        function normalizarResponsavel(valor=''){return String(valor).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();}
+        function renderizarListaResponsaveis(termo=''){const consulta=normalizarResponsavel(termo),lista=document.getElementById('listaEntregaResponsaveis');const encontrados=responsaveis.filter(p=>!consulta||normalizarResponsavel(`${p.nome} ${p.re}`).includes(consulta));lista.innerHTML=encontrados.length?encontrados.map(p=>`<button type="button" role="option" data-responsavel-id="${Number(p.id)}" class="responsible-search-result"><strong>${escapeHTML(p.nome)}</strong><small>RE ${escapeHTML(p.re)}</small></button>`).join(''):'<p class="p-4 text-center text-xs font-bold uppercase text-slate-500">Nenhum policial encontrado</p>';lista.querySelectorAll('[data-responsavel-id]').forEach(botao=>botao.addEventListener('click',()=>selecionarResponsavelEntrega(Number(botao.dataset.responsavelId))));}
+        function abrirListaResponsaveis(){renderizarListaResponsaveis('');const lista=document.getElementById('listaEntregaResponsaveis');lista.classList.remove('hidden');document.getElementById('buscaEntregaResponsavel').setAttribute('aria-expanded','true');document.getElementById('btnListaEntregaResponsaveis').setAttribute('aria-expanded','true');document.querySelector('#btnListaEntregaResponsaveis i').classList.add('rotate-180');}
+        function fecharListaResponsaveis(){document.getElementById('listaEntregaResponsaveis').classList.add('hidden');document.getElementById('buscaEntregaResponsavel').setAttribute('aria-expanded','false');document.getElementById('btnListaEntregaResponsaveis').setAttribute('aria-expanded','false');document.querySelector('#btnListaEntregaResponsaveis i').classList.remove('rotate-180');}
+        function alternarListaResponsaveis(event){event.stopPropagation();const lista=document.getElementById('listaEntregaResponsaveis');if(lista.classList.contains('hidden')){abrirListaResponsaveis();document.getElementById('buscaEntregaResponsavel').focus();}else fecharListaResponsaveis();}
+        function pesquisarResponsaveis(){document.getElementById('entregaResponsavel').value='';renderizarListaResponsaveis(document.getElementById('buscaEntregaResponsavel').value);document.getElementById('listaEntregaResponsaveis').classList.remove('hidden');document.getElementById('buscaEntregaResponsavel').setAttribute('aria-expanded','true');document.getElementById('btnListaEntregaResponsaveis').setAttribute('aria-expanded','true');document.querySelector('#btnListaEntregaResponsaveis i').classList.add('rotate-180');atualizarPainelLote();}
+        function selecionarResponsavelEntrega(id){const policial=responsaveis.find(p=>Number(p.id)===Number(id));if(!policial)return;document.getElementById('entregaResponsavel').value=policial.id;document.getElementById('buscaEntregaResponsavel').value=`${policial.nome} (${policial.re})`;fecharListaResponsaveis();atualizarPainelLote();}
+        function teclaPesquisaResponsavel(event){if(event.key==='Escape'){fecharListaResponsaveis();return;}if(event.key==='ArrowDown'){event.preventDefault();abrirListaResponsaveis();document.querySelector('#listaEntregaResponsaveis [data-responsavel-id]')?.focus();}else if(event.key==='Enter'){event.preventDefault();document.querySelector('#listaEntregaResponsaveis [data-responsavel-id]')?.click();}}
+        function rotuloViatura(v){return `${v.prefixo} · ${v.placa||'Sem placa'}`;}
+        function classeStatusViatura(status){const normalizado=normalizarResponsavel(status||'');return normalizado==='baixada'?'baixada':normalizado==='troca de oleo'?'troca-oleo':'operante';}
+        function seloStatusViatura(v){return `<span class="vehicle-status ${classeStatusViatura(v.status)}">${escapeHTML(v.status||'Operante')}</span>`;}
+        function renderizarListaViaturas(termo=''){const consulta=normalizarResponsavel(termo),lista=document.getElementById('listaEntregaViaturas');const encontradas=viaturasMateriais.filter(v=>!consulta||normalizarResponsavel(`${v.prefixo} ${v.placa||''} ${v.modelo||''} ${v.setor||''} ${v.status||''}`).includes(consulta));lista.innerHTML='<button type="button" class="responsible-search-result" data-viatura-id=""><strong>Sem viatura vinculada</strong><small>Entrega somente ao policial</small></button>'+encontradas.map(v=>`<button type="button" role="option" data-viatura-id="${Number(v.id)}" class="responsible-search-result"><span class="vehicle-result-heading"><strong>${escapeHTML(rotuloViatura(v))}</strong>${seloStatusViatura(v)}</span><small>${escapeHTML(v.modelo||'Modelo não informado')} · ${escapeHTML(v.setor||'Sem unidade')}</small></button>`).join('');lista.querySelectorAll('[data-viatura-id]').forEach(botao=>botao.addEventListener('click',()=>selecionarViaturaEntrega(botao.dataset.viaturaId?Number(botao.dataset.viaturaId):null)));}
+        function abrirListaViaturas(){renderizarListaViaturas('');document.getElementById('listaEntregaViaturas').classList.remove('hidden');document.getElementById('buscaEntregaViatura').setAttribute('aria-expanded','true');document.getElementById('btnListaEntregaViaturas').setAttribute('aria-expanded','true');document.querySelector('#btnListaEntregaViaturas i').classList.add('rotate-180');}
+        function fecharListaViaturas(){document.getElementById('listaEntregaViaturas').classList.add('hidden');document.getElementById('buscaEntregaViatura').setAttribute('aria-expanded','false');document.getElementById('btnListaEntregaViaturas').setAttribute('aria-expanded','false');document.querySelector('#btnListaEntregaViaturas i').classList.remove('rotate-180');}
+        function alternarListaViaturas(event){event.stopPropagation();const lista=document.getElementById('listaEntregaViaturas');if(lista.classList.contains('hidden')){abrirListaViaturas();document.getElementById('buscaEntregaViatura').focus();}else fecharListaViaturas();}
+        function pesquisarViaturasEntrega(){document.getElementById('entregaViatura').value='';document.getElementById('statusEntregaViatura').className='vehicle-selected-status vehicle-status hidden';renderizarListaViaturas(document.getElementById('buscaEntregaViatura').value);document.getElementById('listaEntregaViaturas').classList.remove('hidden');document.getElementById('buscaEntregaViatura').setAttribute('aria-expanded','true');document.getElementById('btnListaEntregaViaturas').setAttribute('aria-expanded','true');document.querySelector('#btnListaEntregaViaturas i').classList.add('rotate-180');}
+        function selecionarViaturaEntrega(id){const viatura=id?viaturasMateriais.find(v=>Number(v.id)===Number(id)):null,status=document.getElementById('statusEntregaViatura');document.getElementById('entregaViatura').value=viatura?.id||'';document.getElementById('buscaEntregaViatura').value=viatura?rotuloViatura(viatura):'';status.textContent=viatura?.status||'';status.className=viatura?`vehicle-selected-status vehicle-status ${classeStatusViatura(viatura.status)}`:'vehicle-selected-status vehicle-status hidden';fecharListaViaturas();}
+        function teclaPesquisaViatura(event){if(event.key==='Escape'){fecharListaViaturas();return;}if(event.key==='ArrowDown'){event.preventDefault();abrirListaViaturas();document.querySelector('#listaEntregaViaturas [data-viatura-id]')?.focus();}else if(event.key==='Enter'){event.preventDefault();document.querySelector('#listaEntregaViaturas [data-viatura-id]')?.click();}}
+        function atualizarPainelLote(){const quantidade=materiaisSelecionados.size,responsavelId=Number(document.getElementById('entregaResponsavel').value),resumo=document.getElementById('resumoSelecaoLote'),botao=document.getElementById('btnPagarLote');resumo.textContent=quantidade?`${quantidade} ${quantidade===1?'material selecionado':'materiais selecionados'}`:'Nenhum material selecionado';resumo.classList.toggle('text-emerald-300',quantidade>0);resumo.classList.toggle('text-slate-400',!quantidade);document.getElementById('btnLimparSelecaoLote').classList.toggle('hidden',!quantidade);botao.disabled=!(quantidade&&responsavelId);botao.innerHTML=`<i class="fas fa-arrow-right-arrow-left mr-2"></i>${quantidade?`Pagar ${quantidade} ${quantidade===1?'material':'materiais'}`:'Pagar materiais'}`;}
+        function alternarSelecaoMaterial(id,marcado){const material=itens.find(m=>Number(m.id)===Number(id));if(!material||!materialSelecionavel(material))return;if(marcado)materiaisSelecionados.set(Number(id),{id:Number(id),nome:material.nome,numero:material.numero||'',lista_nome:material.lista_nome,setor:material.setor});else materiaisSelecionados.delete(Number(id));renderizarItens();}
+        function selecionarTodosVisiveis(marcar){materiaisVisiveis().filter(materialSelecionavel).forEach(material=>{if(marcar)materiaisSelecionados.set(Number(material.id),{id:Number(material.id),nome:material.nome,numero:material.numero||'',lista_nome:material.lista_nome,setor:material.setor});else materiaisSelecionados.delete(Number(material.id));});renderizarItens();}
+        function limparSelecaoLote(){materiaisSelecionados.clear();renderizarItens();}
+        function abrirConfirmacaoLote(){const responsavel=responsaveis.find(p=>Number(p.id)===Number(document.getElementById('entregaResponsavel').value)),viatura=viaturasMateriais.find(v=>Number(v.id)===Number(document.getElementById('entregaViatura').value));if(!responsavel)return showToast('Selecione o policial que receberá os materiais.','error');if(!materiaisSelecionados.size)return showToast('Selecione pelo menos um material.','error');const selecionados=[...materiaisSelecionados.values()];document.getElementById('responsavelLoteNome').textContent=`${responsavel.nome} (${responsavel.re})`;document.getElementById('viaturaLoteNome').textContent=viatura?`Viatura: ${rotuloViatura(viatura)}`:'Sem viatura vinculada';document.getElementById('quantidadeLote').textContent=`${selecionados.length} ${selecionados.length===1?'material selecionado':'materiais selecionados'}`;document.getElementById('resumoMateriaisLote').innerHTML=selecionados.map(m=>`<div class="py-3 flex items-center justify-between gap-4"><span class="min-w-0"><strong class="block text-white truncate">${escapeHTML(m.nome)}</strong><small class="block text-slate-500 mt-1 truncate">${escapeHTML(m.lista_nome)} · ${escapeHTML(m.setor)}</small></span><b class="shrink-0 pr-2 font-mono text-blue-300">${escapeHTML(m.numero?'Nº '+m.numero:'Sem número')}</b></div>`).join('');document.getElementById('observacaoEntregaLote').value='';document.getElementById('modalEntregaLote').classList.remove('hidden');}
+        async function confirmarEntregaLote(event){event.preventDefault();const botao=document.getElementById('btnConfirmarEntregaLote'),ids=[...materiaisSelecionados.keys()],responsavelId=Number(document.getElementById('entregaResponsavel').value),viaturaId=Number(document.getElementById('entregaViatura').value)||null;if(!ids.length||!responsavelId)return;botao.disabled=true;botao.innerHTML='<i class="fas fa-circle-notch fa-spin mr-2"></i>Registrando';try{const resultado=await api('/api/materiais/entregar-lote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({material_ids:ids,responsavel_id:responsavelId,viatura_id:viaturaId,observacao:document.getElementById('observacaoEntregaLote').value})});fechar('modalEntregaLote');materiaisSelecionados.clear();showToast(`${resultado.quantidade} ${resultado.quantidade===1?'material entregue':'materiais entregues'} com sucesso.`);await atualizarTudo();}catch(e){fechar('modalEntregaLote');materiaisSelecionados.clear();showToast(e.message,'error');await atualizarTudo();}finally{botao.disabled=false;botao.innerHTML='<i class="fas fa-check mr-2"></i>Confirmar entrega';atualizarPainelLote();}}
+        function abrirEntrega(id){const m=itens.find(x=>Number(x.id)===Number(id));if(!m||!m.pode_operar)return;const responsavel=responsaveis.find(p=>Number(p.id)===Number(document.getElementById('entregaResponsavel').value)),viatura=viaturasMateriais.find(v=>Number(v.id)===Number(document.getElementById('entregaViatura').value));if(!responsavel){showToast('Selecione primeiro o policial responsável no topo.','error');document.getElementById('controleEntregaResponsavel').scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>document.getElementById('buscaEntregaResponsavel').focus(),300);return;}materialOperacao=id;document.getElementById('materialEntregaNome').textContent=nomeMaterial(m);document.getElementById('responsavelEntregaNome').textContent=`${responsavel.nome} (${responsavel.re})`;document.getElementById('viaturaEntregaNome').textContent=viatura?rotuloViatura(viatura):'Sem viatura vinculada';document.getElementById('entregaObservacao').value='';document.getElementById('modalEntrega').classList.remove('hidden');}
+        async function confirmarEntrega(e){e.preventDefault();const responsavelId=Number(document.getElementById('entregaResponsavel').value),viaturaId=Number(document.getElementById('entregaViatura').value)||null;if(!responsavelId)return showToast('Selecione o policial responsável.','error');try{await api(`/api/materiais/itens/${materialOperacao}/entregar`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({responsavel_id:responsavelId,viatura_id:viaturaId,observacao:document.getElementById('entregaObservacao').value})});fechar('modalEntrega');showToast('Material entregue e registrado.');await atualizarTudo();}catch(e){showToast(e.message,'error');}}
+        function abrirDevolucao(id){const m=itens.find(x=>Number(x.id)===Number(id));if(!m||!m.pode_operar)return;materialOperacao=id;document.getElementById('materialDevolucaoNome').textContent=`${nomeMaterial(m)} · ${m.responsavel_nome} (${m.responsavel_re})`;document.getElementById('devolucaoObservacao').value='';document.getElementById('modalDevolucao').classList.remove('hidden');}
+        async function confirmarDevolucao(e){e.preventDefault();try{await api(`/api/materiais/itens/${materialOperacao}/devolver`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({observacao:document.getElementById('devolucaoObservacao').value})});fechar('modalDevolucao');showToast('Devolução registrada.');await atualizarTudo();}catch(e){showToast(e.message,'error');}}
+
+        function abrirRecebimentoPolicial(){cautelasPolicial=[];document.getElementById('devolucaoResponsavel').value='';document.getElementById('buscaDevolucaoResponsavel').value='';document.getElementById('observacaoDevolucaoPolicial').value='';document.getElementById('painelCautelasPolicial').classList.add('hidden');document.getElementById('estadoDevolucaoPolicial').classList.remove('hidden');document.getElementById('estadoDevolucaoPolicial').textContent='Selecione um policial para consultar os materiais.';document.getElementById('btnFecharRecebimentoVazio').classList.remove('hidden');document.getElementById('modalReceberPolicial').classList.remove('has-selection');document.getElementById('modalReceberPolicial').classList.remove('hidden');renderizarListaResponsaveisDevolucao('');setTimeout(()=>document.getElementById('buscaDevolucaoResponsavel').focus(),0);}
+        function renderizarListaResponsaveisDevolucao(termo=''){const consulta=normalizarResponsavel(termo),lista=document.getElementById('listaDevolucaoResponsaveis');const encontrados=responsaveis.filter(p=>!consulta||normalizarResponsavel(`${p.nome} ${p.re}`).includes(consulta));lista.innerHTML=encontrados.length?encontrados.map(p=>`<button type="button" role="option" data-devolucao-responsavel-id="${Number(p.id)}" class="responsible-search-result"><strong>${escapeHTML(p.nome)}</strong><small>RE ${escapeHTML(p.re)}</small></button>`).join(''):'<p class="p-4 text-center text-xs font-bold uppercase text-slate-500">Nenhum policial encontrado</p>';lista.querySelectorAll('[data-devolucao-responsavel-id]').forEach(botao=>botao.addEventListener('click',()=>selecionarResponsavelDevolucao(Number(botao.dataset.devolucaoResponsavelId))));}
+        function abrirListaResponsaveisDevolucao(){renderizarListaResponsaveisDevolucao(document.getElementById('buscaDevolucaoResponsavel').value);document.getElementById('listaDevolucaoResponsaveis').classList.remove('hidden');document.getElementById('buscaDevolucaoResponsavel').setAttribute('aria-expanded','true');document.getElementById('btnListaDevolucaoResponsaveis').setAttribute('aria-expanded','true');document.querySelector('#btnListaDevolucaoResponsaveis i').classList.add('rotate-180');}
+        function fecharListaResponsaveisDevolucao(){document.getElementById('listaDevolucaoResponsaveis').classList.add('hidden');document.getElementById('buscaDevolucaoResponsavel').setAttribute('aria-expanded','false');document.getElementById('btnListaDevolucaoResponsaveis').setAttribute('aria-expanded','false');document.querySelector('#btnListaDevolucaoResponsaveis i').classList.remove('rotate-180');}
+        function alternarListaResponsaveisDevolucao(event){event.stopPropagation();if(document.getElementById('listaDevolucaoResponsaveis').classList.contains('hidden')){abrirListaResponsaveisDevolucao();document.getElementById('buscaDevolucaoResponsavel').focus();}else fecharListaResponsaveisDevolucao();}
+        function pesquisarResponsaveisDevolucao(){document.getElementById('devolucaoResponsavel').value='';cautelasPolicial=[];document.getElementById('modalReceberPolicial').classList.remove('has-selection');document.getElementById('painelCautelasPolicial').classList.add('hidden');document.getElementById('estadoDevolucaoPolicial').classList.remove('hidden');document.getElementById('estadoDevolucaoPolicial').textContent='Selecione um policial para consultar os materiais.';document.getElementById('btnFecharRecebimentoVazio').classList.remove('hidden');renderizarListaResponsaveisDevolucao(document.getElementById('buscaDevolucaoResponsavel').value);abrirListaResponsaveisDevolucao();}
+        function teclaPesquisaResponsavelDevolucao(event){if(event.key==='Escape'){fecharListaResponsaveisDevolucao();return;}if(event.key==='ArrowDown'){event.preventDefault();abrirListaResponsaveisDevolucao();document.querySelector('#listaDevolucaoResponsaveis [data-devolucao-responsavel-id]')?.focus();}else if(event.key==='Enter'){event.preventDefault();document.querySelector('#listaDevolucaoResponsaveis [data-devolucao-responsavel-id]')?.click();}}
+        async function selecionarResponsavelDevolucao(id){const policial=responsaveis.find(p=>Number(p.id)===Number(id));if(!policial)return;document.getElementById('devolucaoResponsavel').value=policial.id;document.getElementById('buscaDevolucaoResponsavel').value=`${policial.nome} (${policial.re})`;document.getElementById('modalReceberPolicial').classList.add('has-selection');fecharListaResponsaveisDevolucao();await carregarCautelasPolicial(policial);}
+        async function carregarCautelasPolicial(policial){const estado=document.getElementById('estadoDevolucaoPolicial');document.getElementById('painelCautelasPolicial').classList.add('hidden');document.getElementById('btnFecharRecebimentoVazio').classList.remove('hidden');estado.classList.remove('hidden');estado.innerHTML='<i class="fas fa-circle-notch fa-spin mr-2"></i>Consultando cautelas abertas...';try{cautelasPolicial=await api(`/api/materiais/cautelas-abertas?responsavel_id=${Number(policial.id)}&t=${Date.now()}`);if(!cautelasPolicial.length){estado.textContent=`${policial.nome} não possui materiais pendentes para esta unidade.`;return;}estado.classList.add('hidden');document.getElementById('btnFecharRecebimentoVazio').classList.add('hidden');document.getElementById('painelCautelasPolicial').classList.remove('hidden');document.getElementById('nomeDevolucaoPolicial').textContent=`${policial.nome} (${policial.re})`;document.getElementById('quantidadeCautelasPolicial').textContent=`${cautelasPolicial.length} ${cautelasPolicial.length===1?'material em aberto':'materiais em aberto'}`;renderizarCautelasPolicial();}catch(e){cautelasPolicial=[];estado.textContent='Não foi possível consultar as cautelas.';showToast(e.message,'error');}}
+        function renderizarCautelasPolicial(){document.getElementById('cautelasPolicial').innerHTML=cautelasPolicial.map(c=>`<label class="return-card cursor-pointer"><input type="checkbox" class="return-check mt-1" value="${Number(c.cautela_id)}" checked onchange="atualizarSelecaoDevolucaoPolicial()"><span class="min-w-0 flex-1"><span class="flex flex-wrap items-center justify-between gap-2"><strong class="text-white">${escapeHTML(c.material_nome)}</strong><b class="material-number">${escapeHTML(c.material_numero?'Nº '+c.material_numero:'Sem número')}</b></span><small class="block mt-2 text-blue-300 font-bold">${escapeHTML(c.setor)} · ${escapeHTML(c.lista_nome)}</small><small class="block mt-1 text-slate-500">Entregue em ${escapeHTML(c.entrega)}${c.viatura_prefixo?' · Viatura '+escapeHTML(c.viatura_prefixo)+(c.viatura_placa?' ('+escapeHTML(c.viatura_placa)+')':''):''}</small>${c.observacao_entrega?`<small class="block mt-1 text-slate-400">Observação: ${escapeHTML(c.observacao_entrega)}</small>`:''}</span></label>`).join('');document.getElementById('selecionarTodasCautelas').checked=true;document.getElementById('selecionarTodasCautelas').indeterminate=false;atualizarSelecaoDevolucaoPolicial();}
+        function selecionarTodasCautelasPolicial(marcar){document.querySelectorAll('#cautelasPolicial .return-check').forEach(c=>c.checked=marcar);atualizarSelecaoDevolucaoPolicial();}
+        function atualizarSelecaoDevolucaoPolicial(){const caixas=[...document.querySelectorAll('#cautelasPolicial .return-check')],selecionadas=caixas.filter(c=>c.checked),todas=document.getElementById('selecionarTodasCautelas'),botao=document.getElementById('btnConfirmarDevolucaoPolicial');todas.checked=Boolean(caixas.length&&selecionadas.length===caixas.length);todas.indeterminate=Boolean(selecionadas.length&&selecionadas.length<caixas.length);botao.disabled=!selecionadas.length;botao.innerHTML=`<i class="fas fa-check mr-2"></i>${selecionadas.length?`Devolver ${selecionadas.length} ${selecionadas.length===1?'material':'materiais'}`:'Selecione materiais'}`;}
+        async function confirmarDevolucaoPolicial(event){event.preventDefault();const ids=[...document.querySelectorAll('#cautelasPolicial .return-check:checked')].map(c=>Number(c.value)),botao=document.getElementById('btnConfirmarDevolucaoPolicial'),policial=responsaveis.find(p=>Number(p.id)===Number(document.getElementById('devolucaoResponsavel').value));if(!ids.length||!policial)return;botao.disabled=true;botao.innerHTML='<i class="fas fa-circle-notch fa-spin mr-2"></i>Registrando';try{const resultado=await api('/api/materiais/devolver-lote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cautela_ids:ids,observacao:document.getElementById('observacaoDevolucaoPolicial').value})});fechar('modalReceberPolicial');showToast(`${resultado.quantidade} ${resultado.quantidade===1?'material devolvido':'materiais devolvidos'} com sucesso.`);await atualizarTudo();}catch(e){showToast(e.message,'error');await carregarCautelasPolicial(policial);}finally{botao.disabled=false;atualizarSelecaoDevolucaoPolicial();}}
+
+        async function carregarResponsaveis(){responsaveis=await api('/api/materiais/responsaveis');renderizarListaResponsaveis('');renderizarListaResponsaveisDevolucao('');}
+        async function carregarViaturasMateriais(){viaturasMateriais=await api('/api/materiais/viaturas');renderizarListaViaturas('');}
+        document.addEventListener('click',event=>{if(!event.target.closest('#controleEntregaResponsavel'))fecharListaResponsaveis();if(!event.target.closest('#controleEntregaViatura'))fecharListaViaturas();if(!event.target.closest('#controleDevolucaoResponsavel'))fecharListaResponsaveisDevolucao();});
+        function rotuloMovimentacao(c){return `${c.lista_nome} · ${c.material_nome}${c.material_numero?' Nº '+c.material_numero:''}`;}
+        function renderizarGrupoMovimentacao(grupo){const principal=grupo[0],total=grupo.length,devolvidos=grupo.filter(c=>c.devolvido_em).length,materiais=grupo.map(rotuloMovimentacao).join(' • '),todosDevolvidos=devolvidos===total,status=todosDevolvidos?(total===1?'Devolvido':`${total} devolvidos`):devolvidos?`${devolvidos} devolvidos · ${total-devolvidos} em uso`:(total===1?'Em uso':`${total} em uso`),viatura=principal.viatura_prefixo?` · Viatura <b>${escapeHTML(principal.viatura_prefixo)}${principal.viatura_placa?' ('+escapeHTML(principal.viatura_placa)+')':''}</b>`:'';const resumo=`<time class="text-xs font-mono text-slate-400">${escapeHTML(principal.entrega)}</time><div class="min-w-0"><p class="movement-materials">${escapeHTML(materiais)}</p><p class="text-sm mt-1">Entregue para <b>${escapeHTML(principal.responsavel_nome)} (${escapeHTML(principal.responsavel_re)})</b>${viatura}</p><p class="text-xs text-slate-500 mt-1">Lançado por: ${escapeHTML(principal.entregue_por)}</p></div><span class="flex items-center gap-3"><span class="badge ${todosDevolvidos?'available':'used'}">${escapeHTML(status)}</span>${total>1?'<i class="fas fa-chevron-down movement-chevron text-slate-500" aria-hidden="true"></i>':''}</span>`;if(total===1)return `<article class="movement-summary cursor-default">${resumo}</article>`;const detalhes=grupo.map(c=>`<div class="movement-detail-row"><span><b class="text-slate-200">${escapeHTML(rotuloMovimentacao(c))}</b>${c.observacao_entrega?` · ${escapeHTML(c.observacao_entrega)}`:''}</span><span class="font-bold ${c.devolvido_em?'text-emerald-400':'text-amber-300'}">${c.devolvido_em?`Devolvido em ${escapeHTML(c.devolucao)} por ${escapeHTML(c.devolvido_por||'—')}`:'Em uso'}</span></div>`).join('');return `<details class="movement-group"><summary class="movement-summary">${resumo}</summary><div class="movement-details">${detalhes}</div></details>`;}
+        const chaveMovimentacoesAbertas='geofrota_materiais_movimentacoes_abertas';
+        function definirMovimentacoesAbertas(aberta,persistir=true){const painel=document.getElementById('painelMovimentacoes'),botao=document.getElementById('btnAlternarMovimentacoes'),seta=document.getElementById('setaMovimentacoes');painel.classList.toggle('hidden',!aberta);botao.setAttribute('aria-expanded',String(aberta));seta.classList.toggle('rotate-90',aberta);if(persistir)try{localStorage.setItem(chaveMovimentacoesAbertas,String(aberta));}catch{}}
+        function restaurarMovimentacoes(){let aberta=false;try{aberta=localStorage.getItem(chaveMovimentacoesAbertas)==='true';}catch{}definirMovimentacoesAbertas(aberta,false);}
+        function alternarMovimentacoes(){definirMovimentacoesAbertas(document.getElementById('btnAlternarMovimentacoes').getAttribute('aria-expanded')!=='true');}
+        async function carregarMovimentacoes(){const dados=await api('/api/materiais/movimentacoes?limite=20&t='+Date.now()),grupos=[];for(const movimento of dados){const ultimo=grupos[grupos.length-1];if(ultimo&&ultimo[0].grupo_visual===movimento.grupo_visual)ultimo.push(movimento);else grupos.push([movimento]);}document.getElementById('resumoMovimentacoes').textContent=dados.length===1?'1 registro recente':`${dados.length} registros recentes`;document.getElementById('movimentacoes').innerHTML=grupos.map(renderizarGrupoMovimentacao).join('')||'<p class="p-8 text-center text-slate-500">Nenhuma movimentação registrada.</p>';}
+        async function atualizarTudo(){await Promise.all([carregarListas(),carregarMovimentacoes()]);}
+
+        const formatarDataHoraEncerramento=valor=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',dateStyle:'short',timeStyle:'short'}).format(new Date(valor));
+        function resumoEncerramentoSelecionado(){if(!encerramentoAtual)return {materiais_entregues:0,materiais_devolvidos:0,materiais_pendentes:0,viaturas_vinculadas:0};return setorEncerramento==='Todos'?encerramentoAtual.resumo:(encerramentoAtual.resumos_setores.find(r=>r.setor===setorEncerramento)||{materiais_entregues:0,materiais_devolvidos:0,materiais_pendentes:0,viaturas_vinculadas:0});}
+        function materiaisPendentesEncerramento(grupo){return setorEncerramento==='Todos'?grupo.materiais:grupo.materiais.filter(m=>m.setor===setorEncerramento);}
+        function atualizarConfirmacaoEncerramento(){document.getElementById('btnRegistrarEncerramento').disabled=!document.getElementById('encerramentoConfirmacao').checked||!encerramentoAtual;}
+        function atualizarContadorObservacaoEncerramento(){const tamanho=document.getElementById('encerramentoObservacao').value.length;document.getElementById('encerramentoObservacaoContador').textContent=`${tamanho.toLocaleString('pt-BR')} / 2.000`;}
+        async function abrirEncerramentoServico(){if(sessaoAtual?.role!=='oper'||!sessaoAtual.servico_dia)return;encerramentoAtual=null;setorEncerramento='Todos';document.getElementById('encerramentoConfirmacao').checked=false;document.getElementById('encerramentoObservacao').value='';atualizarContadorObservacaoEncerramento();atualizarConfirmacaoEncerramento();document.getElementById('encerramentoPendencias').innerHTML='<p class="p-8 text-center text-slate-500"><i class="fas fa-circle-notch fa-spin mr-2"></i>Consultando...</p>';document.body.classList.add('encerramento-aberto');document.getElementById('modalEncerramento').classList.remove('hidden');document.getElementById('modalEncerramento').scrollTop=0;try{encerramentoAtual=await api('/api/materiais/encerramento?t='+Date.now());renderizarEncerramentoServico();}catch(e){fechar('modalEncerramento');showToast(e.message,'error');}}
+        function selecionarSetorEncerramento(setor){setorEncerramento=setor;renderizarEncerramentoServico();}
+        function renderizarEncerramentoServico(){if(!encerramentoAtual)return;const resumo=resumoEncerramentoSelecionado();document.getElementById('encStatEntregues').textContent=resumo.materiais_entregues;document.getElementById('encStatDevolvidos').textContent=resumo.materiais_devolvidos;document.getElementById('encStatPendentes').textContent=resumo.materiais_pendentes;document.getElementById('encerramentoPeriodo').textContent=`Período: ${formatarDataHoraEncerramento(encerramentoAtual.inicio_periodo)} até ${formatarDataHoraEncerramento(encerramentoAtual.encerrado_em)}`;const opcoes=encerramentoAtual.setores.length>1?[['Todos','Todas'],...encerramentoAtual.setores.map(s=>[s,s])]:encerramentoAtual.setores.map(s=>[s,s]);document.getElementById('encerramentoSetores').innerHTML='<span class="text-xs font-black uppercase text-slate-400 mr-1">Unidade:</span>'+opcoes.map(([valor,rotulo])=>`<button type="button" onclick="selecionarSetorEncerramento('${valor}')" class="sector-btn ${setorEncerramento===valor?'active':''}">${escapeHTML(rotulo)}</button>`).join('');const grupos=encerramentoAtual.pendencias.map(grupo=>({grupo,materiais:materiaisPendentesEncerramento(grupo)})).filter(item=>item.materiais.length);document.getElementById('encerramentoPendencias').innerHTML=grupos.length?grupos.map(({grupo,materiais})=>{const rotulos=materiais.map(m=>`${m.lista_nome} · ${m.material_nome}${m.material_numero?' Nº '+m.material_numero:''}`);const unidades=[...new Set(materiais.map(m=>m.setor))];const revisar=grupo.responsavel_id?`<button type="button" onclick="revisarPendenciaEncerramento(${Number(grupo.responsavel_id)})" class="px-4 py-2 rounded-xl border border-blue-500 text-blue-300 hover:bg-blue-600 hover:text-white font-black uppercase text-xs transition">Revisar</button>`:'<span class="text-xs text-slate-500">Cadastro excluído</span>';return `<article class="p-4 md:p-5 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_130px_110px_130px] gap-4 items-center"><div class="min-w-0"><strong class="text-blue-300 text-base">${escapeHTML(grupo.responsavel_nome)} (${escapeHTML(grupo.responsavel_re)})</strong><p class="text-sm font-bold text-slate-200 mt-2 leading-relaxed">${escapeHTML(rotulos.join(' • '))}</p></div><div><span class="block text-[10px] font-black uppercase text-slate-500">Unidade</span><strong class="block text-sm mt-1">${escapeHTML(unidades.join(' · '))}</strong></div><div class="lg:text-center"><span class="badge used">${materiais.length} em uso</span></div><div class="lg:text-right">${revisar}</div></article>`;}).join(''):'<div class="p-10 text-center"><i class="fas fa-circle-check text-emerald-400 text-4xl mb-3"></i><strong class="block text-emerald-300 uppercase">Nenhuma pendência</strong><p class="text-sm text-slate-500 mt-2">Todos os materiais desta seleção foram devolvidos.</p></div>';atualizarConfirmacaoEncerramento();}
+        async function revisarPendenciaEncerramento(responsavelId){fechar('modalEncerramento');abrirRecebimentoPolicial();await selecionarResponsavelDevolucao(Number(responsavelId));}
+        async function confirmarEncerramentoServico(){if(!encerramentoAtual||!document.getElementById('encerramentoConfirmacao').checked)return;const botao=document.getElementById('btnRegistrarEncerramento'),observacao=document.getElementById('encerramentoObservacao').value.trim();botao.disabled=true;botao.innerHTML='<i class="fas fa-circle-notch fa-spin mr-2"></i>Registrando';try{const resultado=await api('/api/materiais/encerramento',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirmado:true,observacao})});fechar('modalEncerramento');renderizarRelatorioEncerramento(resultado);document.getElementById('modalResultado').classList.remove('hidden');showToast('Encerramento registrado com sucesso.');}catch(e){showToast(e.message,'error');}finally{botao.innerHTML='<i class="fas fa-file-circle-check mr-2"></i>Gerar relatório de encerramento';atualizarConfirmacaoEncerramento();}}
+        function renderizarRelatorioEncerramento(dados){const resumo=dados.resumo;let h=`<div class="text-center mb-6"><h2 class="text-2xl font-black text-blue-600 uppercase italic">GEOFROTA</h2><p class="text-sm font-bold uppercase">Relatório de encerramento do serviço</p><p class="text-xs mt-2">Registro Nº ${escapeHTML(dados.id)} · ${escapeHTML(formatarDataHoraEncerramento(dados.encerrado_em))}</p></div><div class="grid grid-cols-1 md:grid-cols-3 gap-2 mb-5 text-center"><div class="border rounded p-3"><small>Entregues</small><strong class="block text-xl">${resumo.materiais_entregues}</strong></div><div class="border rounded p-3"><small>Devolvidos</small><strong class="block text-xl">${resumo.materiais_devolvidos}</strong></div><div class="border rounded p-3"><small>Pendentes</small><strong class="block text-xl">${resumo.materiais_pendentes}</strong></div></div><p class="text-xs mb-4"><b>Responsável pelo encerramento:</b> ${escapeHTML(dados.encerrado_por)} (${escapeHTML(dados.encerrado_por_re)})<br><b>Unidades representadas:</b> ${escapeHTML(dados.setores.join(' · '))}<br><b>Período:</b> ${escapeHTML(formatarDataHoraEncerramento(dados.inicio_periodo))} até ${escapeHTML(formatarDataHoraEncerramento(dados.encerrado_em))}</p>`;if(dados.observacao)h+=`<section class="mb-5 rounded-lg border-2 border-slate-300 bg-slate-50 p-5"><h3 class="text-sm font-black uppercase text-slate-800 mb-3">Observações do serviço</h3><p class="text-base md:text-lg leading-relaxed font-medium text-slate-900 whitespace-pre-line break-words">${escapeHTML(dados.observacao)}</p></section>`;if(!dados.pendencias.length){document.getElementById('conteudoRelatorio').innerHTML=h+'<div class="p-8 border rounded text-center font-bold text-green-700">Nenhum material pendente no encerramento.</div>';return;}h+='<table class="closure-report w-full border-collapse text-xs"><thead><tr class="bg-slate-800 text-white"><th class="p-2 border">Responsável</th><th class="p-2 border">Unidade</th><th class="p-2 border">Materiais pendentes</th></tr></thead><tbody>';for(const grupo of dados.pendencias){const materiais=grupo.materiais.map(m=>`${m.lista_nome} · ${m.material_nome}${m.material_numero?' Nº '+m.material_numero:''}`);h+=`<tr><td class="p-2 border text-center">${escapeHTML(grupo.responsavel_nome)}<br>${escapeHTML(grupo.responsavel_re)}</td><td class="p-2 border text-center">${escapeHTML(grupo.setores.join(' · '))}</td><td class="p-2 border">${escapeHTML(materiais.join(' • '))}</td></tr>`;}document.getElementById('conteudoRelatorio').innerHTML=h+'</tbody></table><p class="mt-4 text-[10px] text-slate-500">Este relatório registra a conferência realizada. Os materiais pendentes permanecem em uso até a devolução ser registrada no GEOFROTA.</p>';}
+
+        function abrirRelatorios(){atualizarFiltroRelatorio();document.getElementById('modalRelatorios').classList.remove('hidden');}
+        function imprimirRelatorio(){const aviso=document.getElementById('toast');aviso.classList.remove('show');aviso.textContent='';const displayAnterior=aviso.style.display;aviso.style.display='none';requestAnimationFrame(()=>{window.print();aviso.style.display=displayAnterior;});}
+        function atualizarFiltroRelatorio(){const setor=document.getElementById('relSetor').value;const cats=listas.filter(l=>setor==='Todos'||l.setor===setor);document.getElementById('relLista').innerHTML='<option value="">Todas as categorias</option>'+cats.map(l=>`<option value="${Number(l.id)}">${escapeHTML(l.nome)} · ${escapeHTML(l.setor)}</option>`).join('');atualizarMateriaisRelatorio();}
+        async function atualizarMateriaisRelatorio(){const lista=Number(document.getElementById('relLista').value);let disp=[];try{if(lista)disp=Number(listaSelecionada)===lista?itens:await api(`/api/materiais/itens?lista_id=${lista}`);}catch(e){showToast(e.message,'error');}document.getElementById('relMaterial').innerHTML='<option value="">Todos os materiais</option>'+disp.map(m=>`<option value="${Number(m.id)}">${escapeHTML(nomeMaterial(m))}</option>`).join('');}
+        async function gerarRelatorio(tipo){try{const p=new URLSearchParams({setor:document.getElementById('relSetor').value,situacao:document.getElementById('relSituacao').value});const lista=document.getElementById('relLista').value,material=document.getElementById('relMaterial').value;if(lista)p.set('lista_id',lista);if(material)p.set('material_id',material);let rota='/api/materiais/relatorio-ultimo';if(tipo==='periodo'){const inicio=document.getElementById('relInicio').value,fim=document.getElementById('relFim').value;if(!inicio||!fim)return showToast('Informe as duas datas.','error');p.set('inicio',inicio);p.set('fim',fim);rota='/api/materiais/relatorio-periodo';}const dados=await api(`${rota}?${p}`);renderizarRelatorio(dados);fechar('modalRelatorios');document.getElementById('modalResultado').classList.remove('hidden');}catch(e){showToast(e.message,'error');}}
+        function renderizarRelatorio(dados){let h='<div class="text-center mb-7"><h2 class="text-2xl font-black text-blue-600 uppercase italic">Boletim GEOFROTA</h2><p class="text-sm font-bold uppercase">Relatório de materiais</p></div>';if(!dados.length){document.getElementById('conteudoRelatorio').innerHTML=h+'<p class="p-10 text-center text-slate-500">Nenhuma movimentação encontrada.</p>';return;}h+='<div class="overflow-x-auto"><table class="w-full min-w-[1000px] border-collapse text-xs"><thead><tr class="bg-slate-800 text-white"><th class="p-2 border">Entrega</th><th class="p-2 border">Unidade/categoria</th><th class="p-2 border">Material</th><th class="p-2 border">Responsável</th><th class="p-2 border">Viatura</th><th class="p-2 border">Lançado por</th><th class="p-2 border">Devolução</th></tr></thead><tbody>';for(const d of dados)h+=`<tr><td class="p-2 border text-center">${escapeHTML(d.entrega)}</td><td class="p-2 border text-center">${escapeHTML(d.setor)}<br>${escapeHTML(d.lista_nome)}</td><td class="p-2 border text-center font-bold">${escapeHTML(d.material_nome)}${d.material_numero?'<br><span class="report-material-number">Nº '+escapeHTML(d.material_numero)+'</span>':''}</td><td class="p-2 border text-center">${escapeHTML(d.responsavel_nome)}<br>${escapeHTML(d.responsavel_re)}</td><td class="p-2 border text-center">${d.viatura_prefixo?escapeHTML(d.viatura_prefixo)+(d.viatura_placa?'<br>'+escapeHTML(d.viatura_placa):''):'—'}</td><td class="p-2 border text-center">${escapeHTML(d.entregue_por)}</td><td class="p-2 border text-center">${d.devolucao?escapeHTML(d.devolucao)+'<br>'+escapeHTML(d.devolvido_por||''):'EM USO'}</td></tr>`;document.getElementById('conteudoRelatorio').innerHTML=h+'</tbody></table></div>';}
+
+        async function logout(){await fetch('/api/logout',{method:'POST'});location.href='login.html';}
+        async function iniciar(){try{restaurarMovimentacoes();const res=await fetch('/api/session');if(!res.ok){location.href='login.html';return;}sessaoAtual=await res.json();if(sessaoAtual.role!=='admin'&&!sessaoAtual.servico_dia){location.href='operacional.html';return;}document.getElementById('btnEncerrarServico').hidden=!(sessaoAtual.role==='oper'&&sessaoAtual.servico_dia);document.querySelectorAll('[data-admin-only]').forEach(x=>x.hidden=sessaoAtual.role!=='admin');document.querySelectorAll('[data-superadmin-only]').forEach(x=>x.hidden=!sessaoAtual.superadmin);const permitidos=sessaoAtual.role==='oper'&&(Array.isArray(sessaoAtual.setores_materiais)&&sessaoAtual.setores_materiais.length?sessaoAtual.setores_materiais:[sessaoAtual.setor]);document.getElementById('perfilAcesso').textContent=sessaoAtual.role==='admin'?(sessaoAtual.superadmin?'Administrador-geral · Todas as subunidades':`Administrador ${sessaoAtual.usuario} · ${sessaoAtual.setor}`):`${sessaoAtual.nome} (${sessaoAtual.re}) · Serviço de dia · Materiais: ${permitidos.join(' · ')}`;setorFiltro=sessaoAtual.role==='oper'?(permitidos.length>1?'Todos':permitidos[0]):'Todos';if(sessaoAtual.role==='oper'){const seletor=document.getElementById('relSetor');seletor.innerHTML='';if(permitidos.length>1)seletor.add(new Option('Todas as representadas','Todos'));permitidos.forEach(setor=>seletor.add(new Option(setor,setor)));}const hoje=new Date().toISOString().slice(0,10);document.getElementById('relInicio').value=hoje;document.getElementById('relFim').value=hoje;await Promise.all([carregarResponsaveis(),carregarViaturasMateriais(),carregarListas(),carregarMovimentacoes()]);}catch(e){showToast(e.message||'Não foi possível abrir o módulo.','error');}}
+        iniciar();
+    </script>
+</body>
+</html>

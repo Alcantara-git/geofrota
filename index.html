@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        [data-admin-only][hidden], [data-superadmin-only][hidden] { display: none !important; }
+        [data-admin-only][hidden], [data-superadmin-only][hidden], [data-materiais-only][hidden] { display: none !important; }
         body { background-color: #0f172a; color: #f8fafc; min-height: 100vh; overflow-y: auto; }
         .card { background-color: #1e293b; border: 1px solid #334155; transition: 0.3s; }
         .sidebar { background-color: #0f172a; border-right: 1px solid #1e293b; }
@@ -152,6 +152,15 @@
         .fleet-reason-row span { overflow-wrap: anywhere; }
         .fleet-reason-row strong { white-space: nowrap; color: #f87171; }
 
+        .support-dock { padding-top: 16px; border-top: 1px solid #1e293b; }
+        .support-link, .support-edit { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; border: 1px solid rgba(34,197,94,.5); border-radius: 12px; background: rgba(20,83,45,.16); color: #4ade80; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; transition: .2s; }
+        .support-link { flex: 1; gap: 9px; }
+        .support-link i { font-size: 18px; }
+        .support-edit { width: 44px; flex: 0 0 44px; color: #93c5fd; border-color: rgba(59,130,246,.45); background: rgba(30,64,175,.16); }
+        .support-link:hover { color: #fff; border-color: #4ade80; background: rgba(22,163,74,.28); box-shadow: 0 0 16px rgba(34,197,94,.16); }
+        .support-edit:hover { color: #fff; border-color: #60a5fa; background: rgba(37,99,235,.32); }
+        .support-link[aria-disabled="true"] { opacity: .55; pointer-events: none; }
+
         @media print {
             .no-print, aside, header, .grid, .search-container, #toast, button, .relative, #modalExcluir, #modalEscolhaRelatorio, #modalFiltro, #modalV { display: none !important; }
             body, html { background: white !important; color: black !important; height: auto !important; min-height: 0 !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; }
@@ -184,6 +193,9 @@
             <a data-admin-only hidden href="usuarios.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition font-medium">
                 <i class="fas fa-users mr-3"></i> Usuários
             </a>
+            <a data-materiais-only hidden href="materiais.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition font-medium">
+                <i class="fas fa-boxes-stacked mr-3"></i> Materiais
+            </a>
             <a data-superadmin-only hidden href="administradores.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl transition font-medium">
                 <i class="fas fa-user-shield mr-3"></i> Administradores
             </a>
@@ -203,6 +215,13 @@
             </section>
         </div>
         </nav>
+
+        <div class="support-dock flex items-center gap-2" aria-label="Suporte do sistema">
+            <a id="linkSuporte" class="support-link" href="#" target="_blank" rel="noopener noreferrer" aria-disabled="true" title="Falar com o suporte pelo WhatsApp">
+                <i class="fab fa-whatsapp" aria-hidden="true"></i><span>Suporte</span>
+            </a>
+            <button data-superadmin-only hidden type="button" onclick="abrirEditarSuporte()" class="support-edit" title="Alterar WhatsApp do suporte" aria-label="Alterar WhatsApp do suporte"><i class="fas fa-gear" aria-hidden="true"></i></button>
+        </div>
 
     </aside>
 
@@ -277,6 +296,26 @@
 
     </main>
 
+    <div id="modalSuporte" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[220] no-print" role="dialog" aria-modal="true" aria-labelledby="tituloSuporte">
+        <div class="card w-full max-w-md p-8 rounded-3xl text-center border-t-4 border-green-500 shadow-2xl">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-2xl grid place-items-center bg-green-500/15 border border-green-500/40 text-green-400 text-3xl"><i class="fab fa-whatsapp" aria-hidden="true"></i></div>
+            <h3 id="tituloSuporte" class="text-xl font-black text-white uppercase italic">Contato do suporte</h3>
+            <p class="text-slate-400 text-sm mt-2 mb-6 leading-relaxed">Informe o número com DDD. O código do Brasil será acrescentado automaticamente.</p>
+            <form id="formSuporte">
+                <label for="numeroSuporte" class="block text-left text-[10px] font-bold text-slate-400 ml-1 mb-2 uppercase tracking-widest">WhatsApp do suporte</label>
+                <div class="flex items-center bg-slate-950 border border-slate-700 rounded-xl focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500">
+                    <span class="pl-4 text-green-400 font-black" aria-hidden="true">+55</span>
+                    <input id="numeroSuporte" type="tel" inputmode="numeric" autocomplete="tel" maxlength="16" required placeholder="18 99668-0768" class="min-w-0 flex-1 bg-transparent p-4 text-white font-bold outline-none placeholder:text-slate-600">
+                </div>
+                <p class="text-left text-xs text-slate-500 mt-2">Somente o administrador-geral pode alterar este contato.</p>
+                <div class="grid grid-cols-2 gap-3 mt-7">
+                    <button type="button" onclick="fecharEditarSuporte()" class="bg-slate-700 hover:bg-slate-600 p-4 rounded-xl font-bold uppercase text-xs text-white">Cancelar</button>
+                    <button id="btnSalvarSuporte" type="submit" class="bg-green-600 hover:bg-green-500 p-4 rounded-xl font-bold uppercase text-xs text-white shadow-lg"><i class="fas fa-check mr-2" aria-hidden="true"></i>Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Modais omitidos no HTML visualmente para economizar espaço (São exatamente os mesmos do arquivo original) -->
     <div id="modalExcluir" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-[200] no-print">
         <div class="card w-full max-w-sm p-8 rounded-3xl text-center border-t-4 border-red-600 shadow-2xl">
@@ -298,6 +337,7 @@
             <div class="bg-slate-900 border border-slate-700 rounded-2xl p-4 my-6">
                 <span class="block text-[10px] uppercase tracking-widest text-slate-500 font-bold">Próxima revisão</span>
                 <strong id="trocaOleoProximaRevisao" class="block text-2xl text-amber-400 mt-1"></strong>
+                <span id="trocaOleoPrazoEspecial" class="hidden mt-3 pt-3 border-t border-slate-700 text-xs font-bold text-blue-300"><i class="far fa-calendar-check mr-2"></i>O prazo especial de 6 meses será reiniciado hoje.</span>
             </div>
             <p class="text-xs text-slate-500 mb-6">A confirmação será registrada no histórico.</p>
             <div class="grid grid-cols-2 gap-4">
@@ -410,6 +450,7 @@
         const comparadorOrdenacao = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' });
         const trocasEmAndamento = new Set();
         let trocaOleoPendente = null;
+        let numeroWhatsappSuporte = '18996680768';
         const categoriasBaixa = ["Mecânico", "Pneu", "Bateria", "Freios", "Troca de óleo", "Iluminação e/ou sonoro", "Sindicância", "Avaria", "Elétrica", "Outros"];
         const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         const ehLancamentoDelegado = registro => {
@@ -420,7 +461,48 @@
         const normalizarComparacao = value => String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toUpperCase();
         const podeGerenciar = setor => role === 'admin' && (isSuperadmin || setor === adminSetor);
         function showToast(msg, tipo = 'success') { const t = document.getElementById('toast'); t.innerText = msg; t.setAttribute('role', tipo === 'error' ? 'alert' : 'status'); t.classList.toggle('toast-error', tipo === 'error'); t.classList.toggle('toast-success', tipo !== 'error'); t.classList.add('show'); clearTimeout(showToast.timer); showToast.timer = setTimeout(() => t.classList.remove('show'), tipo === 'error' ? 4000 : 3000); }
+        async function carregarSuporte() {
+            try {
+                const res = await fetch('/api/configuracoes/suporte');
+                const dados = await res.json();
+                if (!res.ok) throw new Error(dados.error || 'Contato indisponível');
+                numeroWhatsappSuporte = dados.numero;
+                const link = document.getElementById('linkSuporte');
+                link.href = dados.url;
+                link.setAttribute('aria-disabled', 'false');
+            } catch {
+                const link = document.getElementById('linkSuporte');
+                link.href = 'https://wa.me/5518996680768?text=Ol%C3%A1%2C%20preciso%20de%20suporte%20no%20sistema%20GEOFROTA.';
+                link.setAttribute('aria-disabled', 'false');
+            }
+        }
+        function abrirEditarSuporte() {
+            if (!isSuperadmin) return;
+            document.getElementById('numeroSuporte').value = numeroWhatsappSuporte;
+            document.getElementById('modalSuporte').classList.remove('hidden');
+            document.getElementById('numeroSuporte').focus();
+        }
+        function fecharEditarSuporte() { document.getElementById('modalSuporte').classList.add('hidden'); }
+        document.getElementById('formSuporte').addEventListener('submit', async evento => {
+            evento.preventDefault();
+            if (!isSuperadmin) return;
+            const botao = document.getElementById('btnSalvarSuporte');
+            botao.disabled = true;
+            try {
+                const res = await fetch('/api/configuracoes/suporte', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ numero:document.getElementById('numeroSuporte').value }) });
+                const dados = await res.json();
+                if (!res.ok) throw new Error(dados.error || 'Não foi possível salvar o contato');
+                numeroWhatsappSuporte = dados.numero;
+                const link = document.getElementById('linkSuporte');
+                link.href = dados.url;
+                link.setAttribute('aria-disabled', 'false');
+                fecharEditarSuporte();
+                showToast('Contato do suporte atualizado!');
+            } catch (e) { showToast(e.message || 'Erro ao salvar o contato.', 'error'); }
+            finally { botao.disabled = false; }
+        });
         const formatarKM = valor => Number(valor).toLocaleString('pt-BR');
+        const formatarDataPrazo = valor => new Intl.DateTimeFormat('pt-BR', { timeZone:'America/Sao_Paulo' }).format(new Date(valor));
         function cicloRevisao(modelo) {
             const nome = String(modelo ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').replace(/([A-Z])([0-9])/g, '$1 $2').replace(/([0-9])([A-Z])/g, '$1 $2');
             const bmw850 = /\bBMW\b/.test(nome) && /\b(?:F\s*)?850\b/.test(nome) && /\bGS\b/.test(nome);
@@ -436,7 +518,8 @@
             if (p === null) return '<span class="text-slate-400">Dados indisponíveis</span>';
             const cor = p > 100 ? 'maintenance-overdue' : p > 90 ? 'maintenance-red' : p > 70 ? 'maintenance-yellow' : 'maintenance-green';
             const legenda = p > 100 ? 'Vencida' : p === 100 ? 'Limite atingido' : `Ciclo de ${formatarKM(ciclo)} km`;
-            return `<div class="maintenance" role="img" aria-label="${p}% do ciclo de revisão${p > 100 ? ', revisão vencida' : ''}"><div class="maintenance-label"><span>${legenda}</span><strong>${p}%</strong></div><div class="maintenance-track"><div class="maintenance-fill ${cor}" style="width:${Math.min(100,p)}%"></div></div></div>`;
+            const prazo = v.controle_tempo_oleo ? (v.proxima_troca_oleo_em ? `<div class="mt-2 text-[10px] font-bold ${v.prazo_troca_oleo_vencido?'text-red-400':'text-blue-300'}"><i class="far fa-calendar-alt mr-1" aria-hidden="true"></i>${v.prazo_troca_oleo_vencido?'Prazo de 6 meses atingido':'Próximo prazo: '+formatarDataPrazo(v.proxima_troca_oleo_em)}</div>` : '<div class="mt-2 text-[10px] font-bold text-slate-500"><i class="far fa-calendar-alt mr-1" aria-hidden="true"></i>6 meses: inicia na próxima troca</div>') : '';
+            return `<div class="maintenance" role="img" aria-label="${p}% do ciclo de revisão${p > 100 ? ', revisão vencida' : ''}"><div class="maintenance-label"><span>${legenda}</span><strong>${p}%</strong></div><div class="maintenance-track"><div class="maintenance-fill ${cor}" style="width:${Math.min(100,p)}%"></div></div>${prazo}</div>`;
         }
         async function carregar() {
             const pedido = ++pedidoLista;
@@ -662,10 +745,11 @@
             const v = viaturasLocal.find(x => Number(x.id) === id);
             if (!v || !podeGerenciar(v.setor) || v.status === 'Baixada') return;
             const kmAtual = Number(v.km), revisaoAtual = Number(v.km_revisao);
-            trocaOleoPendente = { id, kmAtual, revisaoAtual };
+            trocaOleoPendente = { id, kmAtual, revisaoAtual, prazoEspecial:Boolean(v.controle_tempo_oleo) };
             document.getElementById('trocaOleoPrefixo').innerText = v.prefixo;
             document.getElementById('trocaOleoKmAtual').innerText = formatarKM(kmAtual);
             document.getElementById('trocaOleoProximaRevisao').innerText = formatarKM(kmAtual + cicloRevisao(v.modelo)) + ' km';
+            document.getElementById('trocaOleoPrazoEspecial').classList.toggle('hidden', !v.controle_tempo_oleo);
             document.getElementById('modalTrocaOleo').classList.remove('hidden');
             document.getElementById('btnConfirmarTrocaOleo').focus();
         }
@@ -675,7 +759,7 @@
         }
         async function confirmarTrocaOleo() {
             if (!trocaOleoPendente) return;
-            const { id, kmAtual, revisaoAtual } = trocaOleoPendente;
+            const { id, kmAtual, revisaoAtual, prazoEspecial } = trocaOleoPendente;
             fecharTrocaOleo();
             trocasEmAndamento.add(id); renderizarTabela();
             try {
@@ -683,7 +767,7 @@
                 if (res.status === 401) { window.location.href = 'login.html'; return; }
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Não foi possível registrar a troca');
-                showToast('Troca registrada! Próxima revisão: ' + formatarKM(data.km_revisao) + ' km.');
+                showToast('Troca registrada! Próxima revisão: ' + formatarKM(data.km_revisao) + ' km.' + (prazoEspecial ? ' Novo prazo: 6 meses.' : ''));
             } catch (e) { showToast(e.message || 'Erro ao registrar a troca.', 'error'); }
             finally { trocasEmAndamento.delete(id); await carregar(); renderizarTabela(); }
         }
@@ -853,13 +937,14 @@
                 document.getElementById('modoPerfil').innerText = role === 'admin' ? (isSuperadmin ? 'Administrador-geral' : `Administrador ${adminUsuario} · ${adminSetor}`) : 'Operacional · Somente visualização';
                 document.querySelectorAll('[data-admin-only]').forEach(item => { item.hidden = role !== 'admin'; });
                 document.querySelectorAll('[data-superadmin-only]').forEach(item => { item.hidden = !isSuperadmin; });
+                document.querySelectorAll('[data-materiais-only]').forEach(item => { item.hidden = !(role === 'admin' || sessao.servico_dia); });
                 const aviso = new URLSearchParams(window.location.search).get('aviso');
                 if (aviso === 'administradores') {
                     showToast('Acesso exclusivo do administrador 1BPTRAN.', 'error');
                     window.history.replaceState({}, '', window.location.pathname);
                 }
                 atualizarPermissoesAcoes();
-                await carregar();
+                await Promise.all([carregar(), carregarSuporte()]);
                 setInterval(carregar, 5000);
             } catch (e) {
                 showToast('Não foi possível verificar o acesso. Atualize a página.', 'error');

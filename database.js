@@ -15,6 +15,7 @@ async function inicializarBanco() {
         await pool.query(`ALTER TABLE viaturas ADD COLUMN IF NOT EXISTS motivo TEXT DEFAULT '';`);
         await pool.query(`ALTER TABLE viaturas ADD COLUMN IF NOT EXISTS setor TEXT DEFAULT 'CTT';`);
         await pool.query(`ALTER TABLE viaturas ADD COLUMN IF NOT EXISTS observacoes TEXT NOT NULL DEFAULT '';`);
+        await pool.query(`ALTER TABLE viaturas ADD COLUMN IF NOT EXISTS ultima_troca_oleo_em TIMESTAMPTZ;`);
         await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS viaturas_prefixo_normalizado_uidx ON viaturas ((UPPER(REGEXP_REPLACE(TRIM(prefixo), '[[:space:]]+', '', 'g'))));`);
         await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS setor TEXT;`);
         await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS re TEXT;`);
@@ -26,6 +27,8 @@ async function inicializarBanco() {
         await pool.query(`ALTER TABLE historico ADD COLUMN IF NOT EXISTS autor_conta TEXT;`);
         await pool.query(`CREATE TABLE IF NOT EXISTS configuracoes (chave TEXT PRIMARY KEY, valor TEXT);`);
         await pool.query(`INSERT INTO configuracoes (chave, valor) VALUES ('ultimo_acesso_relatorio', CURRENT_TIMESTAMP::text) ON CONFLICT DO NOTHING;`);
+        await pool.query(`INSERT INTO configuracoes (chave, valor) VALUES ('whatsapp_suporte', '18996680768') ON CONFLICT DO NOTHING;`);
+        await pool.query(fs.readFileSync(path.join(__dirname, 'migracao-materiais.sql'), 'utf8'));
         console.log("✅ Banco de Dados Sincronizado.");
     } catch (err) { console.error("Falha ao inicializar banco:", err); }
 }
