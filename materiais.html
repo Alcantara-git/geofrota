@@ -27,6 +27,26 @@
         .list-metric.maintenance-count { color:#f87171; }
         .list-btn.active .list-unit { color:#dbeafe; }
         .list-btn.active .list-metric { filter:brightness(1.15); }
+        .consolidated-summary { margin-bottom:12px; padding:13px; border:1px solid rgba(59,130,246,.35); border-radius:14px; background:linear-gradient(145deg,rgba(30,64,175,.16),rgba(15,23,42,.8)); }
+        .consolidated-summary-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin-top:10px; }
+        .consolidated-stat { min-width:0; padding:8px 5px; border:1px solid #334155; border-radius:10px; background:rgba(15,23,42,.72); text-align:center; }
+        .consolidated-stat strong { display:block; font-size:1rem; line-height:1.1rem; }
+        .consolidated-stat span { display:block; margin-top:4px; color:#94a3b8; font-size:.6rem; font-weight:800; text-transform:uppercase; }
+        .group-breakdown { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+        .consolidated-note { width:100%; padding:10px 12px; border:1px solid rgba(59,130,246,.35); border-radius:11px; background:rgba(37,99,235,.1); color:#bfdbfe; font-size:.72rem; line-height:1.1rem; }
+        .consolidated-note i { color:#60a5fa; margin-right:6px; }
+        .group-unit-card { min-width:170px; padding:9px 11px; border:1px solid #334155; border-radius:11px; background:rgba(15,23,42,.72); }
+        .group-unit-card strong { display:block; color:#93c5fd; font-size:.72rem; text-transform:uppercase; }
+        .group-unit-card span { display:block; margin-top:4px; color:#cbd5e1; font-size:.68rem; font-weight:700; }
+        .materials-chart { margin-top:18px; padding-top:18px; border-top:1px solid #1e293b; }
+        .materials-donut { position:relative; width:132px; height:132px; margin:14px auto; border-radius:50%; background:#334155; }
+        .materials-donut::after { position:absolute; inset:23px; display:block; border-radius:50%; background:#0f172a; content:""; }
+        .materials-donut-center { position:absolute; z-index:1; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+        .materials-donut-center strong { font-size:1.3rem; line-height:1.35rem; color:#fff; }
+        .materials-donut-center span { margin-top:3px; color:#94a3b8; font-size:.58rem; line-height:.75rem; font-weight:900; text-transform:uppercase; }
+        .materials-chart-row { display:grid; grid-template-columns:8px minmax(0,1fr) auto; align-items:center; gap:7px; padding:5px 1px; color:#cbd5e1; font-size:.67rem; }
+        .materials-chart-dot { width:8px; height:8px; border-radius:50%; box-shadow:0 0 7px currentColor; }
+        .materials-chart-row strong { color:#f8fafc; white-space:nowrap; }
         .badge { display:inline-flex; align-items:center; gap:6px; padding:5px 9px; border:1px solid; border-radius:999px; font-size:.7rem; line-height:1rem; font-weight:900; text-transform:uppercase; white-space:nowrap; }
         .available { border-color:rgba(34,197,94,.35); background:rgba(34,197,94,.12); color:#4ade80; }
         .used { border-color:rgba(245,158,11,.35); background:rgba(245,158,11,.12); color:#fbbf24; }
@@ -70,17 +90,24 @@
         .return-check { width:20px; height:20px; flex:0 0 auto; cursor:pointer; accent-color:#f59e0b; }
         .return-card { display:flex; align-items:flex-start; gap:12px; padding:14px; border:1px solid #334155; border-radius:14px; background:#0f172a; transition:border-color .2s,background .2s; }
         .return-card:has(.return-check:checked) { border-color:rgba(245,158,11,.55); background:rgba(245,158,11,.08); }
-        .return-modal-card { position:relative; width:min(94vw,760px) !important; padding:clamp(18px,3vw,28px); scrollbar-gutter:stable; scrollbar-width:thin; scrollbar-color:#b45309 #0f172a; }
+        .return-modal-card { position:relative; width:min(96vw,860px) !important; max-height:96dvh; padding:clamp(18px,3vw,28px); scrollbar-gutter:stable; scrollbar-width:thin; scrollbar-color:#b45309 #0f172a; }
         .return-modal-card::-webkit-scrollbar, #listaDevolucaoResponsaveis::-webkit-scrollbar, #cautelasPolicial::-webkit-scrollbar { width:8px; }
         .return-modal-card::-webkit-scrollbar-track, #listaDevolucaoResponsaveis::-webkit-scrollbar-track, #cautelasPolicial::-webkit-scrollbar-track { border-radius:999px; background:#0f172a; }
         .return-modal-card::-webkit-scrollbar-thumb, #listaDevolucaoResponsaveis::-webkit-scrollbar-thumb, #cautelasPolicial::-webkit-scrollbar-thumb { border:2px solid #0f172a; border-radius:999px; background:#b45309; }
         .return-modal-close { position:absolute; top:16px; right:16px; width:38px; height:38px; border:1px solid #475569; border-radius:11px; color:#94a3b8; background:#0f172a; transition:.2s; }
         .return-modal-close:hover { border-color:#f59e0b; color:#fbbf24; }
-        #listaDevolucaoResponsaveis { position:static; max-height:min(210px,34vh); margin-top:6px; overflow-y:auto; scrollbar-gutter:stable; }
-        #cautelasPolicial { max-height:min(260px,32vh); scrollbar-gutter:stable; scrollbar-width:thin; scrollbar-color:#b45309 #0f172a; }
+        #listaDevolucaoResponsaveis { position:static; max-height:min(420px,52vh); margin-top:6px; overflow-y:auto; scrollbar-gutter:stable; }
+        #cautelasPolicial { max-height:min(480px,52vh); scrollbar-gutter:stable; scrollbar-width:thin; scrollbar-color:#b45309 #0f172a; }
         #modalReceberPolicial.has-selection .return-modal-intro { display:none; }
         #modalReceberPolicial:has(#listaDevolucaoResponsaveis:not(.hidden)) #estadoDevolucaoPolicial,
         #modalReceberPolicial:has(#listaDevolucaoResponsaveis:not(.hidden)) #btnFecharRecebimentoVazio { display:none !important; }
+        @media(min-width:768px) and (min-height:700px) {
+            .return-modal-card { display:flex; flex-direction:column; min-height:min(86dvh,760px); }
+            #estadoDevolucaoPolicial { display:grid; flex:1; min-height:190px; place-items:center; }
+            #modalReceberPolicial.has-selection #painelCautelasPolicial:not(.hidden) { display:flex; flex:1; min-height:0; flex-direction:column; }
+            #modalReceberPolicial.has-selection #cautelasPolicial { flex:1; max-height:none; min-height:160px; }
+            #btnFecharRecebimentoVazio { margin-top:auto; }
+        }
         @media(max-height:650px) {
             .return-modal-card { max-height:94vh; padding-top:18px; padding-bottom:18px; }
             .return-modal-intro i { display:none; }
@@ -94,6 +121,17 @@
         #resumoMateriaisLote::-webkit-scrollbar { width:8px; }
         #resumoMateriaisLote::-webkit-scrollbar-track { background:transparent; }
         #resumoMateriaisLote::-webkit-scrollbar-thumb { border-radius:999px; background:#64748b; }
+        .delivery-modal-card { position:relative; width:min(96vw,860px) !important; max-height:96dvh; scrollbar-gutter:stable; }
+        .delivery-modal-summary { min-height:0; }
+        .delivery-modal-card #resumoMateriaisLote { max-height:min(480px,52vh); }
+        .delivery-modal-card #resumoMateriaisLote strong { font-size:.95rem; line-height:1.3rem; }
+        .delivery-modal-card #resumoMateriaisLote small { font-size:.78rem; line-height:1.1rem; }
+        .delivery-modal-card #observacaoEntregaLote { min-height:112px; font-size:1rem; line-height:1.45rem; }
+        @media(min-width:768px) and (min-height:700px) {
+            .delivery-modal-card { display:flex; min-height:min(86dvh,760px); flex-direction:column; }
+            .delivery-modal-summary { display:flex; flex:1; flex-direction:column; }
+            .delivery-modal-card #resumoMateriaisLote { flex:1; max-height:none; min-height:180px; }
+        }
         .delivery-note { max-width:260px; overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-height:1.25rem; cursor:help; }
         .movement-summary { display:grid; grid-template-columns:150px minmax(0,1fr) auto; gap:16px; align-items:center; padding:16px 20px; cursor:pointer; list-style:none; transition:background .2s; }
         .movement-summary::-webkit-details-marker { display:none; }
@@ -157,6 +195,14 @@
             <a data-superadmin-only hidden href="administradores.html" class="flex items-center p-3 text-slate-400 hover:bg-slate-800 rounded-xl transition font-medium"><i class="fas fa-user-shield w-7"></i>Administradores</a>
             <button onclick="logout()" class="flex items-center p-3 mt-8 text-red-400 hover:bg-red-500/10 w-full rounded-xl transition font-bold uppercase text-xs"><i class="fas fa-right-from-bracket w-7"></i>Sair</button>
         </nav>
+        <section class="materials-chart" aria-labelledby="tituloGraficoMateriais">
+            <h2 id="tituloGraficoMateriais" class="text-xs font-black uppercase text-center text-slate-300">Situação dos materiais</h2>
+            <p id="escopoGraficoMateriais" class="text-[10px] text-slate-500 text-center mt-1">1º BPTRAN</p>
+            <div id="graficoMateriais" class="materials-donut" role="img" aria-label="Carregando situação dos materiais">
+                <div class="materials-donut-center"><strong id="totalGraficoMateriais">0</strong><span>materiais<br>totais</span></div>
+            </div>
+            <div id="legendaGraficoMateriais"></div>
+        </section>
     </aside>
 
     <main class="flex-1 min-w-0 p-4 md:p-8">
@@ -215,6 +261,7 @@
                 <div class="flex items-center justify-between gap-3 mb-4">
                     <div><h2 class="font-black uppercase tracking-wide">Listas de materiais</h2><p id="resumoListas" class="text-xs text-slate-500 mt-1"></p></div>
                 </div>
+                <div id="resumoGeralMateriais" class="consolidated-summary hidden"></div>
                 <div id="listaCategorias" class="space-y-2"></div>
             </aside>
 
@@ -224,6 +271,7 @@
                         <div><h2 id="tituloItens" class="font-black uppercase tracking-wide text-blue-300">Selecione uma lista</h2><p id="subtituloItens" class="text-xs text-slate-500 mt-1">Os materiais aparecerão aqui.</p></div>
                         <button id="btnNovoMaterial" data-admin-only hidden onclick="abrirMaterial()" class="px-4 py-3 rounded-xl bg-blue-600 text-white font-black uppercase text-xs hover:bg-blue-500"><i class="fas fa-plus mr-2"></i>Cadastrar material</button>
                     </div>
+                    <div id="detalhesGrupoListas" class="group-breakdown hidden"></div>
                     <div class="relative mt-4"><i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i><input id="buscaMaterial" oninput="renderizarItens()" class="input pl-11" placeholder="Pesquisar por material, número ou responsável..."></div>
                 </div>
                 <div class="overflow-x-auto">
@@ -322,9 +370,9 @@
     </div>
 
     <div id="modalEntregaLote" class="modal hidden no-print">
-        <form class="modal-card border-green-500" onsubmit="confirmarEntregaLote(event)">
+        <form class="modal-card delivery-modal-card border-green-500" onsubmit="confirmarEntregaLote(event)">
             <div class="text-center mb-5"><i class="fas fa-boxes-packing text-green-400 text-4xl mb-3"></i><h3 class="text-xl font-black uppercase">Confirmar entrega coletiva</h3><p id="responsavelLoteNome" class="text-emerald-300 font-bold mt-2"></p><p id="viaturaLoteNome" class="text-blue-300 text-sm font-bold mt-1"></p></div>
-            <div class="p-3 rounded-2xl bg-slate-900 border border-slate-700 mb-4"><p id="quantidadeLote" class="text-xs font-black uppercase text-blue-300 mb-2"></p><div id="resumoMateriaisLote" class="max-h-48 overflow-y-auto divide-y divide-slate-800"></div></div>
+            <div class="delivery-modal-summary p-4 rounded-2xl bg-slate-900 border border-slate-700 mb-4"><p id="quantidadeLote" class="text-sm font-black uppercase text-blue-300 mb-2"></p><div id="resumoMateriaisLote" class="max-h-48 overflow-y-auto divide-y divide-slate-800"></div></div>
             <label class="block text-xs font-black uppercase text-slate-400 mb-2">Observação geral <span class="normal-case font-normal">(opcional)</span></label>
             <textarea id="observacaoEntregaLote" maxlength="1000" rows="3" class="input mb-6" placeholder="A mesma observação será registrada em todos os materiais"></textarea>
             <div class="grid grid-cols-2 gap-3"><button type="button" onclick="fechar('modalEntregaLote')" class="p-4 rounded-xl bg-slate-700 font-bold uppercase text-xs"><i class="fas fa-pen mr-2"></i>Editar</button><button id="btnConfirmarEntregaLote" class="p-4 rounded-xl bg-green-600 hover:bg-green-500 font-bold uppercase text-xs"><i class="fas fa-check mr-2"></i>Confirmar entrega</button></div>
@@ -436,12 +484,40 @@
         const statusTexto=s=>({disponivel:'Disponível',em_uso:'Em uso',manutencao:'Manutenção'}[s]||s);
         const statusClasse=s=>s==='disponivel'?'available':s==='em_uso'?'used':'maintenance';
         const nomeMaterial=m=>`${m.nome}${m.numero?' · Nº '+m.numero:''}`;
-        const listaAtual=()=>listas.find(l=>Number(l.id)===Number(listaSelecionada));
+        const normalizarNomeLista=valor=>String(valor||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+        const limparNomeLista=valor=>String(valor||'').trim().replace(/[\s\-_.]+$/g,'').replace(/\s+/g,' ');
+        function gruposListas(){
+            const mapa=new Map();
+            for(const lista of listas){
+                const chave=normalizarNomeLista(lista.nome)||`LISTA${lista.id}`;
+                if(!mapa.has(chave))mapa.set(chave,{agregada:true,chave,selecionador:`grupo:${chave}`,nome:limparNomeLista(lista.nome)||lista.nome,membros:[],disponiveis:0,em_uso:0,manutencao:0,total:0,ativo:false,pode_administrar:false});
+                const grupo=mapa.get(chave);grupo.membros.push(lista);grupo.disponiveis+=Number(lista.disponiveis)||0;grupo.em_uso+=Number(lista.em_uso)||0;grupo.manutencao+=Number(lista.manutencao)||0;grupo.total+=Number(lista.total)||0;grupo.ativo=grupo.ativo||Boolean(lista.ativo);
+            }
+            return [...mapa.values()].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR',{numeric:true,sensitivity:'base'}));
+        }
+        const grupoAtual=()=>typeof listaSelecionada==='string'&&listaSelecionada.startsWith('grupo:')?gruposListas().find(g=>g.selecionador===listaSelecionada):null;
+        const listaAtual=()=>grupoAtual()||listas.find(l=>Number(l.id)===Number(listaSelecionada));
+        function primeiraSelecao(){
+            if(setorFiltro==='Todos'){const grupos=gruposListas();return (grupos.find(g=>g.ativo)||grupos[0])?.selecionador||null;}
+            const candidatas=listas.filter(l=>l.setor===setorFiltro);return (candidatas.find(l=>l.ativo)||candidatas[0])?.id||null;
+        }
+
+        function renderizarGraficoMateriais(){
+            const origem=listas.filter(l=>l.ativo&&(setorFiltro==='Todos'||l.setor===setorFiltro)),disponiveis=origem.reduce((s,l)=>s+(Number(l.disponiveis)||0),0),emUso=origem.reduce((s,l)=>s+(Number(l.em_uso)||0),0),manutencao=origem.reduce((s,l)=>s+(Number(l.manutencao)||0),0),total=disponiveis+emUso+manutencao;
+            const percentual=valor=>total?valor/total*100:0,pDisponiveis=percentual(disponiveis),pEmUso=pDisponiveis+percentual(emUso),grafico=document.getElementById('graficoMateriais');
+            grafico.style.background=total?`conic-gradient(#22c55e 0 ${pDisponiveis}%,#fbbf24 ${pDisponiveis}% ${pEmUso}%,#ef4444 ${pEmUso}% 100%)`:'#334155';
+            grafico.setAttribute('aria-label',`${total} materiais: ${disponiveis} disponíveis, ${emUso} em uso e ${manutencao} em manutenção`);
+            document.getElementById('totalGraficoMateriais').textContent=total;
+            document.getElementById('escopoGraficoMateriais').textContent=setorFiltro==='Todos'?(sessaoAtual?.role==='oper'?'Unidades representadas':'1º BPTRAN'):setorFiltro;
+            const linha=(rotulo,valor,cor)=>`<div class="materials-chart-row"><span class="materials-chart-dot" style="color:${cor};background:${cor}"></span><span>${rotulo}</span><strong>${valor} · ${percentual(valor).toLocaleString('pt-BR',{maximumFractionDigits:1})}%</strong></div>`;
+            document.getElementById('legendaGraficoMateriais').innerHTML=linha('Disponíveis',disponiveis,'#4ade80')+linha('Em uso',emUso,'#fbbf24')+linha('Manutenção',manutencao,'#f87171');
+        }
 
         async function carregarListas() {
-            listas=await api('/api/materiais/listas?t='+Date.now()); renderizarSetores(); renderizarListas();
-            if(listaSelecionada&&!listas.some(l=>Number(l.id)===Number(listaSelecionada)))listaSelecionada=null;
-            if(!listaSelecionada){const primeira=listas.find(l=>(setorFiltro==='Todos'||l.setor===setorFiltro)&&l.ativo)||listas.find(l=>setorFiltro==='Todos'||l.setor===setorFiltro);if(primeira)listaSelecionada=primeira.id;}
+            listas=await api('/api/materiais/listas?t='+Date.now()); renderizarSetores();renderizarGraficoMateriais();
+            const selecaoValida=grupoAtual()||listas.some(l=>Number(l.id)===Number(listaSelecionada));if(listaSelecionada&&!selecaoValida)listaSelecionada=null;
+            if(!listaSelecionada)listaSelecionada=primeiraSelecao();
+            renderizarListas();
             if(listaSelecionada)await carregarItens(); else renderizarItens();
         }
         function renderizarSetores() {
@@ -449,17 +525,25 @@
             if(sessaoAtual.role==='oper'){const permitidos=Array.isArray(sessaoAtual.setores_materiais)&&sessaoAtual.setores_materiais.length?sessaoAtual.setores_materiais:[sessaoAtual.setor];const opcoes=permitidos.length>1?[['Todos','Todas representadas'],...permitidos.map(s=>[s,s])]:permitidos.map(s=>[s,s]);box.innerHTML=opcoes.map(([v,r])=>`<button onclick="filtrarSetor('${v}')" class="sector-btn ${setorFiltro===v?'active':''}">${escapeHTML(r)}</button>`).join('');return;}
             box.innerHTML=[['Todos','1º BPTRAN'],...setores.map(s=>[s,s])].map(([v,r])=>`<button onclick="filtrarSetor('${v}')" class="sector-btn ${setorFiltro===v?'active':''}">${escapeHTML(r)}</button>`).join('');
         }
-        async function filtrarSetor(setor){setorFiltro=setor;listaSelecionada=null;renderizarSetores();renderizarListas();const primeira=listas.find(l=>(setor==='Todos'||l.setor===setor)&&l.ativo)||listas.find(l=>setor==='Todos'||l.setor===setor);if(primeira){listaSelecionada=primeira.id;await carregarItens();}else{itens=[];renderizarItens();}}
-        function renderizarListas(){const visiveis=listas.filter(l=>setorFiltro==='Todos'||l.setor===setorFiltro);document.getElementById('resumoListas').textContent=`${visiveis.length} ${visiveis.length===1?'lista':'listas'}`;document.getElementById('listaCategorias').innerHTML=visiveis.map(l=>`<button class="list-btn ${Number(listaSelecionada)===Number(l.id)?'active':''} ${!l.ativo?'opacity-60':''}" onclick="selecionarLista(${Number(l.id)})"><span class="flex items-center justify-between gap-2"><strong class="uppercase">${escapeHTML(l.nome)}</strong><span class="list-unit">${escapeHTML(l.setor)}</span></span><span class="list-metrics"><span class="list-metric available-count">${l.disponiveis} disponíveis</span><span class="list-metric used-count">${l.em_uso} em uso</span><span class="list-metric maintenance-count">${l.manutencao} manutenção</span></span>${l.pode_administrar?`<span class="mt-3 flex items-center gap-4"><span role="button" tabindex="0" onclick="event.stopPropagation();editarLista(${Number(l.id)})" onkeydown="if(event.key==='Enter'){event.stopPropagation();editarLista(${Number(l.id)})}" class="text-xs font-bold ${Number(listaSelecionada)===Number(l.id)?'text-white':'text-blue-400'}"><i class="fas fa-pen mr-1"></i>Editar</span><span role="button" tabindex="0" onclick="event.stopPropagation();abrirExcluirLista(${Number(l.id)})" onkeydown="if(event.key==='Enter'){event.stopPropagation();abrirExcluirLista(${Number(l.id)})}" class="text-xs font-bold ${Number(listaSelecionada)===Number(l.id)?'text-red-200':'text-red-400'}"><i class="fas fa-trash-can mr-1"></i>Excluir</span></span>`:''}</button>`).join('')||'<p class="p-5 text-center text-sm text-slate-500">Nenhuma lista nesta subunidade.</p>';}
+        async function filtrarSetor(setor){setorFiltro=setor;listaSelecionada=primeiraSelecao();renderizarSetores();renderizarGraficoMateriais();renderizarListas();if(listaSelecionada)await carregarItens();else{itens=[];renderizarItens();}}
+        function renderizarListas(){
+            const geral=setorFiltro==='Todos',visiveis=geral?gruposListas():listas.filter(l=>l.setor===setorFiltro),resumo=document.getElementById('resumoGeralMateriais');
+            document.getElementById('resumoListas').textContent=geral?`${visiveis.length} ${visiveis.length===1?'categoria consolidada':'categorias consolidadas'}`:`${visiveis.length} ${visiveis.length===1?'lista':'listas'}`;
+            if(geral){const ativas=listas.filter(l=>l.ativo),disp=ativas.reduce((s,l)=>s+(Number(l.disponiveis)||0),0),uso=ativas.reduce((s,l)=>s+(Number(l.em_uso)||0),0),man=ativas.reduce((s,l)=>s+(Number(l.manutencao)||0),0);resumo.classList.remove('hidden');resumo.innerHTML=`<strong class="block text-xs uppercase text-blue-300">Resumo 1º BPTRAN</strong><span class="block mt-1 text-[10px] text-slate-500">Somatória de todas as subunidades</span><div class="consolidated-summary-grid"><div class="consolidated-stat"><strong class="text-green-400">${disp}</strong><span>Disponíveis</span></div><div class="consolidated-stat"><strong class="text-amber-400">${uso}</strong><span>Em uso</span></div><div class="consolidated-stat"><strong class="text-red-400">${man}</strong><span>Manutenção</span></div></div>`;}else resumo.classList.add('hidden');
+            document.getElementById('listaCategorias').innerHTML=geral?visiveis.map(g=>{const unidades=[...new Set(g.membros.map(l=>l.setor))];return `<button class="list-btn ${listaSelecionada===g.selecionador?'active':''} ${!g.ativo?'opacity-60':''}" onclick="selecionarGrupo('${g.chave}')"><span class="flex items-center justify-between gap-2"><strong class="uppercase">${escapeHTML(g.nome)}</strong><span class="list-unit">${unidades.length} ${unidades.length===1?'unidade':'unidades'} <i class="fas fa-chevron-right ml-1" aria-hidden="true"></i></span></span><span class="list-metrics"><span class="list-metric available-count">${g.disponiveis} disponíveis</span><span class="list-metric used-count">${g.em_uso} em uso</span><span class="list-metric maintenance-count">${g.manutencao} manutenção</span></span></button>`;}).join(''):visiveis.map(l=>`<button class="list-btn ${Number(listaSelecionada)===Number(l.id)?'active':''} ${!l.ativo?'opacity-60':''}" onclick="selecionarLista(${Number(l.id)})"><span class="flex items-center justify-between gap-2"><strong class="uppercase">${escapeHTML(l.nome)}</strong><span class="list-unit">${escapeHTML(l.setor)}</span></span><span class="list-metrics"><span class="list-metric available-count">${l.disponiveis} disponíveis</span><span class="list-metric used-count">${l.em_uso} em uso</span><span class="list-metric maintenance-count">${l.manutencao} manutenção</span></span>${l.pode_administrar?`<span class="mt-3 flex items-center gap-4"><span role="button" tabindex="0" onclick="event.stopPropagation();editarLista(${Number(l.id)})" onkeydown="if(event.key==='Enter'){event.stopPropagation();editarLista(${Number(l.id)})}" class="text-xs font-bold ${Number(listaSelecionada)===Number(l.id)?'text-white':'text-blue-400'}"><i class="fas fa-pen mr-1"></i>Editar</span><span role="button" tabindex="0" onclick="event.stopPropagation();abrirExcluirLista(${Number(l.id)})" onkeydown="if(event.key==='Enter'){event.stopPropagation();abrirExcluirLista(${Number(l.id)})}" class="text-xs font-bold ${Number(listaSelecionada)===Number(l.id)?'text-red-200':'text-red-400'}"><i class="fas fa-trash-can mr-1"></i>Excluir</span></span>`:''}</button>`).join('');
+            if(!visiveis.length)document.getElementById('listaCategorias').innerHTML='<p class="p-5 text-center text-sm text-slate-500">Nenhuma lista nesta seleção.</p>';
+        }
+        async function selecionarGrupo(chave){listaSelecionada=`grupo:${chave}`;renderizarListas();await carregarItens();}
         async function selecionarLista(id){listaSelecionada=id;renderizarListas();await carregarItens();}
-        async function carregarItens(){if(!listaSelecionada)return;itens=await api(`/api/materiais/itens?lista_id=${listaSelecionada}&t=${Date.now()}`);renderizarListas();renderizarItens();}
+        async function carregarItens(){if(!listaSelecionada)return;const atual=listaAtual();if(atual?.agregada){const respostas=await Promise.all(atual.membros.map(l=>api(`/api/materiais/itens?lista_id=${Number(l.id)}&t=${Date.now()}`)));itens=respostas.flat();}else itens=await api(`/api/materiais/itens?lista_id=${listaSelecionada}&t=${Date.now()}`);renderizarListas();renderizarItens();}
         function materialSelecionavel(m){return Boolean(m.pode_operar&&m.ativo&&m.lista_ativa&&m.status==='disponivel');}
-        function materiaisVisiveis(){const termo=document.getElementById('buscaMaterial').value.trim().toLowerCase();return itens.filter(m=>!termo||[m.nome,m.numero,m.responsavel_nome,m.responsavel_re].some(v=>String(v||'').toLowerCase().includes(termo)));}
+        function materiaisVisiveis(){const termo=document.getElementById('buscaMaterial').value.trim().toLowerCase();return itens.filter(m=>!termo||[m.nome,m.numero,m.responsavel_nome,m.responsavel_re,m.setor,m.lista_nome].some(v=>String(v||'').toLowerCase().includes(termo)));}
         function renderizarItens(){
             const l=listaAtual();
-            document.getElementById('tituloItens').textContent=l?`Itens da lista: ${l.nome}`:'Selecione uma lista';
-            document.getElementById('subtituloItens').textContent=l?`${l.setor} · ${itens.length} ${itens.length===1?'material':'materiais'}`:'Os materiais aparecerão aqui.';
-            const novo=document.getElementById('btnNovoMaterial');novo.hidden=!(l&&l.pode_administrar&&l.ativo);
+            document.getElementById('tituloItens').textContent=l?(l.agregada?`Categoria consolidada: ${l.nome}`:`Itens da lista: ${l.nome}`):'Selecione uma lista';
+            document.getElementById('subtituloItens').textContent=l?(l.agregada?`1º BPTRAN · ${l.membros.length} ${l.membros.length===1?'unidade':'unidades'} · ${itens.length} ${itens.length===1?'material':'materiais'}`:`${l.setor} · ${itens.length} ${itens.length===1?'material':'materiais'}`):'Os materiais aparecerão aqui.';
+            const detalhes=document.getElementById('detalhesGrupoListas');if(l?.agregada){detalhes.classList.remove('hidden');detalhes.innerHTML=`<p class="consolidated-note"><i class="fas fa-circle-info" aria-hidden="true"></i><strong>Visualização consolidada:</strong> os totais estão somados, mas cadastros, edições e exclusões permanecem separados por unidade.</p>`+l.membros.map(unidade=>`<div class="group-unit-card"><strong>${escapeHTML(unidade.setor)} · ${escapeHTML(unidade.nome)}</strong><span><b class="text-green-400">${unidade.disponiveis}</b> disponíveis · <b class="text-amber-400">${unidade.em_uso}</b> em uso · <b class="text-red-400">${unidade.manutencao}</b> manutenção</span></div>`).join('');}else{detalhes.classList.add('hidden');detalhes.innerHTML='';}
+            const novo=document.getElementById('btnNovoMaterial');novo.hidden=!(l&&!l.agregada&&l.pode_administrar&&l.ativo);
             itens.forEach(m=>{if(materiaisSelecionados.has(Number(m.id))&&!materialSelecionavel(m))materiaisSelecionados.delete(Number(m.id));});
             const filtrados=materiaisVisiveis();
             document.getElementById('corpoMateriais').innerHTML=filtrados.map(m=>{
@@ -470,7 +554,8 @@
                 const observacaoEntrega=m.status==='em_uso'&&m.observacao_entrega?`<p class="delivery-note text-slate-300" title="${escapeHTML(m.observacao_entrega)}">${escapeHTML(m.observacao_entrega)}</p>`:'<span class="text-slate-500">—</span>';
                 let acoes='';if(disponivel)acoes+=`<button class="action green" title="Pagar somente este material" onclick="abrirEntrega(${Number(m.id)})"><i class="fas fa-arrow-right"></i></button>`;if(m.pode_operar&&m.status==='em_uso')acoes+=`<button class="action amber" title="Registrar devolução" onclick="abrirDevolucao(${Number(m.id)})"><i class="fas fa-rotate-left"></i></button>`;if(m.pode_administrar)acoes+=`<button class="action" title="Editar ou mover material" onclick="editarMaterial(${Number(m.id)})"><i class="fas fa-pen"></i></button><button class="action red" title="Excluir material" onclick="abrirExcluirMaterial(${Number(m.id)})"><i class="fas fa-trash-can"></i></button>`;
                 const numero=m.numero?`<span class="material-number">Nº ${escapeHTML(m.numero)}</span>`:'<span class="text-slate-500">Sem número</span>';
-                return `<tr class="${!m.ativo?'opacity-60':''}"><td class="p-4 text-center">${selecao}</td><td class="p-4"><strong>${escapeHTML(m.nome)}</strong>${m.observacoes?`<span class="block mt-1 text-xs text-slate-500">${escapeHTML(m.observacoes)}</span>`:''}</td><td class="p-4">${numero}</td><td class="p-4 text-center">${situacao}</td><td class="p-4">${responsavel}</td><td class="p-4">${observacaoEntrega}</td><td class="p-4 text-center"><div class="flex justify-center gap-2">${acoes||'<span class="text-slate-500">—</span>'}</div></td></tr>`;
+                const origem=l?.agregada?`<span class="block mt-1 text-xs font-bold text-blue-400">${escapeHTML(m.setor)} · ${escapeHTML(m.lista_nome)}</span>`:'';
+                return `<tr class="${!m.ativo?'opacity-60':''}"><td class="p-4 text-center">${selecao}</td><td class="p-4"><strong>${escapeHTML(m.nome)}</strong>${origem}${m.observacoes?`<span class="block mt-1 text-xs text-slate-500">${escapeHTML(m.observacoes)}</span>`:''}</td><td class="p-4">${numero}</td><td class="p-4 text-center">${situacao}</td><td class="p-4">${responsavel}</td><td class="p-4">${observacaoEntrega}</td><td class="p-4 text-center"><div class="flex justify-center gap-2">${acoes||'<span class="text-slate-500">—</span>'}</div></td></tr>`;
             }).join('')||'<tr><td colspan="7" class="p-10 text-center text-slate-500">Nenhum material encontrado.</td></tr>';
             const elegiveis=filtrados.filter(materialSelecionavel),todos=document.getElementById('selecionarTodosMateriais');
             todos.disabled=!elegiveis.length;todos.checked=Boolean(elegiveis.length&&elegiveis.every(m=>materiaisSelecionados.has(Number(m.id))));todos.indeterminate=Boolean(elegiveis.some(m=>materiaisSelecionados.has(Number(m.id)))&&!todos.checked);
@@ -486,7 +571,7 @@
 
         function abrirMaterial(){const l=listaAtual();if(!l||!l.pode_administrar)return;materialEditando=null;document.getElementById('tituloModalMaterial').textContent='Cadastrar material';document.getElementById('formMaterial').reset();document.getElementById('materialStatus').innerHTML='<option value="disponivel">Disponível</option><option value="manutencao">Manutenção</option>';document.getElementById('materialStatus').disabled=false;document.getElementById('materialAtivo').disabled=false;document.getElementById('campoListaMaterial').classList.add('hidden');document.getElementById('campoMaterialAtivo').classList.add('hidden');document.getElementById('modalMaterial').classList.remove('hidden');}
         function editarMaterial(id){const m=itens.find(x=>Number(x.id)===Number(id));if(!m||!m.pode_administrar)return;materialEditando=id;document.getElementById('tituloModalMaterial').textContent='Editar ou mover material';document.getElementById('materialNome').value=m.nome;document.getElementById('materialNumero').value=m.numero||'';document.getElementById('materialObservacoes').value=m.observacoes||'';const destinos=listas.filter(l=>l.pode_administrar&&(l.ativo||Number(l.id)===Number(m.lista_id)));document.getElementById('materialLista').innerHTML=destinos.map(l=>`<option value="${Number(l.id)}">${escapeHTML(l.nome)}${sessaoAtual.superadmin?' · '+escapeHTML(l.setor):''}</option>`).join('');document.getElementById('materialLista').value=m.lista_id;document.getElementById('materialLista').disabled=m.status==='em_uso';document.getElementById('campoListaMaterial').classList.remove('hidden');document.getElementById('materialStatus').innerHTML=m.status==='em_uso'?'<option value="em_uso">Em uso — registre a devolução para alterar</option>':'<option value="disponivel">Disponível</option><option value="manutencao">Manutenção</option>';document.getElementById('materialStatus').value=m.status;document.getElementById('materialStatus').disabled=m.status==='em_uso';document.getElementById('materialAtivo').checked=m.ativo;document.getElementById('materialAtivo').disabled=m.status==='em_uso';document.getElementById('campoMaterialAtivo').classList.remove('hidden');document.getElementById('campoMaterialAtivo').classList.add('flex');document.getElementById('modalMaterial').classList.remove('hidden');}
-        async function salvarMaterial(e){e.preventDefault();try{const existente=materialEditando?itens.find(x=>Number(x.id)===Number(materialEditando)):null;const body={lista_id:materialEditando?Number(document.getElementById('materialLista').value):listaSelecionada,nome:document.getElementById('materialNome').value,numero:document.getElementById('materialNumero').value,status:existente?.status==='em_uso'?'em_uso':document.getElementById('materialStatus').value,observacoes:document.getElementById('materialObservacoes').value,...(materialEditando?{ativo:document.getElementById('materialAtivo').checked}:{})};await api(materialEditando?`/api/materiais/itens/${materialEditando}`:'/api/materiais/itens',{method:materialEditando?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(materialEditando)materiaisSelecionados.delete(Number(materialEditando));fechar('modalMaterial');showToast(materialEditando&&Number(body.lista_id)!==Number(listaSelecionada)?'Material movido e atualizado.':materialEditando?'Material atualizado.':'Material cadastrado.');await carregarListas();}catch(e){showToast(e.message,'error');}finally{document.getElementById('materialLista').disabled=false;document.getElementById('materialStatus').disabled=false;document.getElementById('materialAtivo').disabled=false;}}
+        async function salvarMaterial(e){e.preventDefault();try{const existente=materialEditando?itens.find(x=>Number(x.id)===Number(materialEditando)):null;const body={lista_id:materialEditando?Number(document.getElementById('materialLista').value):listaSelecionada,nome:document.getElementById('materialNome').value,numero:document.getElementById('materialNumero').value,status:existente?.status==='em_uso'?'em_uso':document.getElementById('materialStatus').value,observacoes:document.getElementById('materialObservacoes').value,...(materialEditando?{ativo:document.getElementById('materialAtivo').checked}:{})};await api(materialEditando?`/api/materiais/itens/${materialEditando}`:'/api/materiais/itens',{method:materialEditando?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(materialEditando)materiaisSelecionados.delete(Number(materialEditando));fechar('modalMaterial');showToast(materialEditando&&Number(body.lista_id)!==Number(existente?.lista_id)?'Material movido e atualizado.':materialEditando?'Material atualizado.':'Material cadastrado.');await carregarListas();}catch(e){showToast(e.message,'error');}finally{document.getElementById('materialLista').disabled=false;document.getElementById('materialStatus').disabled=false;document.getElementById('materialAtivo').disabled=false;}}
         const identificacaoMaterial=m=>`${m.nome}${m.numero?' Nº '+m.numero:''}`;
         function abrirExcluirMaterial(id){const m=itens.find(x=>Number(x.id)===Number(id));if(!m||!m.pode_administrar)return;materialExcluindo=id;const identificacao=identificacaoMaterial(m),geral=Boolean(sessaoAtual.superadmin);document.getElementById('excluirMaterialNome').textContent=identificacao;document.getElementById('excluirMaterialLista').textContent=`${m.lista_nome} · ${m.setor}`;document.getElementById('textoExcluirMaterial').textContent=geral?'O material e todo o seu histórico serão apagados definitivamente. Se estiver entregue, registre primeiro a devolução.':'Materiais sem histórico podem ser excluídos. Se já houver movimentações, desative o cadastro para preservar os relatórios.';document.getElementById('confirmacaoExclusaoMaterialGeral').classList.toggle('hidden',!geral);document.getElementById('materialParaConfirmar').textContent=identificacao;document.getElementById('confirmarMaterial').value='';document.getElementById('modalExcluirMaterial').classList.remove('hidden');validarConfirmacaoMaterial();if(geral)setTimeout(()=>document.getElementById('confirmarMaterial').focus(),0);}
         function validarConfirmacaoMaterial(){const m=itens.find(x=>Number(x.id)===Number(materialExcluindo)),botao=document.getElementById('btnConfirmarExcluirMaterial');botao.disabled=Boolean(sessaoAtual?.superadmin&&(!m||document.getElementById('confirmarMaterial').value!==identificacaoMaterial(m)));botao.classList.toggle('opacity-50',botao.disabled);botao.classList.toggle('cursor-not-allowed',botao.disabled);}
